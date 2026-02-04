@@ -1,0 +1,100 @@
+# generated: 2026-02-03
+# project: Setec AI Hub - LLM
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-03
+project: Setec AI Hub - LLM
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 1: Project Foundation & Secure Access
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-1: in-progress
+  1-1-project-initialization-infrastructure-setup: done
+  1-2-user-login-with-email-password: done
+  1-3-password-recovery-flow: done
+  1-4-protected-routes-session-management: done
+  epic-1-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 2: Conversational Interface
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-2: in-progress
+  2-1-conversation-list-sidebar: done
+  2-2-create-new-conversation: ready-for-dev
+  2-3-chat-interface-message-display: backlog
+  2-4-filter-agent-integration: backlog
+  2-5-main-agent-with-streaming-responses: backlog
+  epic-2-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 3: Template Workflow & File Management
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-3: backlog
+  3-1-templates-section-page: backlog
+  3-2-file-upload-in-chat: backlog
+  3-3-file-storage-display-in-conversation: backlog
+  epic-3-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 4: MSA Statistical Analysis Engine
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-4: backlog
+  4-1-python-analysis-endpoint-structure: backlog
+  4-2-file-validation-with-error-feedback: backlog
+  4-3-msa-calculation-engine: backlog
+  4-4-agent-tool-integration: backlog
+  epic-4-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 5: AI Interpretation & Interactive Visualization
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-5: backlog
+  5-1-ai-results-interpretation: backlog
+  5-2-interactive-chart-components: backlog
+  5-3-chart-export-multi-file-support: backlog
+  5-4-follow-up-questions-from-context: backlog
+  epic-5-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 6: Privacy Transparency & Production Readiness
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-6: backlog
+  6-1-privacy-page: backlog
+  6-2-error-handling-user-feedback: backlog
+  6-3-production-deployment-final-polish: backlog
+  epic-6-retrospective: optional

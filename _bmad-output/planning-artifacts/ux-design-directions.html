@@ -1,0 +1,2656 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Setec AI Hub - Design Directions (Updated 2026-02-02)</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --setec-orange: #f7931e;
+        --setec-orange-hover: #e07d0a;
+        --setec-charcoal: #3d3d3d;
+        --setec-white: #ffffff;
+        --text-primary: #3d3d3d;
+        --text-secondary: #6b7280;
+        --text-muted: #9ca3af;
+        --background: #ffffff;
+        --background-subtle: #f9fafb;
+        --background-muted: #f3f4f6;
+        --border: #e5e7eb;
+        --success: #10b981;
+        --success-bg: #ecfdf5;
+        --warning: #f59e0b;
+        --warning-bg: #fffbeb;
+        --error: #ef4444;
+        --error-bg: #fef2f2;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: var(--background-subtle);
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      /* Navigation */
+      .nav-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: var(--setec-charcoal);
+        color: white;
+        padding: 16px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .nav-title {
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .nav-subtitle {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-left: 12px;
+      }
+
+      .nav-tabs {
+        display: flex;
+        gap: 8px;
+      }
+
+      .nav-tab {
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+
+      .nav-tab:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .nav-tab.active {
+        background: var(--setec-orange);
+        border-color: var(--setec-orange);
+      }
+
+      /* Main content */
+      .main-content {
+        margin-top: 64px;
+        padding: 32px;
+      }
+
+      .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--setec-charcoal);
+      }
+
+      .section-desc {
+        color: var(--text-secondary);
+        margin-bottom: 32px;
+      }
+
+      /* Info callout */
+      .info-callout {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 32px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .info-callout-icon {
+        font-size: 20px;
+      }
+
+      .info-callout-content h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e40af;
+        margin-bottom: 4px;
+      }
+
+      .info-callout-content p {
+        font-size: 14px;
+        color: #1e40af;
+        opacity: 0.8;
+      }
+
+      /* Design Direction Cards */
+      .directions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        gap: 32px;
+      }
+
+      .direction-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .direction-card:hover {
+        border-color: var(--setec-orange);
+        box-shadow: 0 4px 12px rgba(247, 147, 30, 0.15);
+      }
+
+      .direction-header {
+        padding: 16px 20px;
+        background: var(--background-subtle);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .direction-name {
+        font-weight: 600;
+        font-size: 16px;
+      }
+
+      .direction-tag {
+        font-size: 12px;
+        padding: 4px 12px;
+        background: var(--setec-orange);
+        color: white;
+        border-radius: 20px;
+      }
+
+      .direction-preview {
+        height: 400px;
+        overflow: hidden;
+      }
+
+      /* Mockup Styles */
+      .mockup {
+        height: 100%;
+        display: flex;
+        font-size: 12px;
+      }
+
+      .mockup-sidebar {
+        width: 220px;
+        background: var(--setec-charcoal);
+        color: white;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .mockup-sidebar-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        margin-bottom: 16px;
+      }
+
+      .mockup-logo-img {
+        height: 24px;
+        width: auto;
+      }
+
+      .new-chat-btn {
+        background: var(--setec-orange);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-bottom: 16px;
+        font-size: 13px;
+        width: 100%;
+        text-align: left;
+      }
+
+      .new-chat-btn:hover {
+        background: var(--setec-orange-hover);
+      }
+
+      .nav-section-title {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: rgba(255, 255, 255, 0.5);
+        padding: 8px;
+        font-weight: 600;
+      }
+
+      .chat-item {
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-bottom: 4px;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .chat-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .chat-item.active {
+        background: var(--setec-orange);
+        color: white;
+      }
+
+      .chat-item-title {
+        font-weight: 500;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chat-item-meta {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .sidebar-spacer {
+        flex: 1;
+      }
+
+      .sidebar-nav-item {
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sidebar-nav-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .mockup-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+      }
+
+      .mockup-chat-header {
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .agent-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--setec-orange), #ff6b35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .agent-info h3 {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .agent-info p {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
+      .mockup-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+
+      .message.user {
+        align-self: flex-end;
+      }
+
+      .message.assistant {
+        align-self: flex-start;
+      }
+
+      .message-bubble {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .message.user .message-bubble {
+        background: var(--setec-orange);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+
+      .message.assistant .message-bubble {
+        background: var(--background-subtle);
+        border-bottom-left-radius: 4px;
+      }
+
+      .result-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+
+      .result-header {
+        padding: 12px 16px;
+        background: var(--background-subtle);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .result-title {
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .result-status {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .result-status.success {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+
+      .result-status.warning {
+        background: var(--warning-bg);
+        color: var(--warning);
+      }
+
+      .result-status.error {
+        background: var(--error-bg);
+        color: var(--error);
+      }
+
+      .result-body {
+        padding: 16px;
+      }
+
+      .metric-display {
+        text-align: center;
+        padding: 16px;
+      }
+
+      .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--warning);
+      }
+
+      .metric-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+
+      .mockup-input {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .input-field {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+      }
+
+      .input-field:focus {
+        border-color: var(--setec-orange);
+      }
+
+      .upload-btn,
+      .send-btn {
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .upload-btn {
+        background: var(--background-subtle);
+        color: var(--text-secondary);
+      }
+
+      .send-btn {
+        background: var(--setec-orange);
+        color: white;
+      }
+
+      /* Light sidebar variation */
+      .v1 .mockup-sidebar {
+        background: var(--background-subtle);
+        color: var(--text-primary);
+        border-right: 1px solid var(--border);
+      }
+
+      .v1 .mockup-logo-img {
+        filter: brightness(0.24);
+      }
+
+      .v1 .nav-section-title {
+        color: var(--text-muted);
+      }
+
+      .v1 .chat-item {
+        color: var(--text-primary);
+      }
+
+      .v1 .chat-item:hover {
+        background: var(--background-muted);
+      }
+
+      .v1 .chat-item.active {
+        background: rgba(247, 147, 30, 0.1);
+        color: var(--setec-orange);
+      }
+
+      .v1 .chat-item-meta {
+        color: var(--text-muted);
+      }
+
+      .v1 .sidebar-nav-item {
+        color: var(--text-primary);
+      }
+
+      .v1 .sidebar-nav-item:hover {
+        background: var(--background-muted);
+      }
+
+      /* Centered content variation */
+      .v3 .mockup-main {
+        background: var(--background-subtle);
+      }
+
+      .v3 .mockup-messages {
+        max-width: 700px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .v3 .message-bubble {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      .v3 .message.assistant .message-bubble {
+        background: white;
+      }
+
+      /* Elevated cards variation */
+      .v4 .result-card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .v4 .metric-display {
+        background: linear-gradient(135deg, var(--warning-bg), white);
+        border-radius: 8px;
+        margin: 8px;
+      }
+
+      /* Color Palette Section */
+      .color-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .color-section.active {
+        display: block;
+      }
+
+      .color-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+
+      .color-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .color-swatch {
+        height: 80px;
+      }
+
+      .color-info {
+        padding: 16px;
+      }
+
+      .color-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .color-value {
+        font-family: monospace;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      /* Typography Section */
+      .typography-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .typography-section.active {
+        display: block;
+      }
+
+      .type-example {
+        background: white;
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .type-h1 {
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .type-h2 {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      .type-h3 {
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.3;
+      }
+      .type-h4 {
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+      .type-body {
+        font-size: 16px;
+        font-weight: 400;
+        line-height: 1.6;
+      }
+      .type-small {
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+      .type-metric {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--setec-orange);
+      }
+
+      /* Components Section */
+      .components-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .components-section.active {
+        display: block;
+      }
+
+      .component-row {
+        background: white;
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .component-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 16px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 14px;
+        border: none;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: var(--setec-orange);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: var(--setec-orange-hover);
+      }
+
+      .btn-secondary {
+        background: var(--background-subtle);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+      }
+
+      .btn-secondary:hover {
+        background: var(--background-muted);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--setec-orange);
+      }
+
+      .btn-ghost:hover {
+        background: rgba(247, 147, 30, 0.1);
+      }
+
+      .status-badges {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .badge-success {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+
+      .badge-warning {
+        background: var(--warning-bg);
+        color: var(--warning);
+      }
+
+      .badge-error {
+        background: var(--error-bg);
+        color: var(--error);
+      }
+
+      .badge-neutral {
+        background: var(--background-muted);
+        color: var(--text-secondary);
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 6px;
+      }
+
+      .form-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .form-input:focus {
+        border-color: var(--setec-orange);
+      }
+
+      .form-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      /* Directions Section */
+      .directions-section {
+        display: block;
+      }
+
+      .directions-section.hidden {
+        display: none;
+      }
+
+      /* Login Section Styles */
+      .login-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .login-section.active {
+        display: block;
+      }
+
+      .login-preview-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 32px;
+      }
+
+      .login-preview {
+        background: var(--setec-charcoal);
+        border-radius: 12px;
+        padding: 60px 40px;
+        min-width: 600px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .login-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .login-logo-container {
+        margin-bottom: 24px;
+      }
+
+      .login-logo {
+        height: 40px;
+        width: auto;
+        filter: brightness(0.24);
+      }
+
+      .login-logo-text {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--setec-charcoal);
+        margin-left: 10px;
+        margin-top: 4px;
+      }
+
+      .login-logo-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .login-form {
+        text-align: left;
+      }
+
+      .login-field {
+        margin-bottom: 20px;
+      }
+
+      .login-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+      }
+
+      .login-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .login-input:focus {
+        border-color: var(--setec-orange);
+      }
+
+      .login-btn {
+        width: 100%;
+        padding: 14px 24px;
+        background: var(--setec-orange);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .login-btn:hover {
+        background: var(--setec-orange-hover);
+      }
+
+      .login-forgot {
+        margin-top: 16px;
+        text-align: center;
+      }
+
+      .login-forgot a {
+        color: var(--setec-orange);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .login-forgot a:hover {
+        text-decoration: underline;
+      }
+
+      .login-specs {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .specs-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: var(--setec-charcoal);
+      }
+
+      .specs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+      }
+
+      .spec-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .spec-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+      }
+
+      .spec-value {
+        font-size: 14px;
+        color: var(--text-primary);
+      }
+
+      /* Password Recovery Section */
+      .recovery-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .recovery-section.active {
+        display: block;
+      }
+
+      .recovery-preview {
+        background: var(--setec-charcoal);
+        border-radius: 12px;
+        padding: 60px 40px;
+        min-width: 600px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .recovery-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .recovery-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--setec-charcoal);
+        margin-bottom: 8px;
+      }
+
+      .recovery-subtitle {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+        line-height: 1.5;
+      }
+
+      .recovery-back {
+        margin-top: 16px;
+        text-align: center;
+      }
+
+      .recovery-back a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .recovery-back a:hover {
+        color: var(--text-primary);
+      }
+
+      /* Full Screen Preview */
+      .fullscreen-preview {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        z-index: 2000;
+      }
+
+      .fullscreen-preview.active {
+        display: block;
+      }
+
+      .fullscreen-close {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background: var(--setec-charcoal);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 20px;
+        z-index: 2001;
+      }
+
+      .fullscreen-mockup {
+        height: 100vh;
+      }
+
+      .fullscreen-mockup .mockup-sidebar {
+        width: 280px;
+      }
+
+      .fullscreen-mockup .mockup {
+        font-size: 14px;
+      }
+
+      /* Plantillas Section */
+      .plantillas-section {
+        display: none;
+        padding: 32px;
+      }
+
+      .plantillas-section.active {
+        display: block;
+      }
+
+      .plantillas-preview-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 32px;
+      }
+
+      .plantillas-preview {
+        background: white;
+        border-radius: 12px;
+        padding: 32px;
+        width: 100%;
+        max-width: 800px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+      }
+
+      .plantillas-header {
+        margin-bottom: 24px;
+      }
+
+      .plantillas-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--setec-charcoal);
+        margin-bottom: 8px;
+      }
+
+      .plantillas-desc {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .template-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+
+      .template-icon {
+        width: 64px;
+        height: 64px;
+        background: var(--background-subtle);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        flex-shrink: 0;
+      }
+
+      .template-content {
+        flex: 1;
+      }
+
+      .template-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--setec-charcoal);
+        margin-bottom: 4px;
+      }
+
+      .template-desc {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+      }
+
+      .template-instructions {
+        background: var(--background-subtle);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+      }
+
+      .template-instructions strong {
+        color: var(--text-primary);
+      }
+
+      .template-download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--setec-orange);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .template-download-btn:hover {
+        background: var(--setec-orange-hover);
+      }
+
+      .template-meta {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 8px;
+      }
+
+      /* Spinner animation */
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav-header">
+      <div style="display: flex; align-items: baseline">
+        <span class="nav-title">Setec AI Hub - Design Directions</span>
+        <span class="nav-subtitle">Updated 2026-02-02 (Privacy UX Components added)</span>
+      </div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showSection('directions')">Diseño Principal</button>
+        <button class="nav-tab" onclick="showSection('login')">Login</button>
+        <button class="nav-tab" onclick="showSection('recovery')">Recuperar</button>
+        <button class="nav-tab" onclick="showSection('plantillas')">Plantillas</button>
+        <button class="nav-tab" onclick="showSection('privacy')">Privacidad</button>
+        <button class="nav-tab" onclick="showSection('colors')">Colores</button>
+        <button class="nav-tab" onclick="showSection('typography')">Tipografía</button>
+        <button class="nav-tab" onclick="showSection('components')">Componentes</button>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <!-- Design Directions Section -->
+      <section id="directions-section" class="directions-section">
+        <h1 class="section-title">Direcciones de Diseño</h1>
+        <p class="section-desc">
+          Diseño simplificado para Setec AI Hub. Click en cualquier dirección para ver en pantalla completa.
+        </p>
+
+        <div class="info-callout">
+          <span class="info-callout-icon">ℹ️</span>
+          <div class="info-callout-content">
+            <h4>Arquitectura Simplificada (PRD 2026-02-02)</h4>
+            <p>
+              Sin selector de modelo (OpenAI único) • Sin modal de selección de agente (agente unificado) •
+              "Nueva conversación" inicia chat directamente • Computación Python + interpretación IA
+            </p>
+          </div>
+        </div>
+
+        <div class="directions-grid">
+          <!-- Direction 1: Light Sidebar -->
+          <div class="direction-card" onclick="openFullscreen('v1')">
+            <div class="direction-header">
+              <span class="direction-name">1. Light Sidebar</span>
+            </div>
+            <div class="direction-preview">
+              <div class="mockup v1">
+                <div class="mockup-sidebar">
+                  <div class="mockup-sidebar-header">
+                    <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+                  </div>
+                  <button class="new-chat-btn">+ Nueva conversación</button>
+                  <div class="nav-section-title">Hoy</div>
+                  <div class="chat-item active">
+                    <div class="chat-item-title">MSA - Gauge R&R</div>
+                    <div class="chat-item-meta">2:30 PM</div>
+                  </div>
+                  <div class="chat-item">
+                    <div class="chat-item-title">Análisis de proceso</div>
+                    <div class="chat-item-meta">11:00 AM</div>
+                  </div>
+                  <div class="nav-section-title">Ayer</div>
+                  <div class="chat-item">
+                    <div class="chat-item-title">Control Charts</div>
+                    <div class="chat-item-meta">4:15 PM</div>
+                  </div>
+                  <div class="sidebar-spacer"></div>
+                  <div class="sidebar-nav-item">📁 Plantillas</div>
+                </div>
+                <div class="mockup-main">
+                  <div class="mockup-chat-header">
+                    <div class="agent-avatar">🤖</div>
+                    <div class="agent-info">
+                      <h3>Asistente de Análisis</h3>
+                      <p>MSA, Control Charts, Hypothesis Testing</p>
+                    </div>
+                  </div>
+                  <div class="mockup-messages">
+                    <div class="message assistant">
+                      <div class="message-bubble">
+                        ¡Hola! Soy tu asistente de análisis estadístico. Puedo ayudarte con MSA,
+                        gráficos de control, pruebas de hipótesis, y más. ¿En qué puedo ayudarte?
+                      </div>
+                    </div>
+                    <div class="message user">
+                      <div class="message-bubble">Necesito hacer un MSA para mi proyecto.</div>
+                    </div>
+                    <div class="message assistant">
+                      <div class="message-bubble">
+                        Perfecto. Ve a la sección de <strong>Plantillas</strong> y descarga la plantilla de MSA.
+                        Llénala con tus datos y súbela aquí.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mockup-input">
+                    <button class="upload-btn">📎</button>
+                    <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+                    <button class="send-btn">➤</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Direction 2: Dark Sidebar (Recommended) -->
+          <div class="direction-card" onclick="openFullscreen('v2')">
+            <div class="direction-header">
+              <span class="direction-name">2. Dark Sidebar</span>
+              <span class="direction-tag">Recomendado</span>
+            </div>
+            <div class="direction-preview">
+              <div class="mockup v2">
+                <div class="mockup-sidebar">
+                  <div class="mockup-sidebar-header">
+                    <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+                  </div>
+                  <button class="new-chat-btn">+ Nueva conversación</button>
+                  <div class="nav-section-title">Hoy</div>
+                  <div class="chat-item active">
+                    <div class="chat-item-title">MSA - Gauge R&R</div>
+                    <div class="chat-item-meta">2:30 PM</div>
+                  </div>
+                  <div class="chat-item">
+                    <div class="chat-item-title">Análisis de proceso</div>
+                    <div class="chat-item-meta">11:00 AM</div>
+                  </div>
+                  <div class="nav-section-title">Ayer</div>
+                  <div class="chat-item">
+                    <div class="chat-item-title">Control Charts</div>
+                    <div class="chat-item-meta">4:15 PM</div>
+                  </div>
+                  <div class="sidebar-spacer"></div>
+                  <div class="sidebar-nav-item">📁 Plantillas</div>
+                </div>
+                <div class="mockup-main">
+                  <div class="mockup-chat-header">
+                    <div class="agent-avatar">🤖</div>
+                    <div class="agent-info">
+                      <h3>Asistente de Análisis</h3>
+                      <p>MSA, Control Charts, Hypothesis Testing</p>
+                    </div>
+                  </div>
+                  <div class="mockup-messages">
+                    <div class="message assistant">
+                      <div class="message-bubble">¡Hola! Soy tu asistente de análisis estadístico.</div>
+                    </div>
+                    <div class="message user">
+                      <div class="message-bubble">📎 datos-msa.xlsx</div>
+                    </div>
+                    <div class="message assistant">
+                      <div class="message-bubble">✓ Plantilla válida. Procesando...</div>
+                      <div class="result-card">
+                        <div class="result-header">
+                          <span class="result-title">Resultados Gauge R&R</span>
+                          <span class="result-status warning">Marginal</span>
+                        </div>
+                        <div class="result-body">
+                          <div class="metric-display">
+                            <div class="metric-value">18.2%</div>
+                            <div class="metric-label">%GRR (Variación Total)</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mockup-input">
+                    <button class="upload-btn">📎</button>
+                    <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+                    <button class="send-btn">➤</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Direction 3: Centered Content -->
+          <div class="direction-card" onclick="openFullscreen('v3')">
+            <div class="direction-header">
+              <span class="direction-name">3. Centered Content</span>
+            </div>
+            <div class="direction-preview">
+              <div class="mockup v2 v3">
+                <div class="mockup-sidebar">
+                  <div class="mockup-sidebar-header">
+                    <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+                  </div>
+                  <button class="new-chat-btn">+ Nueva conversación</button>
+                  <div class="nav-section-title">Hoy</div>
+                  <div class="chat-item active">
+                    <div class="chat-item-title">MSA - Gauge R&R</div>
+                    <div class="chat-item-meta">2:30 PM</div>
+                  </div>
+                  <div class="sidebar-spacer"></div>
+                  <div class="sidebar-nav-item">📁 Plantillas</div>
+                </div>
+                <div class="mockup-main">
+                  <div class="mockup-chat-header">
+                    <div class="agent-avatar">🤖</div>
+                    <div class="agent-info">
+                      <h3>Asistente de Análisis</h3>
+                      <p>MSA, Control Charts, Hypothesis Testing</p>
+                    </div>
+                  </div>
+                  <div class="mockup-messages">
+                    <div class="message assistant">
+                      <div class="message-bubble">¡Hola! Soy tu asistente de análisis estadístico.</div>
+                    </div>
+                    <div class="message user">
+                      <div class="message-bubble">📎 datos-msa.xlsx</div>
+                    </div>
+                    <div class="message assistant">
+                      <div class="message-bubble">Aquí están tus resultados:</div>
+                      <div class="result-card">
+                        <div class="result-header">
+                          <span class="result-title">Gauge R&R</span>
+                          <span class="result-status success">Aceptable</span>
+                        </div>
+                        <div class="result-body">
+                          <div class="metric-display">
+                            <div class="metric-value" style="color: var(--success)">8.4%</div>
+                            <div class="metric-label">%GRR</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mockup-input">
+                    <button class="upload-btn">📎</button>
+                    <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+                    <button class="send-btn">➤</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Direction 4: Elevated Cards -->
+          <div class="direction-card" onclick="openFullscreen('v4')">
+            <div class="direction-header">
+              <span class="direction-name">4. Elevated Cards</span>
+            </div>
+            <div class="direction-preview">
+              <div class="mockup v2 v4">
+                <div class="mockup-sidebar">
+                  <div class="mockup-sidebar-header">
+                    <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+                  </div>
+                  <button class="new-chat-btn">+ Nueva conversación</button>
+                  <div class="nav-section-title">Hoy</div>
+                  <div class="chat-item active">
+                    <div class="chat-item-title">MSA - Gauge R&R</div>
+                    <div class="chat-item-meta">2:30 PM</div>
+                  </div>
+                  <div class="sidebar-spacer"></div>
+                  <div class="sidebar-nav-item">📁 Plantillas</div>
+                </div>
+                <div class="mockup-main">
+                  <div class="mockup-chat-header">
+                    <div class="agent-avatar">🤖</div>
+                    <div class="agent-info">
+                      <h3>Asistente de Análisis</h3>
+                      <p>MSA, Control Charts, Hypothesis Testing</p>
+                    </div>
+                  </div>
+                  <div class="mockup-messages">
+                    <div class="message assistant">
+                      <div class="message-bubble">Aquí están tus resultados:</div>
+                      <div class="result-card">
+                        <div class="result-header">
+                          <span class="result-title">Resultados Gauge R&R</span>
+                          <span class="result-status error">Inaceptable</span>
+                        </div>
+                        <div class="result-body">
+                          <div class="metric-display">
+                            <div class="metric-value" style="color: var(--error)">42.1%</div>
+                            <div class="metric-label">%GRR - Requiere acción</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mockup-input">
+                    <button class="upload-btn">📎</button>
+                    <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+                    <button class="send-btn">➤</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Login Section -->
+      <section id="login-section" class="login-section">
+        <h1 class="section-title">Pantalla de Login</h1>
+        <p class="section-desc">
+          Autenticación via Supabase Auth. Basado en el patrón de Datchef.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 32px; margin-bottom: 32px;">
+          <!-- Login Normal -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /login — Estado Normal
+            </h3>
+            <div class="login-preview" style="min-width: auto;">
+              <div class="login-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Iniciar Sesión</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <div class="login-form">
+                      <div class="login-field">
+                        <label class="login-label">Correo Electrónico</label>
+                        <input type="email" class="login-input" placeholder="usuario@empresa.com" />
+                      </div>
+                      <div class="login-field">
+                        <label class="login-label">Contraseña</label>
+                        <div style="position: relative;">
+                          <input type="password" class="login-input" value="••••••••" style="padding-right: 44px;" />
+                          <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px;">👁</button>
+                        </div>
+                      </div>
+                      <button class="login-btn">Iniciar Sesión</button>
+                      <div class="login-forgot">
+                        <a href="#">¿Olvidaste tu contraseña?</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login con Mensaje de Éxito -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /login?message=password-reset-success
+            </h3>
+            <div class="login-preview" style="min-width: auto;">
+              <div class="login-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Iniciar Sesión</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <div class="login-form">
+                      <!-- Success Alert -->
+                      <div style="background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: var(--success); font-size: 14px;">
+                        Contraseña restablecida exitosamente. Por favor, inicia sesión con tu nueva contraseña.
+                      </div>
+                      <div class="login-field">
+                        <label class="login-label">Correo Electrónico</label>
+                        <input type="email" class="login-input" placeholder="usuario@empresa.com" />
+                      </div>
+                      <div class="login-field">
+                        <label class="login-label">Contraseña</label>
+                        <div style="position: relative;">
+                          <input type="password" class="login-input" placeholder="••••••••" style="padding-right: 44px;" />
+                          <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px;">👁</button>
+                        </div>
+                      </div>
+                      <button class="login-btn">Iniciar Sesión</button>
+                      <div class="login-forgot">
+                        <a href="#">¿Olvidaste tu contraseña?</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Login con Error -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /login — Estado Error
+            </h3>
+            <div class="login-preview" style="min-width: auto;">
+              <div class="login-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Iniciar Sesión</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <div class="login-form">
+                      <div class="login-field">
+                        <label class="login-label">Correo Electrónico</label>
+                        <input type="email" class="login-input" value="usuario@empresa.com" />
+                      </div>
+                      <div class="login-field">
+                        <label class="login-label">Contraseña</label>
+                        <div style="position: relative;">
+                          <input type="password" class="login-input" value="••••••••" style="padding-right: 44px;" />
+                          <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px;">👁</button>
+                        </div>
+                      </div>
+                      <!-- Error Alert -->
+                      <div style="background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: var(--error); font-size: 14px;">
+                        Correo electrónico o contraseña incorrectos
+                      </div>
+                      <button class="login-btn">Iniciar Sesión</button>
+                      <div class="login-forgot">
+                        <a href="#">¿Olvidaste tu contraseña?</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-specs">
+          <h2 class="specs-title">Especificaciones — Patrón Datchef</h2>
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">Estructura</span>
+              <span class="spec-value">Logo + título → Card con CardHeader + CardContent</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Contraseña</span>
+              <span class="spec-value">Input con toggle mostrar/ocultar (PasswordInput)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">URL params</span>
+              <span class="spec-value">?message=password-reset-success muestra alerta verde</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Sesión</span>
+              <span class="spec-value">Persistente hasta logout explícito</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Password Recovery Section -->
+      <section id="recovery-section" class="recovery-section">
+        <h1 class="section-title">Flujo de Recuperación de Contraseña</h1>
+        <p class="section-desc">
+          Flujo completo basado en Datchef: solicitar → email enviado → confirmar nueva contraseña → redirect a login.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 32px; margin-bottom: 32px;">
+          <!-- Reset Password Request -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /reset-password — Solicitar Reset
+            </h3>
+            <div class="recovery-preview" style="min-width: auto;">
+              <div class="recovery-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Restablecer contraseña</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <div class="login-form">
+                      <div class="login-field">
+                        <label class="login-label">Correo Electrónico</label>
+                        <input type="email" class="login-input" placeholder="usuario@empresa.com" />
+                      </div>
+                      <button class="login-btn">Restablecer contraseña</button>
+                      <div class="recovery-back">
+                        <a href="#">Volver al inicio de sesión</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Password Request Success -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /reset-password — Enlace Enviado
+            </h3>
+            <div class="recovery-preview" style="min-width: auto;">
+              <div class="recovery-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Restablecer contraseña</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <!-- Success Alert -->
+                    <div style="background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: var(--success); font-size: 14px;">
+                      Si existe una cuenta con este correo, recibirás un enlace de restablecimiento
+                    </div>
+                    <div class="recovery-back" style="text-align: center;">
+                      <a href="#" style="color: var(--setec-orange);">Volver al inicio de sesión</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Password Confirm - Loading -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /reset-password/confirm — Verificando...
+            </h3>
+            <div class="recovery-preview" style="min-width: auto;">
+              <div class="recovery-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Restablecer contraseña</h3>
+                  </div>
+                  <div style="padding: 40px 20px; text-align: center;">
+                    <!-- Spinner -->
+                    <div style="width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--setec-orange); border-radius: 50%; margin: 0 auto 16px; animation: spin 1s linear infinite;"></div>
+                    <p style="font-size: 14px; color: var(--text-muted);">Verificando enlace...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Password Confirm - Error -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /reset-password/confirm — Enlace Inválido
+            </h3>
+            <div class="recovery-preview" style="min-width: auto;">
+              <div class="recovery-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Restablecer contraseña</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <!-- Error Alert -->
+                    <div style="background: var(--error-bg); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: var(--error); font-size: 14px;">
+                      El enlace ha expirado o es inválido. Por favor, solicita un nuevo enlace.
+                    </div>
+                    <button class="login-btn">Solicitar Nuevo Enlace</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Password Confirm - Form -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              /reset-password/confirm — Nueva Contraseña
+            </h3>
+            <div class="recovery-preview" style="min-width: auto;">
+              <div class="recovery-card">
+                <div class="login-logo-container">
+                  <div class="login-logo-row">
+                    <img src="../../Setec Logo.png" alt="Setec" class="login-logo" />
+                    <span class="login-logo-text">AI Hub</span>
+                  </div>
+                  <p style="margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--text-primary);">Bienvenido a Setec AI Hub</p>
+                </div>
+
+                <!-- Card -->
+                <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; text-align: left;">
+                  <div style="padding: 16px 20px; border-bottom: 1px solid var(--border);">
+                    <h3 style="font-size: 18px; font-weight: 600;">Restablecer contraseña</h3>
+                  </div>
+                  <div style="padding: 20px;">
+                    <div class="login-form">
+                      <div class="login-field">
+                        <label class="login-label">Nueva Contraseña</label>
+                        <div style="position: relative;">
+                          <input type="password" class="login-input" placeholder="••••••••" style="padding-right: 44px;" />
+                          <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px;">👁</button>
+                        </div>
+                      </div>
+                      <div class="login-field">
+                        <label class="login-label">Confirmar Contraseña</label>
+                        <div style="position: relative;">
+                          <input type="password" class="login-input" placeholder="••••••••" style="padding-right: 44px;" />
+                          <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 8px;">👁</button>
+                        </div>
+                      </div>
+                      <button class="login-btn">Restablecer Contraseña</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-specs">
+          <h2 class="specs-title">Flujo Completo — Patrón Datchef</h2>
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">1. /reset-password</span>
+              <span class="spec-value">Usuario ingresa email → botón "Restablecer contraseña"</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">2. Email enviado</span>
+              <span class="spec-value">Siempre muestra éxito (seguridad: no revela si email existe)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">3. /reset-password/confirm</span>
+              <span class="spec-value">Verifica token → muestra form o error</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">4. Éxito</span>
+              <span class="spec-value">Redirect a /login?message=password-reset-success</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Plantillas Section -->
+      <section id="plantillas-section" class="plantillas-section">
+        <h1 class="section-title">Sección de Plantillas</h1>
+        <p class="section-desc">
+          Página separada con las plantillas Excel disponibles para descarga.
+        </p>
+
+        <div class="plantillas-preview-container">
+          <div class="plantillas-preview">
+            <div class="plantillas-header">
+              <h2 class="plantillas-title">Plantillas</h2>
+              <p class="plantillas-desc">
+                Descarga la plantilla correspondiente al análisis que necesitas realizar.
+              </p>
+            </div>
+
+            <div class="template-card">
+              <div class="template-icon">📊</div>
+              <div class="template-content">
+                <h3 class="template-name">MSA - Análisis del Sistema de Medición</h3>
+                <p class="template-desc">
+                  Plantilla para estudios Gauge R&R. Evalúa la variación de tu sistema de medición.
+                </p>
+                <div class="template-instructions">
+                  <strong>Instrucciones:</strong> Llena las columnas Parte, Operador y Medición con tus datos.
+                  Incluye al menos 10 partes, 2-3 operadores, y 2-3 repeticiones por combinación.
+                </div>
+                <button class="template-download-btn">
+                  <span>⬇️</span>
+                  <span>Descargar plantilla</span>
+                </button>
+                <div class="template-meta">Formato: .xlsx • Incluye datos de ejemplo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-specs">
+          <h2 class="specs-title">Estrategia de Plantillas</h2>
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">Contenido Excel</span>
+              <span class="spec-value">Solo datos de ejemplo (sin instrucciones)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Instrucciones</span>
+              <span class="spec-value">En la página de Plantillas + guía del agente</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">MVP</span>
+              <span class="spec-value">1 plantilla (MSA)</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Post-MVP</span>
+              <span class="spec-value">Control Charts, Hypothesis Testing, etc.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Privacy Section -->
+      <section id="privacy-section" class="login-section">
+        <h1 class="section-title">Componentes de Privacidad</h1>
+        <p class="section-desc">
+          Elementos UX para comunicar transparencia en el manejo de datos. Requisitos FR-PRIV1 y FR-PRIV2.
+        </p>
+
+        <div class="info-callout">
+          <span class="info-callout-icon">🔒</span>
+          <div class="info-callout-content">
+            <h4>Mensaje clave de privacidad</h4>
+            <p>
+              "Tus datos se procesan en nuestros servidores. Solo los resultados estadísticos se envían a la IA."
+            </p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 32px; margin-bottom: 32px;">
+          <!-- File Upload with Privacy Tooltip -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Tooltip de Privacidad — Zona de Carga
+            </h3>
+            <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <!-- Drop zone -->
+              <div style="border: 2px dashed var(--border); border-radius: 12px; padding: 40px 24px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 12px;">📎</div>
+                <p style="font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px;">
+                  Arrastra tu archivo aquí
+                </p>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                  o haz clic para seleccionar
+                </p>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+                  Formatos: .xlsx, .xls
+                </p>
+              </div>
+              <!-- Privacy tooltip -->
+              <div style="margin-top: 12px; text-align: center;">
+                <p style="font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px;">
+                  <span>ℹ️</span>
+                  <span>Tus datos se procesan en nuestros servidores. Solo los resultados estadísticos se envían a la IA.</span>
+                  <a href="#" style="color: var(--setec-orange); text-decoration: none;">Ver más</a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- First Upload Privacy Notice -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Aviso Primera Carga — One-time
+            </h3>
+            <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <!-- Privacy notice card -->
+              <div style="background: var(--background-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <span style="font-size: 20px;">🔒</span>
+                  <div style="flex: 1;">
+                    <p style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                      Sobre la privacidad de tus datos
+                    </p>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+                      Tus datos se procesan en nuestros servidores. Solo los resultados estadísticos se envían a la IA.
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                      <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">Entendido</button>
+                      <a href="#" style="font-size: 13px; color: var(--setec-orange); text-decoration: none;">Ver más sobre privacidad</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Drop zone below -->
+              <div style="border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; opacity: 0.7;">
+                <div style="font-size: 24px; margin-bottom: 8px;">📎</div>
+                <p style="font-size: 13px; color: var(--text-secondary);">
+                  Arrastra tu archivo aquí...
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Component -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Footer — Todas las Páginas
+            </h3>
+            <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+              <!-- Mock page content -->
+              <div style="padding: 32px; min-height: 150px; display: flex; align-items: center; justify-content: center;">
+                <p style="color: var(--text-muted); font-size: 14px;">[Contenido de la página]</p>
+              </div>
+              <!-- Footer -->
+              <div style="background: var(--background-subtle); border-top: 1px solid var(--border); padding: 16px; text-align: center;">
+                <p style="font-size: 12px; color: var(--text-secondary);">
+                  <a href="#" style="color: var(--text-secondary); text-decoration: none;">Privacidad</a>
+                  <span style="margin: 0 8px;">•</span>
+                  <span>© 2026 Setec</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy Page Mockup -->
+        <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; margin-top: 32px;">Página de Privacidad (/privacidad)</h2>
+        <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 768px;">
+          <!-- Page title -->
+          <h1 style="font-size: 24px; font-weight: 700; color: var(--setec-charcoal); margin-bottom: 24px; text-align: center;">
+            Privacidad y Manejo de Datos
+          </h1>
+
+          <!-- Hero banner -->
+          <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 12px;">🔒</div>
+            <p style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+              Tu privacidad es nuestra prioridad
+            </p>
+            <p style="font-size: 14px; color: var(--text-secondary);">
+              Tus datos de proceso nunca se envían a la IA. Solo compartimos los resultados estadísticos calculados para generar interpretaciones.
+            </p>
+          </div>
+
+          <!-- How it works -->
+          <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">¿Cómo funciona?</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding: 16px; background: var(--background-subtle); border-radius: 12px;">
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+              <p style="font-size: 12px; font-weight: 600; color: var(--text-primary);">Tu archivo</p>
+              <p style="font-size: 11px; color: var(--text-muted);">500 filas de datos</p>
+            </div>
+            <div style="font-size: 24px; color: var(--text-muted);">→</div>
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 32px; margin-bottom: 8px;">🖥️</div>
+              <p style="font-size: 12px; font-weight: 600; color: var(--text-primary);">Nuestro servidor</p>
+              <p style="font-size: 11px; color: var(--text-muted);">Calcula estadísticas</p>
+            </div>
+            <div style="font-size: 24px; color: var(--text-muted);">→</div>
+            <div style="text-align: center; flex: 1;">
+              <div style="font-size: 32px; margin-bottom: 8px;">🤖</div>
+              <p style="font-size: 12px; font-weight: 600; color: var(--text-primary);">IA</p>
+              <p style="font-size: 11px; color: var(--text-muted);">Solo ve "18.2%"</p>
+            </div>
+          </div>
+
+          <!-- What AI sees -->
+          <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">¿Qué ve la IA?</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+            <div style="background: var(--error-bg); border-radius: 8px; padding: 16px;">
+              <p style="font-size: 14px; font-weight: 600; color: var(--error); margin-bottom: 12px;">❌ Lo que NO ve</p>
+              <ul style="font-size: 13px; color: var(--text-secondary); list-style: none; margin: 0; padding: 0;">
+                <li style="margin-bottom: 4px;">• Archivos originales</li>
+                <li style="margin-bottom: 4px;">• Datos crudos</li>
+                <li style="margin-bottom: 4px;">• Valores individuales</li>
+                <li>• Nombres de tu empresa</li>
+              </ul>
+            </div>
+            <div style="background: var(--success-bg); border-radius: 8px; padding: 16px;">
+              <p style="font-size: 14px; font-weight: 600; color: var(--success); margin-bottom: 12px;">✅ Lo que SÍ ve</p>
+              <ul style="font-size: 13px; color: var(--text-secondary); list-style: none; margin: 0; padding: 0;">
+                <li style="margin-bottom: 4px;">• Resultados: "18.2%"</li>
+                <li style="margin-bottom: 4px;">• Categorías: "marginal"</li>
+                <li>• Tus preguntas</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Security -->
+          <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Seguridad</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+              <span>🔐</span> Cifrado TLS 1.2+ en tránsito
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+              <span>🔐</span> Cifrado AES-256 en reposo
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+              <span>🔐</span> Aislamiento entre usuarios
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary);">
+              <span>🔐</span> SOC 2 Type II certified
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div style="text-align: center; padding-top: 16px; border-top: 1px solid var(--border);">
+            <p style="font-size: 13px; color: var(--text-secondary);">
+              Preguntas sobre privacidad: <a href="mailto:contacto@setec.com" style="color: var(--setec-orange);">contacto@setec.com</a>
+            </p>
+          </div>
+        </div>
+
+        <div class="login-specs" style="margin-top: 32px;">
+          <h2 class="specs-title">Especificaciones de Implementación</h2>
+          <div class="specs-grid">
+            <div class="spec-item">
+              <span class="spec-label">PrivacyTooltip</span>
+              <span class="spec-value">Siempre visible debajo del dropzone, 12px, color secundario</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">FirstUploadNotice</span>
+              <span class="spec-value">One-time via localStorage, aparece solo primera vez</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Footer</span>
+              <span class="spec-value">48px altura, centrado, borde superior sutil</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Privacy Page</span>
+              <span class="spec-value">Max-width 768px, diseño visual/escaneable, no legal-denso</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Colors Section -->
+      <section id="colors-section" class="color-section">
+        <h1 class="section-title">Sistema de Colores</h1>
+        <p class="section-desc">
+          Paleta de colores basada en la marca Setec con extensiones semánticas.
+        </p>
+
+        <h2 style="font-size: 18px; margin-bottom: 16px; font-weight: 600">Colores de Marca</h2>
+        <div class="color-grid">
+          <div class="color-card">
+            <div class="color-swatch" style="background: #f7931e"></div>
+            <div class="color-info">
+              <div class="color-name">Setec Orange</div>
+              <div class="color-value">#F7931E</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #e07d0a"></div>
+            <div class="color-info">
+              <div class="color-name">Orange Hover</div>
+              <div class="color-value">#E07D0A</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #3d3d3d"></div>
+            <div class="color-info">
+              <div class="color-name">Setec Charcoal</div>
+              <div class="color-value">#3D3D3D</div>
+            </div>
+          </div>
+        </div>
+
+        <h2 style="font-size: 18px; margin-bottom: 16px; font-weight: 600">Colores de Estado (Resultados Estadísticos)</h2>
+        <div class="color-grid">
+          <div class="color-card">
+            <div class="color-swatch" style="background: #10b981"></div>
+            <div class="color-info">
+              <div class="color-name">Success — Aceptable (&lt;10%)</div>
+              <div class="color-value">#10B981</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #f59e0b"></div>
+            <div class="color-info">
+              <div class="color-name">Warning — Marginal (10-30%)</div>
+              <div class="color-value">#F59E0B</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #ef4444"></div>
+            <div class="color-info">
+              <div class="color-name">Error — Inaceptable (&gt;30%)</div>
+              <div class="color-value">#EF4444</div>
+            </div>
+          </div>
+        </div>
+
+        <h2 style="font-size: 18px; margin-bottom: 16px; font-weight: 600">Colores Neutrales</h2>
+        <div class="color-grid">
+          <div class="color-card">
+            <div class="color-swatch" style="background: #ffffff; border: 1px solid #e5e7eb"></div>
+            <div class="color-info">
+              <div class="color-name">Background</div>
+              <div class="color-value">#FFFFFF</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #f9fafb"></div>
+            <div class="color-info">
+              <div class="color-name">Background Subtle</div>
+              <div class="color-value">#F9FAFB</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #f3f4f6"></div>
+            <div class="color-info">
+              <div class="color-name">Background Muted</div>
+              <div class="color-value">#F3F4F6</div>
+            </div>
+          </div>
+          <div class="color-card">
+            <div class="color-swatch" style="background: #6b7280"></div>
+            <div class="color-info">
+              <div class="color-name">Text Secondary</div>
+              <div class="color-value">#6B7280</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Typography Section -->
+      <section id="typography-section" class="typography-section">
+        <h1 class="section-title">Sistema Tipográfico</h1>
+        <p class="section-desc">
+          Escala tipográfica basada en Inter para máxima legibilidad en español.
+        </p>
+
+        <div class="type-example">
+          <div class="type-metric" style="margin-bottom: 24px">18.2% GRR</div>
+          <div class="type-h1" style="margin-bottom: 16px">Resultados del Análisis (H1)</div>
+          <div class="type-h2" style="margin-bottom: 12px">Estudio Gauge R&R (H2)</div>
+          <div class="type-h3" style="margin-bottom: 8px">Variación por Operador (H3)</div>
+          <div class="type-h4" style="margin-bottom: 16px">Métricas Clave (H4)</div>
+          <div class="type-body" style="margin-bottom: 8px">
+            El porcentaje de Gauge R&R de 18.2% indica que tu sistema de medición tiene una
+            variación marginal. Esto significa que aproximadamente el 18% de la variación total en
+            tus mediciones proviene del sistema de medición en lugar del proceso real.
+          </div>
+          <div class="type-small">
+            Última actualización: 2 de febrero de 2026 • Calculado con Python + scipy
+          </div>
+        </div>
+      </section>
+
+      <!-- Components Section -->
+      <section id="components-section" class="components-section">
+        <h1 class="section-title">Componentes</h1>
+        <p class="section-desc">Biblioteca de componentes base para Setec AI Hub.</p>
+
+        <div class="component-row">
+          <div class="component-title">Botones</div>
+          <div class="button-group">
+            <button class="btn btn-primary">Primary</button>
+            <button class="btn btn-secondary">Secondary</button>
+            <button class="btn btn-ghost">Ghost</button>
+          </div>
+        </div>
+
+        <div class="component-row">
+          <div class="component-title">Estados de Resultado (MSA)</div>
+          <div class="status-badges">
+            <span class="badge badge-success">✓ Aceptable (&lt;10%)</span>
+            <span class="badge badge-warning">⚠ Marginal (10-30%)</span>
+            <span class="badge badge-error">✗ Inaceptable (&gt;30%)</span>
+            <span class="badge badge-neutral">Procesando...</span>
+          </div>
+        </div>
+
+        <div class="component-row">
+          <div class="component-title">Campos de Formulario</div>
+          <div class="form-group">
+            <label class="form-label">Correo electrónico</label>
+            <input type="email" class="form-input" placeholder="usuario@empresa.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mensaje</label>
+            <input type="text" class="form-input" placeholder="Escribe tu pregunta..." />
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Fullscreen Previews -->
+    <div id="fullscreen-v1" class="fullscreen-preview">
+      <button class="fullscreen-close" onclick="closeFullscreen('v1')">×</button>
+      <div class="fullscreen-mockup">
+        <div class="mockup v1" style="height: 100%">
+          <div class="mockup-sidebar">
+            <div class="mockup-sidebar-header">
+              <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+            </div>
+            <button class="new-chat-btn">+ Nueva conversación</button>
+            <div class="nav-section-title">Hoy</div>
+            <div class="chat-item active">
+              <div class="chat-item-title">MSA - Gauge R&R</div>
+              <div class="chat-item-meta">2:30 PM</div>
+            </div>
+            <div class="chat-item">
+              <div class="chat-item-title">Análisis de proceso</div>
+              <div class="chat-item-meta">11:00 AM</div>
+            </div>
+            <div class="nav-section-title">Ayer</div>
+            <div class="chat-item">
+              <div class="chat-item-title">Control Charts - X-bar R</div>
+              <div class="chat-item-meta">4:15 PM</div>
+            </div>
+            <div class="chat-item">
+              <div class="chat-item-title">Hipótesis de medias</div>
+              <div class="chat-item-meta">10:00 AM</div>
+            </div>
+            <div class="sidebar-spacer"></div>
+            <div class="sidebar-nav-item">📁 Plantillas</div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-chat-header">
+              <div class="agent-avatar">🤖</div>
+              <div class="agent-info">
+                <h3>Asistente de Análisis Estadístico</h3>
+                <p>MSA, Control Charts, Hypothesis Testing, y más</p>
+              </div>
+            </div>
+            <div class="mockup-messages">
+              <div class="message assistant">
+                <div class="message-bubble">
+                  ¡Hola! Soy tu asistente de análisis estadístico. Puedo ayudarte con:
+                  <br /><br />
+                  • <strong>MSA</strong> — Gauge R&R, linealidad, sesgo<br />
+                  • <strong>Gráficos de Control</strong> — X-bar R, I-MR, p-chart<br />
+                  • <strong>Pruebas de Hipótesis</strong> — t-test, ANOVA, chi-cuadrado<br />
+                  <br />
+                  ¿En qué puedo ayudarte hoy?
+                </div>
+              </div>
+              <div class="message user">
+                <div class="message-bubble">
+                  Necesito hacer un MSA para mi calibrador.
+                </div>
+              </div>
+              <div class="message assistant">
+                <div class="message-bubble">
+                  Perfecto. Para el análisis MSA necesito que:
+                  <br /><br />
+                  1. Ve a la sección de <strong>Plantillas</strong><br />
+                  2. Descarga la plantilla de MSA<br />
+                  3. Llénala con tus datos (mínimo 10 partes, 2 operadores, 2 repeticiones)<br />
+                  4. Sube el archivo aquí<br />
+                  <br />
+                  ¿Tienes alguna pregunta sobre el proceso?
+                </div>
+              </div>
+            </div>
+            <div class="mockup-input">
+              <button class="upload-btn" style="width: 44px; height: 44px">📎</button>
+              <input
+                type="text"
+                class="input-field"
+                placeholder="Escribe tu mensaje..."
+              />
+              <button class="send-btn" style="width: 44px; height: 44px">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fullscreen-v2" class="fullscreen-preview">
+      <button class="fullscreen-close" onclick="closeFullscreen('v2')">×</button>
+      <div class="fullscreen-mockup">
+        <div class="mockup v2" style="height: 100%">
+          <div class="mockup-sidebar">
+            <div class="mockup-sidebar-header">
+              <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+            </div>
+            <button class="new-chat-btn">+ Nueva conversación</button>
+            <div class="nav-section-title">Hoy</div>
+            <div class="chat-item active">
+              <div class="chat-item-title">MSA - Gauge R&R</div>
+              <div class="chat-item-meta">2:30 PM</div>
+            </div>
+            <div class="chat-item">
+              <div class="chat-item-title">Análisis de proceso</div>
+              <div class="chat-item-meta">11:00 AM</div>
+            </div>
+            <div class="nav-section-title">Ayer</div>
+            <div class="chat-item">
+              <div class="chat-item-title">Control Charts</div>
+              <div class="chat-item-meta">4:15 PM</div>
+            </div>
+            <div class="sidebar-spacer"></div>
+            <div class="sidebar-nav-item">📁 Plantillas</div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-chat-header">
+              <div class="agent-avatar">🤖</div>
+              <div class="agent-info">
+                <h3>Asistente de Análisis Estadístico</h3>
+                <p>MSA, Control Charts, Hypothesis Testing</p>
+              </div>
+            </div>
+            <div class="mockup-messages">
+              <div class="message assistant">
+                <div class="message-bubble">
+                  ¡Hola! Soy tu asistente de análisis estadístico.
+                </div>
+              </div>
+              <div class="message user">
+                <div class="message-bubble">
+                  Ya llené la plantilla. 📎 datos-msa.xlsx
+                </div>
+              </div>
+              <div class="message assistant">
+                <div class="message-bubble">
+                  <strong>✓ Plantilla válida.</strong> Procesando análisis Gauge R&R...
+                </div>
+              </div>
+              <div class="message assistant">
+                <div class="message-bubble">
+                  <strong>Análisis completado.</strong> Aquí están tus resultados:
+                </div>
+                <div class="result-card" style="margin-top: 12px">
+                  <div class="result-header">
+                    <span class="result-title">Resultados Gauge R&R - Estudio de Repetibilidad y Reproducibilidad</span>
+                    <span class="result-status warning">Marginal</span>
+                  </div>
+                  <div class="result-body">
+                    <div class="metric-display" style="padding: 24px">
+                      <div class="metric-value" style="font-size: 48px">18.2%</div>
+                      <div class="metric-label" style="font-size: 14px">
+                        %GRR (Porcentaje de Variación Total)
+                      </div>
+                    </div>
+                    <div style="padding: 0 16px 16px; font-size: 14px; line-height: 1.6">
+                      <p>
+                        <strong>Interpretación:</strong> Tu sistema de medición tiene una variación
+                        <strong style="color: var(--warning)">marginal</strong>.
+                      </p>
+                      <p style="margin-top: 8px">
+                        El 18.2% de la variación total proviene del sistema de medición. Para tu
+                        línea de producción, esto significa que la variación de medición podría
+                        ocultar pequeñas mejoras en el proceso.
+                      </p>
+                      <p style="margin-top: 8px">
+                        <strong>Recomendación:</strong> El sistema es aceptable para algunos
+                        propósitos, pero considera mejorar la calibración o estandarizar los
+                        procedimientos de medición.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-input">
+              <button class="upload-btn" style="width: 44px; height: 44px">📎</button>
+              <input
+                type="text"
+                class="input-field"
+                placeholder="Escribe tu pregunta sobre los resultados..."
+              />
+              <button class="send-btn" style="width: 44px; height: 44px">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fullscreen-v3" class="fullscreen-preview">
+      <button class="fullscreen-close" onclick="closeFullscreen('v3')">×</button>
+      <div class="fullscreen-mockup">
+        <div class="mockup v2 v3" style="height: 100%">
+          <div class="mockup-sidebar">
+            <div class="mockup-sidebar-header">
+              <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+            </div>
+            <button class="new-chat-btn">+ Nueva conversación</button>
+            <div class="nav-section-title">Hoy</div>
+            <div class="chat-item active">
+              <div class="chat-item-title">MSA - Gauge R&R</div>
+              <div class="chat-item-meta">2:30 PM</div>
+            </div>
+            <div class="sidebar-spacer"></div>
+            <div class="sidebar-nav-item">📁 Plantillas</div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-chat-header">
+              <div class="agent-avatar">🤖</div>
+              <div class="agent-info">
+                <h3>Asistente de Análisis</h3>
+                <p>MSA, Control Charts, Hypothesis Testing</p>
+              </div>
+            </div>
+            <div class="mockup-messages">
+              <div class="message assistant">
+                <div class="message-bubble">Aquí están tus resultados:</div>
+                <div class="result-card" style="margin-top: 12px">
+                  <div class="result-header">
+                    <span class="result-title">Gauge R&R</span>
+                    <span class="result-status success">Aceptable</span>
+                  </div>
+                  <div class="result-body">
+                    <div class="metric-display" style="padding: 24px">
+                      <div class="metric-value" style="font-size: 48px; color: var(--success)">8.4%</div>
+                      <div class="metric-label" style="font-size: 14px">%GRR</div>
+                    </div>
+                    <div style="padding: 0 16px 16px; font-size: 14px; line-height: 1.6">
+                      <p>
+                        <strong>Interpretación:</strong> Tu sistema de medición es
+                        <strong style="color: var(--success)">aceptable</strong>.
+                      </p>
+                      <p style="margin-top: 8px">
+                        Solo el 8.4% de la variación proviene del sistema de medición.
+                        Puedes confiar en tus mediciones para análisis de proceso.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-input">
+              <button class="upload-btn" style="width: 44px; height: 44px">📎</button>
+              <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+              <button class="send-btn" style="width: 44px; height: 44px">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="fullscreen-v4" class="fullscreen-preview">
+      <button class="fullscreen-close" onclick="closeFullscreen('v4')">×</button>
+      <div class="fullscreen-mockup">
+        <div class="mockup v2 v4" style="height: 100%">
+          <div class="mockup-sidebar">
+            <div class="mockup-sidebar-header">
+              <img src="../../Setec Logo.png" alt="Setec AI Hub" class="mockup-logo-img" />
+            </div>
+            <button class="new-chat-btn">+ Nueva conversación</button>
+            <div class="nav-section-title">Hoy</div>
+            <div class="chat-item active">
+              <div class="chat-item-title">MSA - Gauge R&R</div>
+              <div class="chat-item-meta">2:30 PM</div>
+            </div>
+            <div class="sidebar-spacer"></div>
+            <div class="sidebar-nav-item">📁 Plantillas</div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-chat-header">
+              <div class="agent-avatar">🤖</div>
+              <div class="agent-info">
+                <h3>Asistente de Análisis</h3>
+                <p>MSA, Control Charts, Hypothesis Testing</p>
+              </div>
+            </div>
+            <div class="mockup-messages">
+              <div class="message assistant">
+                <div class="message-bubble">Aquí están tus resultados:</div>
+                <div class="result-card" style="margin-top: 12px">
+                  <div class="result-header">
+                    <span class="result-title">Gauge R&R</span>
+                    <span class="result-status error">Inaceptable</span>
+                  </div>
+                  <div class="result-body">
+                    <div class="metric-display" style="padding: 24px">
+                      <div class="metric-value" style="font-size: 48px; color: var(--error)">42.1%</div>
+                      <div class="metric-label" style="font-size: 14px">%GRR - Requiere acción</div>
+                    </div>
+                    <div style="padding: 0 16px 16px; font-size: 14px; line-height: 1.6">
+                      <p>
+                        <strong>⚠️ Atención:</strong> Tu sistema de medición es
+                        <strong style="color: var(--error)">inaceptable</strong>.
+                      </p>
+                      <p style="margin-top: 8px">
+                        El 42.1% de la variación proviene del sistema de medición.
+                        Este nivel de variación enmascara la variación real del proceso.
+                      </p>
+                      <p style="margin-top: 8px">
+                        <strong>Acción requerida:</strong> Calibrar equipo, estandarizar procedimientos,
+                        o considerar un instrumento de mayor precisión.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mockup-input">
+              <button class="upload-btn" style="width: 44px; height: 44px">📎</button>
+              <input type="text" class="input-field" placeholder="Escribe tu mensaje..." />
+              <button class="send-btn" style="width: 44px; height: 44px">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function showSection(section) {
+        // Hide all sections
+        document
+          .querySelectorAll(
+            '.directions-section, .login-section, .recovery-section, .plantillas-section, #privacy-section, .color-section, .typography-section, .components-section'
+          )
+          .forEach((s) => {
+            s.classList.remove('active');
+            s.style.display = 'none';
+          });
+
+        // Show selected section
+        const el = document.getElementById(section + '-section');
+        if (el) {
+          el.style.display = 'block';
+          el.classList.add('active');
+        }
+
+        // Update nav tabs
+        document.querySelectorAll('.nav-tab').forEach((tab) => tab.classList.remove('active'));
+        event.target.classList.add('active');
+      }
+
+      function openFullscreen(version) {
+        const preview = document.getElementById('fullscreen-' + version);
+        if (preview) {
+          preview.classList.add('active');
+          document.body.style.overflow = 'hidden';
+        }
+      }
+
+      function closeFullscreen(version) {
+        const preview = document.getElementById('fullscreen-' + version);
+        if (preview) {
+          preview.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      }
+
+      // Close fullscreen on Escape key
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.fullscreen-preview').forEach((p) => {
+            p.classList.remove('active');
+          });
+          document.body.style.overflow = '';
+        }
+      });
+
+      // Initialize
+      document.getElementById('directions-section').style.display = 'block';
+    </script>
+  </body>
+</html>
