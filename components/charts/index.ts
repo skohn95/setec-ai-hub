@@ -1,2 +1,4 @@
 // Chart components barrel export
-// Components will be added as they are implemented
+export { default as GaugeRRChart } from './GaugeRRChart'
+export { default as VariationChart } from './VariationChart'
+export { default as ExportableChart } from './ExportableChart'

@@ -2,12 +2,8 @@
 
 export const API_TIMEOUT = 30000 // 30 seconds
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
-
-export const ALLOWED_MIME_TYPES = [
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
-] as const
+// File constants are now in constants/files.ts
+// Use ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES from '@/constants/files'
 
 export const API_ROUTES = {
   ANALYZE: '/api/analyze',

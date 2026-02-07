@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { usePathname } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
-import { Plus, FileText } from 'lucide-react'
+import { FileSpreadsheet } from 'lucide-react'
 import { ConversationList } from './ConversationList'
+import { NewConversationButton } from './NewConversationButton'
 
 interface SidebarProps {
   isOpen?: boolean
@@ -13,6 +14,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose, selectedConversationId }: SidebarProps) {
+  const pathname = usePathname()
+  const isPlantillasActive = pathname === '/plantillas'
+
   return (
     <>
       {/* Mobile overlay backdrop */}
@@ -37,14 +41,7 @@ export function Sidebar({ isOpen, onClose, selectedConversationId }: SidebarProp
       >
         {/* Nueva conversación button */}
         <div className="p-4">
-          <Button
-            className="w-full bg-setec-orange hover:bg-setec-orange/90 text-white font-medium"
-            disabled
-            aria-label="Nueva conversación (próximamente)"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva conversación
-          </Button>
+          <NewConversationButton onSuccess={onClose} />
         </div>
 
         <Separator className="bg-[#E5E5E5]" />
@@ -53,9 +50,14 @@ export function Sidebar({ isOpen, onClose, selectedConversationId }: SidebarProp
         <nav className="p-2">
           <Link
             href="/plantillas"
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-setec-charcoal hover:bg-white/50 transition-colors"
+            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+              isPlantillasActive
+                ? 'bg-setec-orange/10 text-setec-orange'
+                : 'text-setec-charcoal hover:bg-white/50'
+            }`}
+            aria-current={isPlantillasActive ? 'page' : undefined}
           >
-            <FileText className="h-4 w-4" />
+            <FileSpreadsheet className="h-4 w-4" />
             <span className="text-sm font-medium">Plantillas</span>
           </Link>
         </nav>

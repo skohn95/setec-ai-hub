@@ -2,7 +2,8 @@
 
 export type AnalysisType = 'gage_rr' | 'bias' | 'linearity' | 'stability'
 
-export type FileStatus = 'pending' | 'validating' | 'valid' | 'invalid' | 'processed'
+// FileStatus is imported from chat.ts (exported from there)
+import type { FileStatus } from './chat'
 
 export interface AnalysisFile {
   id: string
@@ -13,13 +14,13 @@ export interface AnalysisFile {
   mimeType: string
   sizeBytes: number
   status: FileStatus
-  validationErrors: ValidationError[] | null
+  validationErrors: FileValidationError[] | null
   validatedAt: Date | null
   processedAt: Date | null
   createdAt: Date
 }
 
-export interface ValidationError {
+export interface FileValidationError {
   row?: number
   column?: string
   message: string

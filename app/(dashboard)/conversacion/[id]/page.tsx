@@ -6,6 +6,7 @@ import { MessageSquare, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useConversation } from '@/hooks/use-conversations'
+import { ChatContainer } from '@/components/chat'
 
 // UUID v4 regex pattern for validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -91,7 +92,7 @@ export default function ConversationDetailPage() {
     )
   }
 
-  // Success - show placeholder chat area (full implementation in Story 2.3)
+  // Success - show chat interface
   return (
     <div className="flex flex-col h-full" data-testid="conversation-detail">
       {/* Header with conversation title */}
@@ -101,45 +102,8 @@ export default function ConversationDetailPage() {
         </h1>
       </div>
 
-      {/* Messages area placeholder */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {conversation.messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageSquare className="h-8 w-8 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No hay mensajes en esta conversación
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {conversation.messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-setec-orange text-white'
-                      : 'bg-gray-100 text-setec-charcoal'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Input area placeholder (functional in Story 2.3) */}
-      <div className="border-t p-4">
-        <div className="flex gap-2">
-          <div className="flex-1 bg-gray-100 rounded-lg px-4 py-2 text-sm text-muted-foreground">
-            El area de mensajes estara disponible proximamente...
-          </div>
-        </div>
-      </div>
+      {/* Chat container with messages and input */}
+      <ChatContainer conversationId={conversationId} />
     </div>
   )
 }

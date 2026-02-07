@@ -1,15 +1,19 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { queryKeys } from '@/constants/query-keys'
+import { CONVERSATION_MESSAGES, TOAST_DURATIONS } from '@/constants/messages'
 import {
   getConversations,
   getConversation,
   deleteConversation,
+  createConversation,
   type ConversationRow,
   type ConversationWithMessages,
 } from '@/lib/supabase/conversations'
+import { deleteFilesByConversation } from '@/lib/supabase/files'
 import { useAuth } from '@/lib/providers/AuthProvider'
 
 /**
@@ -70,12 +74,21 @@ export function useConversation(id: string | null) {
 
 /**
  * Hook to delete a conversation with optimistic updates
+ * Includes file cleanup from Supabase Storage before deleting conversation
  */
 export function useDeleteConversation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // First delete files from storage (DB records will cascade delete)
+      const fileDeleteResult = await deleteFilesByConversation(id)
+      if (!fileDeleteResult.success) {
+        // Log but don't fail - the cascade delete will clean up DB records
+        console.error('Error deleting files from storage:', fileDeleteResult.error)
+      }
+
+      // Then delete the conversation
       const { success, error } = await deleteConversation(id)
 
       if (error || !success) {
@@ -115,7 +128,7 @@ export function useDeleteConversation() {
           context.previousConversations
         )
       }
-      toast.error('No se pudo eliminar la conversacion')
+      toast.error(CONVERSATION_MESSAGES.DELETE_ERROR, { duration: TOAST_DURATIONS.ERROR })
     },
 
     // Always refetch after error or success
@@ -124,7 +137,84 @@ export function useDeleteConversation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() })
       // Remove the conversation detail from cache
       queryClient.removeQueries({ queryKey: queryKeys.conversations.detail(id) })
-      toast.success('Conversacion eliminada')
+      // Remove files cache for this conversation
+      queryClient.removeQueries({ queryKey: queryKeys.files.list(id) })
+      toast.success(CONVERSATION_MESSAGES.DELETE_SUCCESS)
+    },
+  })
+}
+
+/**
+ * Hook to create a new conversation with navigation, cache invalidation, and optimistic updates
+ */
+export function useCreateConversation() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (title?: string) => {
+      if (!user?.id) {
+        throw new Error('User not authenticated')
+      }
+
+      const { data, error } = await createConversation(user.id, title)
+
+      if (error || !data) {
+        throw error || new Error('Failed to create conversation')
+      }
+
+      return data
+    },
+
+    // Optimistic update - add placeholder conversation to list immediately
+    onMutate: async (title?: string) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.conversations.lists() })
+
+      // Snapshot the previous value
+      const previousConversations = queryClient.getQueryData<ConversationRow[]>(
+        queryKeys.conversations.lists()
+      )
+
+      // Create optimistic conversation (will be replaced by real one on success)
+      const optimisticConversation: ConversationRow = {
+        id: `temp-${Date.now()}`,
+        user_id: user?.id || '',
+        title: title ?? 'Nueva conversacion',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      // Optimistically add the conversation to the top of the list
+      if (previousConversations) {
+        queryClient.setQueryData<ConversationRow[]>(
+          queryKeys.conversations.lists(),
+          [optimisticConversation, ...previousConversations]
+        )
+      }
+
+      // Return context with snapshot for rollback
+      return { previousConversations, optimisticId: optimisticConversation.id }
+    },
+
+    // Rollback on error
+    onError: (_error, _title, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(
+          queryKeys.conversations.lists(),
+          context.previousConversations
+        )
+      }
+      toast.error(CONVERSATION_MESSAGES.CREATE_ERROR, { duration: TOAST_DURATIONS.ERROR })
+    },
+
+    onSuccess: (data) => {
+      // Invalidate conversations list to get real data from server
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() })
+      // Navigate to the new conversation
+      router.push(`/conversacion/${data.id}`)
+      toast.success(CONVERSATION_MESSAGES.CREATE_SUCCESS)
     },
   })
 }

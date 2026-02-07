@@ -1,6 +1,6 @@
 # Story 2.2: Create New Conversation
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,51 +22,51 @@ So that **I can begin a fresh analysis session quickly**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create Database Service for Conversation Creation** (AC: #1, #2)
-  - [ ] Add `createConversation(userId: string, title?: string)` to `lib/supabase/conversations.ts`
-  - [ ] Return `{ data, error }` structure following Architecture patterns
-  - [ ] Set default title to "Nueva conversacion" with timestamp if not provided
-  - [ ] Use RLS-aware client from `lib/supabase/client.ts`
+- [x] **Task 1: Create Database Service for Conversation Creation** (AC: #1, #2)
+  - [x] Add `createConversation(userId: string, title?: string)` to `lib/supabase/conversations.ts`
+  - [x] Return `{ data, error }` structure following Architecture patterns
+  - [x] Set default title to "Nueva conversacion" with timestamp if not provided
+  - [x] Use RLS-aware client from `lib/supabase/client.ts`
 
-- [ ] **Task 2: Create useCreateConversation Hook** (AC: #1, #2, #3)
-  - [ ] Add `useCreateConversation()` mutation to `hooks/use-conversations.ts`
-  - [ ] On success: invalidate conversations list query to refresh sidebar
-  - [ ] On success: navigate to `/conversacion/[id]` with new conversation ID
-  - [ ] On error: show toast with error message in Spanish
-  - [ ] Return mutation state for loading indicator in button
+- [x] **Task 2: Create useCreateConversation Hook** (AC: #1, #2, #3)
+  - [x] Add `useCreateConversation()` mutation to `hooks/use-conversations.ts`
+  - [x] On success: invalidate conversations list query to refresh sidebar
+  - [x] On success: navigate to `/conversacion/[id]` with new conversation ID
+  - [x] On error: show toast with error message in Spanish
+  - [x] Return mutation state for loading indicator in button
 
-- [ ] **Task 3: Create NewConversationButton Component** (AC: #1, #3)
-  - [ ] Create `components/layout/NewConversationButton.tsx`
-  - [ ] Props: `onSuccess?: () => void` (for mobile sidebar close)
-  - [ ] Display: "Nueva conversacion" text with plus icon (MessageSquarePlus from lucide-react)
-  - [ ] Use shadcn/ui `Button` with Setec orange primary variant
-  - [ ] Loading state: Show spinner, disable button during creation
-  - [ ] Full width to match sidebar design
+- [x] **Task 3: Create NewConversationButton Component** (AC: #1, #3)
+  - [x] Create `components/layout/NewConversationButton.tsx`
+  - [x] Props: `onSuccess?: () => void` (for mobile sidebar close)
+  - [x] Display: "Nueva conversacion" text with plus icon (MessageSquarePlus from lucide-react)
+  - [x] Use shadcn/ui `Button` with Setec orange primary variant
+  - [x] Loading state: Show spinner, disable button during creation
+  - [x] Full width to match sidebar design
 
-- [ ] **Task 4: Integrate Button into Sidebar** (AC: #1, #3)
-  - [ ] Import and place `NewConversationButton` at top of Sidebar
-  - [ ] Position above conversation list with visual separator
-  - [ ] Pass `onSuccess` callback to close mobile sidebar after creation
-  - [ ] Ensure button is always visible (not scrollable with list)
+- [x] **Task 4: Integrate Button into Sidebar** (AC: #1, #3)
+  - [x] Import and place `NewConversationButton` at top of Sidebar
+  - [x] Position above conversation list with visual separator
+  - [x] Pass `onSuccess` callback to close mobile sidebar after creation
+  - [x] Ensure button is always visible (not scrollable with list)
 
-- [ ] **Task 5: Update Dashboard Page for Empty State** (AC: #1)
-  - [ ] Modify `app/(dashboard)/page.tsx` to show welcome state when no conversation selected
-  - [ ] Display: Welcome message in Spanish with guidance to start new conversation
-  - [ ] Include centered "Nueva conversacion" button as alternative entry point
-  - [ ] Design matches UX specification empty state
+- [x] **Task 5: Update Dashboard Page for Empty State** (AC: #1)
+  - [x] Modify `app/(dashboard)/page.tsx` to show welcome state when no conversation selected
+  - [x] Display: Welcome message in Spanish with guidance to start new conversation
+  - [x] Include centered "Nueva conversacion" button as alternative entry point
+  - [x] Design matches UX specification empty state
 
-- [ ] **Task 6: Write Unit Tests** (AC: all)
-  - [ ] Test `createConversation` service creates record with correct user_id
-  - [ ] Test `createConversation` sets default title when none provided
-  - [ ] Test `useCreateConversation` hook mutation triggers and invalidates cache
-  - [ ] Test `useCreateConversation` navigates to new conversation on success
-  - [ ] Test `NewConversationButton` renders correctly
-  - [ ] Test `NewConversationButton` shows loading state during mutation
-  - [ ] Test `NewConversationButton` calls mutation on click
-  - [ ] Test `NewConversationButton` calls onSuccess callback
-  - [ ] Test Sidebar includes NewConversationButton
-  - [ ] Test Dashboard page shows welcome state
-  - [ ] Test error handling shows toast message
+- [x] **Task 6: Write Unit Tests** (AC: all)
+  - [x] Test `createConversation` service creates record with correct user_id
+  - [x] Test `createConversation` sets default title when none provided
+  - [x] Test `useCreateConversation` hook mutation triggers and invalidates cache
+  - [x] Test `useCreateConversation` navigates to new conversation on success
+  - [x] Test `NewConversationButton` renders correctly
+  - [x] Test `NewConversationButton` shows loading state during mutation
+  - [x] Test `NewConversationButton` calls mutation on click
+  - [x] Test `NewConversationButton` calls onSuccess callback
+  - [x] Test Sidebar includes NewConversationButton
+  - [x] Test Dashboard page shows welcome state
+  - [x] Test error handling shows toast message
 
 ## Dev Notes
 
@@ -304,11 +304,71 @@ export const MESSAGES = {
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+No errors encountered during implementation.
+
 ### Completion Notes List
 
+- ✅ Implemented `createConversation()` service function with UUID validation and default title
+- ✅ Created `useCreateConversation()` mutation hook with navigation and cache invalidation
+- ✅ Built `NewConversationButton` component with loading state and onSuccess callback
+- ✅ Integrated button into Sidebar, replacing disabled placeholder
+- ✅ Updated Dashboard page with welcome state and centered button
+- ✅ All 313 tests pass including 7 new service tests, 7 new hook tests, 11 new component tests
+- ✅ All lint checks pass
+- ✅ Followed red-green-refactor TDD cycle for all implementations
+- ✅ Used Spanish UI text throughout as per UX specifications
+
 ### File List
+
+**New Files:**
+- `components/layout/NewConversationButton.tsx` - New conversation button component
+- `components/layout/NewConversationButton.test.tsx` - Component tests
+- `lib/supabase/conversations.test.ts` - Service layer tests
+
+**Modified Files:**
+- `lib/supabase/conversations.ts` - Added createConversation() function with timestamp title
+- `hooks/use-conversations.ts` - Added useCreateConversation() hook with optimistic updates
+- `hooks/use-conversations.test.tsx` - Added hook tests for useCreateConversation
+- `components/layout/Sidebar.tsx` - Integrated NewConversationButton
+- `components/layout/Sidebar.test.tsx` - Updated tests for new button
+- `components/layout/index.ts` - Added NewConversationButton export
+- `constants/messages.ts` - Added CONVERSATION_MESSAGES constants
+- `app/(dashboard)/page.tsx` - Welcome state with new conversation button
+- `app/(dashboard)/page.test.tsx` - Updated page tests
+
+### Change Log
+
+- 2026-02-04: Story 2.2 implementation complete - Create New Conversation feature
+- 2026-02-04: Code review completed - 4 issues fixed (1 High, 3 Medium)
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-04
+**Review Outcome:** Approved (after fixes)
+**Reviewer:** Claude Opus 4.5
+
+### Issues Found and Fixed
+
+#### Action Items
+- [x] **[HIGH]** Missing export in `components/layout/index.ts` - Added `NewConversationButton` export
+- [x] **[MEDIUM]** Hardcoded error messages - Added `CONVERSATION_MESSAGES` constants and used them throughout
+- [x] **[MEDIUM]** Missing timestamp in default title - Added `generateDefaultTitle()` function with date/time format
+- [x] **[MEDIUM]** Missing optimistic update for create - Added optimistic update pattern matching delete behavior
+- [x] **[MEDIUM]** Inconsistent test UUID format - Fixed test to use `VALID_CONV_ID` constant
+
+#### Low Issues (Not Fixed - Accepted)
+- **[LOW]** Missing aria-describedby on dashboard welcome - Minor accessibility enhancement
+- **[LOW]** Component test mock bypasses real callback flow - Test still validates behavior
+- **[LOW]** Spanish accents missing in UI text - Consistent usage, functional
+
+### Files Modified During Review
+- `components/layout/index.ts` - Added NewConversationButton export
+- `constants/messages.ts` - Added CONVERSATION_MESSAGES constants
+- `hooks/use-conversations.ts` - Used constants, added optimistic update
+- `lib/supabase/conversations.ts` - Added timestamp to default title
+- `lib/supabase/conversations.test.ts` - Updated tests for timestamp and UUID consistency
 

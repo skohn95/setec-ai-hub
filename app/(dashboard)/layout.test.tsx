@@ -14,6 +14,13 @@ vi.mock('@/components/layout', () => ({
   Sidebar: () => <aside data-testid="sidebar">Sidebar</aside>,
 }))
 
+// Mock the common components
+vi.mock('@/components/common', () => ({
+  Footer: () => <footer data-testid="footer">Footer</footer>,
+  // ErrorBoundary passes children through for testing
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
 describe('DashboardLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,5 +88,37 @@ describe('DashboardLayout', () => {
     expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument()
     // Should NOT show content
     expect(screen.queryByText('Dashboard Content')).not.toBeInTheDocument()
+  })
+
+  it('renders footer in main content area when authenticated', () => {
+    mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
+
+    render(
+      <DashboardLayout>
+        <div>Dashboard Content</div>
+      </DashboardLayout>
+    )
+
+    // Should show footer
+    expect(screen.getByTestId('footer')).toBeInTheDocument()
+  })
+
+  it('positions footer below main content', () => {
+    mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
+
+    const { container } = render(
+      <DashboardLayout>
+        <div>Dashboard Content</div>
+      </DashboardLayout>
+    )
+
+    // Main content area should be a flex container
+    const main = container.querySelector('main')
+    expect(main).toHaveClass('flex')
+    expect(main).toHaveClass('flex-col')
+
+    // Footer should be inside main
+    const footer = screen.getByTestId('footer')
+    expect(main).toContainElement(footer)
   })
 })

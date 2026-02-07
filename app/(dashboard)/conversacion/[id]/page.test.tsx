@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import ConversationDetailPage from './page'
+
+// Mock scrollIntoView which isn't available in JSDOM
+Element.prototype.scrollIntoView = vi.fn()
 
 // Mock the hooks
 const mockUseConversation = vi.fn()
 vi.mock('@/hooks/use-conversations', () => ({
   useConversation: (...args: unknown[]) => mockUseConversation(...args),
+}))
+
+// Mock useMessages and useSendMessage for ChatContainer
+const mockUseMessages = vi.fn()
+const mockUseSendMessage = vi.fn()
+vi.mock('@/hooks/use-messages', () => ({
+  useMessages: (...args: unknown[]) => mockUseMessages(...args),
+  useSendMessage: (...args: unknown[]) => mockUseSendMessage(...args),
 }))
 
 // Mock useParams
@@ -40,9 +53,36 @@ const mockConversation = {
   ],
 }
 
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+  Wrapper.displayName = 'TestQueryClientWrapper'
+  return Wrapper
+}
+
 describe('ConversationDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    // Default mock implementations for ChatContainer hooks
+    mockUseMessages.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    mockUseSendMessage.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    })
   })
 
   describe('Invalid ID', () => {
@@ -54,7 +94,7 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('conversation-invalid')).toBeInTheDocument()
       expect(screen.getByText('ID de conversación inválido')).toBeInTheDocument()
@@ -68,7 +108,7 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       const backLink = screen.getByText('Volver al inicio')
       expect(backLink.closest('a')).toHaveAttribute('href', '/')
@@ -84,7 +124,7 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('conversation-loading')).toBeInTheDocument()
     })
@@ -99,7 +139,7 @@ describe('ConversationDetailPage', () => {
         isError: true,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('conversation-not-found')).toBeInTheDocument()
       expect(screen.getByText('Conversación no encontrada')).toBeInTheDocument()
@@ -113,7 +153,7 @@ describe('ConversationDetailPage', () => {
         isError: true,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       const backLink = screen.getByText('Volver al inicio')
       expect(backLink.closest('a')).toHaveAttribute('href', '/')
@@ -129,7 +169,7 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('conversation-detail')).toBeInTheDocument()
       expect(screen.getByText('Test Conversation')).toBeInTheDocument()
@@ -143,12 +183,12 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByText('Nueva conversación')).toBeInTheDocument()
     })
 
-    it('displays messages from conversation', () => {
+    it('renders ChatContainer with conversation ID', () => {
       mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
       mockUseConversation.mockReturnValue({
         data: mockConversation,
@@ -156,23 +196,24 @@ describe('ConversationDetailPage', () => {
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('Hello, how are you?')).toBeInTheDocument()
-      expect(screen.getByText('I am doing well, thank you!')).toBeInTheDocument()
+      // ChatContainer should call useMessages with the conversation ID
+      expect(mockUseMessages).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000')
     })
 
-    it('shows empty message state when no messages', () => {
+    it('renders chat input for sending messages', () => {
       mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
       mockUseConversation.mockReturnValue({
-        data: { ...mockConversation, messages: [] },
+        data: mockConversation,
         isLoading: false,
         isError: false,
       })
 
-      render(<ConversationDetailPage />)
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('No hay mensajes en esta conversación')).toBeInTheDocument()
+      // ChatInput should be rendered
+      expect(screen.getByPlaceholderText('Escribe tu mensaje...')).toBeInTheDocument()
     })
   })
 })

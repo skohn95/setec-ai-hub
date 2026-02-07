@@ -1,1 +1,5 @@
+export { ErrorBoundary } from './ErrorBoundary'
+export { ErrorFallback } from './ErrorFallback'
 export { Footer } from './Footer'
+export { OfflineBanner } from './OfflineBanner'
+export { PrivacyTooltip } from './PrivacyTooltip'

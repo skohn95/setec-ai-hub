@@ -34,6 +34,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -60,6 +61,7 @@ export interface Database {
           metadata?: Json
           created_at?: string
         }
+        Relationships: []
       }
       files: {
         Row: {
@@ -104,6 +106,7 @@ export interface Database {
           processed_at?: string | null
           created_at?: string
         }
+        Relationships: []
       }
       analysis_results: {
         Row: {
@@ -139,6 +142,7 @@ export interface Database {
           python_version?: string | null
           computed_at?: string
         }
+        Relationships: []
       }
       token_usage: {
         Row: {
@@ -174,6 +178,7 @@ export interface Database {
           estimated_cost_usd?: number | null
           created_at?: string
         }
+        Relationships: []
       }
     }
     Views: {
@@ -183,6 +188,9 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }

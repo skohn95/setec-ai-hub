@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/lib/providers/AuthProvider'
 import { Header, Sidebar } from '@/components/layout'
+import { ErrorBoundary, Footer } from '@/components/common'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface DashboardLayoutProps {
@@ -78,8 +79,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         selectedConversationId={selectedConversationId}
       />
 
-      {/* Main content area */}
-      <main className="overflow-auto p-4 md:p-6">{children}</main>
+      {/* Main content area with footer - wrapped in nested ErrorBoundary for dashboard isolation */}
+      <main className="overflow-auto p-4 md:p-6 flex flex-col min-h-0">
+        <ErrorBoundary>
+          <div className="flex-1">{children}</div>
+        </ErrorBoundary>
+        <Footer />
+      </main>
     </div>
   )
 }

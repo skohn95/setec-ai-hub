@@ -3,6 +3,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Sidebar } from './Sidebar'
 
+// Mock Next.js navigation
+const mockUsePathname = vi.fn()
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockUsePathname(),
+}))
+
 // Mock the ConversationList component to avoid needing providers
 vi.mock('./ConversationList', () => ({
   ConversationList: ({ selectedConversationId }: { selectedConversationId?: string }) => (
@@ -12,9 +18,19 @@ vi.mock('./ConversationList', () => ({
   ),
 }))
 
+// Mock the NewConversationButton component
+vi.mock('./NewConversationButton', () => ({
+  NewConversationButton: ({ onSuccess }: { onSuccess?: () => void }) => (
+    <button data-testid="new-conversation-button" onClick={onSuccess}>
+      Nueva conversacion
+    </button>
+  ),
+}))
+
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUsePathname.mockReturnValue('/')
   })
 
   describe('Rendering', () => {
@@ -23,15 +39,20 @@ describe('Sidebar', () => {
       expect(screen.getByTestId('sidebar')).toBeInTheDocument()
     })
 
-    it('renders Nueva conversación button', () => {
+    it('renders NewConversationButton component', () => {
       render(<Sidebar />)
-      expect(screen.getByText('Nueva conversación')).toBeInTheDocument()
+      expect(screen.getByTestId('new-conversation-button')).toBeInTheDocument()
     })
 
-    it('renders Nueva conversación button as disabled (placeholder)', () => {
-      render(<Sidebar />)
-      const button = screen.getByText('Nueva conversación').closest('button')
-      expect(button).toBeDisabled()
+    it('NewConversationButton receives onClose callback', async () => {
+      const onClose = vi.fn()
+      const user = userEvent.setup()
+
+      render(<Sidebar isOpen={true} onClose={onClose} />)
+
+      // The mocked button triggers onSuccess which should be onClose
+      await user.click(screen.getByTestId('new-conversation-button'))
+      expect(onClose).toHaveBeenCalled()
     })
 
     it('renders Plantillas navigation link', () => {
@@ -43,6 +64,22 @@ describe('Sidebar', () => {
       render(<Sidebar />)
       const link = screen.getByText('Plantillas').closest('a')
       expect(link).toHaveAttribute('href', '/plantillas')
+    })
+
+    it('Plantillas link shows active state when on plantillas page', () => {
+      mockUsePathname.mockReturnValue('/plantillas')
+      render(<Sidebar />)
+      const link = screen.getByText('Plantillas').closest('a')
+      expect(link).toHaveAttribute('aria-current', 'page')
+      expect(link?.className).toMatch(/setec-orange/)
+    })
+
+    it('Plantillas link shows inactive state when not on plantillas page', () => {
+      mockUsePathname.mockReturnValue('/')
+      render(<Sidebar />)
+      const link = screen.getByText('Plantillas').closest('a')
+      expect(link).not.toHaveAttribute('aria-current')
+      expect(link?.className).toMatch(/setec-charcoal/)
     })
 
     it('renders privacy link at bottom', () => {

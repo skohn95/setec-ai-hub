@@ -1,3 +1,7 @@
+export * from './analysis'
 export * from './api'
+export * from './files'
 export * from './messages'
+export * from './privacy'
 export * from './query-keys'
+export * from './templates'

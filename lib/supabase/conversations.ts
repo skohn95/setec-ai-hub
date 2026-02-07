@@ -1,9 +1,10 @@
 import { createClient } from './client'
+import { logSupabaseError } from '@/lib/utils/error-utils'
 import type { Database } from '@/types/database'
+import type { MessageRow } from './messages'
 
 // Type aliases for cleaner code
 export type ConversationRow = Database['public']['Tables']['conversations']['Row']
-export type MessageRow = Database['public']['Tables']['messages']['Row']
 
 // UUID v4 regex pattern for validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -31,6 +32,11 @@ export interface DeleteResult {
   error: Error | null
 }
 
+export interface CreateConversationResult {
+  data: ConversationRow | null
+  error: Error | null
+}
+
 /**
  * Fetch all conversations for a user, sorted by updated_at descending
  * RLS policies ensure users only see their own conversations
@@ -50,6 +56,7 @@ export async function getConversations(userId: string): Promise<ConversationsRes
     .order('updated_at', { ascending: false })
 
   if (error) {
+    logSupabaseError(error, 'getConversations', 'conversations')
     return { data: null, error: new Error(error.message) }
   }
 
@@ -87,6 +94,7 @@ export async function getConversation(id: string): Promise<ConversationResult> {
     .single()
 
   if (error) {
+    logSupabaseError(error, 'getConversation', 'conversations')
     return { data: null, error: new Error(error.message) }
   }
 
@@ -94,13 +102,66 @@ export async function getConversation(id: string): Promise<ConversationResult> {
     return { data: null, error: new Error('Conversation not found') }
   }
 
+  // Cast the join result to proper type
+  // Using unknown to bridge Supabase's inferred type with our expected type
+  const conversationData = data as unknown as ConversationRow & { messages?: MessageRow[] }
+
   return {
     data: {
-      ...data,
-      messages: data.messages || [],
+      ...conversationData,
+      messages: conversationData.messages || [],
     },
     error: null,
   }
+}
+
+/**
+ * Generate default conversation title with timestamp
+ */
+function generateDefaultTitle(): string {
+  const now = new Date()
+  const date = now.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+  const time = now.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return `Nueva conversacion - ${date} ${time}`
+}
+
+/**
+ * Create a new conversation for a user
+ * RLS policies ensure users can only create conversations for themselves
+ */
+export async function createConversation(
+  userId: string,
+  title?: string
+): Promise<CreateConversationResult> {
+  // Validate userId format
+  if (!userId || !isValidUUID(userId)) {
+    return { data: null, error: new Error('Invalid user ID format') }
+  }
+
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({
+      user_id: userId,
+      title: title ?? generateDefaultTitle(),
+    })
+    .select()
+    .single()
+
+  if (error) {
+    logSupabaseError(error, 'createConversation', 'conversations')
+    return { data: null, error: new Error(error.message) }
+  }
+
+  return { data, error: null }
 }
 
 /**
@@ -121,6 +182,37 @@ export async function deleteConversation(id: string): Promise<DeleteResult> {
     .eq('id', id)
 
   if (error) {
+    logSupabaseError(error, 'deleteConversation', 'conversations')
+    return { success: false, error: new Error(error.message) }
+  }
+
+  return { success: true, error: null }
+}
+
+export interface UpdateTimestampResult {
+  success: boolean
+  error: Error | null
+}
+
+/**
+ * Update the updated_at timestamp of a conversation
+ * Called after new messages are added to keep conversation list sorted correctly
+ */
+export async function updateConversationTimestamp(id: string): Promise<UpdateTimestampResult> {
+  // Validate conversation ID format
+  if (!id || !isValidUUID(id)) {
+    return { success: false, error: new Error('Invalid conversation ID format') }
+  }
+
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) {
+    logSupabaseError(error, 'updateConversationTimestamp', 'conversations')
     return { success: false, error: new Error(error.message) }
   }
 

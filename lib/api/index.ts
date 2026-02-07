@@ -1,2 +1,7 @@
 // API utilities barrel export
-// Utilities will be added as needed
+export {
+  invokeAnalysisTool,
+  type AnalysisResultData,
+  type AnalysisError,
+  type AnalysisResponse,
+} from './analyze'

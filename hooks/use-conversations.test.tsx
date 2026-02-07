@@ -1,24 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useConversations, useConversation, useDeleteConversation } from './use-conversations'
+import { useConversations, useConversation, useDeleteConversation, useCreateConversation } from './use-conversations'
 import type { ReactNode } from 'react'
 
 // Mock the Supabase conversations module
 const mockGetConversations = vi.fn()
 const mockGetConversation = vi.fn()
 const mockDeleteConversation = vi.fn()
+const mockCreateConversation = vi.fn()
 
 vi.mock('@/lib/supabase/conversations', () => ({
   getConversations: (...args: unknown[]) => mockGetConversations(...args),
   getConversation: (...args: unknown[]) => mockGetConversation(...args),
   deleteConversation: (...args: unknown[]) => mockDeleteConversation(...args),
+  createConversation: (...args: unknown[]) => mockCreateConversation(...args),
+}))
+
+// Mock the files module for conversation deletion
+const mockDeleteFilesByConversation = vi.fn()
+vi.mock('@/lib/supabase/files', () => ({
+  deleteFilesByConversation: (...args: unknown[]) => mockDeleteFilesByConversation(...args),
 }))
 
 // Mock the auth provider
 const mockUseAuth = vi.fn()
 vi.mock('@/lib/providers/AuthProvider', () => ({
   useAuth: () => mockUseAuth(),
+}))
+
+// Mock next/navigation
+const mockRouterPush = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockRouterPush }),
 }))
 
 // Mock sonner toast
@@ -188,6 +202,8 @@ describe('useConversation', () => {
 describe('useDeleteConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default mock for file deletion - successful
+    mockDeleteFilesByConversation.mockResolvedValue({ success: true, error: null })
   })
 
   it('deletes conversation successfully', async () => {
@@ -260,5 +276,175 @@ describe('useDeleteConversation', () => {
     )
     expect(rolledBackData).toHaveLength(2)
     expect(rolledBackData?.find(c => c.id === 'conv-1')).toBeDefined()
+  })
+})
+
+describe('useCreateConversation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseAuth.mockReturnValue({ user: { id: 'user-1' } })
+  })
+
+  it('creates a conversation successfully', async () => {
+    const newConversation = {
+      id: 'new-conv-id',
+      user_id: 'user-1',
+      title: 'Nueva conversacion',
+      created_at: '2026-02-04T00:00:00Z',
+      updated_at: '2026-02-04T00:00:00Z',
+    }
+
+    mockCreateConversation.mockResolvedValue({ data: newConversation, error: null })
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(mockCreateConversation).toHaveBeenCalledWith('user-1', undefined)
+  })
+
+  it('navigates to new conversation on success', async () => {
+    const newConversation = {
+      id: 'new-conv-id',
+      user_id: 'user-1',
+      title: 'Nueva conversacion',
+      created_at: '2026-02-04T00:00:00Z',
+      updated_at: '2026-02-04T00:00:00Z',
+    }
+
+    mockCreateConversation.mockResolvedValue({ data: newConversation, error: null })
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/conversacion/new-conv-id')
+  })
+
+  it('invalidates conversations list on success', async () => {
+    const newConversation = {
+      id: 'new-conv-id',
+      user_id: 'user-1',
+      title: 'Nueva conversacion',
+      created_at: '2026-02-04T00:00:00Z',
+      updated_at: '2026-02-04T00:00:00Z',
+    }
+
+    mockCreateConversation.mockResolvedValue({ data: newConversation, error: null })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    })
+
+    // Pre-populate cache
+    const { queryKeys } = await import('@/constants/query-keys')
+    queryClient.setQueryData(queryKeys.conversations.lists(), mockConversations)
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+
+    const { result } = renderHook(() => useCreateConversation(), { wrapper })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    // Verify invalidation was triggered (cache state becomes stale)
+    const queryState = queryClient.getQueryState(queryKeys.conversations.lists())
+    expect(queryState?.isInvalidated).toBe(true)
+  })
+
+  it('handles create error with toast message', async () => {
+    const { toast } = await import('sonner')
+
+    mockCreateConversation.mockResolvedValue({
+      data: null,
+      error: new Error('Database error'),
+    })
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    }, { timeout: 3000 })
+
+    expect(toast.error).toHaveBeenCalledWith('No se pudo crear la conversacion. Intenta de nuevo.', { duration: 5000 }) // CONVERSATION_MESSAGES.CREATE_ERROR with TOAST_DURATIONS.ERROR
+  })
+
+  it('returns isPending state during mutation', async () => {
+    // Make the mock never resolve to keep it pending
+    mockCreateConversation.mockImplementation(() => new Promise(() => {}))
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(true)
+    })
+  })
+
+  it('creates conversation with custom title when provided', async () => {
+    const newConversation = {
+      id: 'new-conv-id',
+      user_id: 'user-1',
+      title: 'Custom Title',
+      created_at: '2026-02-04T00:00:00Z',
+      updated_at: '2026-02-04T00:00:00Z',
+    }
+
+    mockCreateConversation.mockResolvedValue({ data: newConversation, error: null })
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate('Custom Title')
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(mockCreateConversation).toHaveBeenCalledWith('user-1', 'Custom Title')
+  })
+
+  it('throws error when user is not authenticated', async () => {
+    mockUseAuth.mockReturnValue({ user: null })
+
+    const { result } = renderHook(() => useCreateConversation(), {
+      wrapper: createWrapper(),
+    })
+
+    result.current.mutate()
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    }, { timeout: 3000 })
+
+    expect(result.current.error?.message).toBe('User not authenticated')
   })
 })

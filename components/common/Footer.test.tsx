@@ -3,12 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { Footer } from './Footer'
 
 describe('Footer', () => {
-  it('renders the footer with privacy link', () => {
+  it('renders the footer with privacy link in Spanish', () => {
     render(<Footer />)
 
     const privacyLink = screen.getByText('Privacidad')
     expect(privacyLink).toBeInTheDocument()
-    expect(privacyLink).toHaveAttribute('href', '/privacy')
+    expect(privacyLink).toHaveAttribute('href', '/privacidad')
   })
 
   it('has proper footer structure', () => {
@@ -25,6 +25,13 @@ describe('Footer', () => {
     const link = screen.getByText('Privacidad')
     // Next.js Link renders an anchor with href
     expect(link.tagName).toBe('A')
-    expect(link).toHaveAttribute('href', '/privacy')
+    expect(link).toHaveAttribute('href', '/privacidad')
+  })
+
+  it('applies hover styling for Setec brand', () => {
+    render(<Footer />)
+
+    const link = screen.getByText('Privacidad')
+    expect(link).toHaveClass('hover:text-setec-orange')
   })
 })

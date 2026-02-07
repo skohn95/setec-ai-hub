@@ -55,46 +55,46 @@ development_status:
   # ═══════════════════════════════════════════════════════════════════════════
   epic-2: in-progress
   2-1-conversation-list-sidebar: done
-  2-2-create-new-conversation: ready-for-dev
-  2-3-chat-interface-message-display: backlog
-  2-4-filter-agent-integration: backlog
-  2-5-main-agent-with-streaming-responses: backlog
+  2-2-create-new-conversation: done
+  2-3-chat-interface-message-display: done
+  2-4-filter-agent-integration: done
+  2-5-main-agent-with-streaming-responses: done
   epic-2-retrospective: optional
 
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 3: Template Workflow & File Management
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-3: backlog
-  3-1-templates-section-page: backlog
-  3-2-file-upload-in-chat: backlog
-  3-3-file-storage-display-in-conversation: backlog
+  epic-3: in-progress
+  3-1-templates-section-page: done
+  3-2-file-upload-in-chat: done
+  3-3-file-storage-display-in-conversation: done
   epic-3-retrospective: optional
 
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 4: MSA Statistical Analysis Engine
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-4: backlog
-  4-1-python-analysis-endpoint-structure: backlog
-  4-2-file-validation-with-error-feedback: backlog
-  4-3-msa-calculation-engine: backlog
-  4-4-agent-tool-integration: backlog
+  epic-4: in-progress
+  4-1-python-analysis-endpoint-structure: done
+  4-2-file-validation-with-error-feedback: done
+  4-3-msa-calculation-engine: done
+  4-4-agent-tool-integration: done
   epic-4-retrospective: optional
 
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 5: AI Interpretation & Interactive Visualization
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-5: backlog
-  5-1-ai-results-interpretation: backlog
-  5-2-interactive-chart-components: backlog
-  5-3-chart-export-multi-file-support: backlog
-  5-4-follow-up-questions-from-context: backlog
+  epic-5: in-progress
+  5-1-ai-results-interpretation: done
+  5-2-interactive-chart-components: done
+  5-3-chart-export-multi-file-support: done
+  5-4-follow-up-questions-from-context: done
   epic-5-retrospective: optional
 
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 6: Privacy Transparency & Production Readiness
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-6: backlog
-  6-1-privacy-page: backlog
-  6-2-error-handling-user-feedback: backlog
-  6-3-production-deployment-final-polish: backlog
+  epic-6: in-progress
+  6-1-privacy-page: done
+  6-2-error-handling-user-feedback: done
+  6-3-production-deployment-final-polish: in-progress
   epic-6-retrospective: optional
