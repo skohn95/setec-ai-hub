@@ -89,6 +89,7 @@ function getAnalysisErrorMessage(code: string, originalMessage?: string): string
 function getApiBaseUrl(): string {
   // Use VERCEL_URL in production/preview
   const vercelUrl = process.env.VERCEL_URL
+  console.log('[Analysis] VERCEL_URL:', vercelUrl || '(not set)')
   if (vercelUrl) {
     return `https://${vercelUrl}`
   }
