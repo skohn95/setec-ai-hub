@@ -359,17 +359,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           }
 
           // Save complete assistant message to database
-          // Strip internal instruction brackets before saving (these are for AI context only)
-          const cleanContent = fullContent
-            .replace(/\n*\[Resultado del análisis recibido\. Instrucciones:[\s\S]*?\]$/g, '')
-            .replace(/\n*\[Error en el análisis:[\s\S]*?\]$/g, '')
-            .trim()
-
           if (assistantMessageId) {
             // Update existing message with final content
-            await updateMessageContent(assistantMessageId, cleanContent, supabase)
+            await updateMessageContent(assistantMessageId, fullContent, supabase)
           } else {
-            await createMessage(conversationId, 'assistant', cleanContent, undefined, supabase)
+            await createMessage(conversationId, 'assistant', fullContent, undefined, supabase)
           }
 
           // Update conversation timestamp for sorting
