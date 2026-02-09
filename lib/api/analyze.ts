@@ -141,11 +141,17 @@ export async function invokeAnalysisTool(
 
     let result: AnalysisResponse
 
+    // Read response text first for debugging if JSON parse fails
+    const responseText = await response.text()
+    console.log('[Analysis] Response status:', response.status, 'Length:', responseText.length)
+
     try {
-      result = await response.json()
-    } catch {
-      // JSON parsing failed
+      result = JSON.parse(responseText)
+    } catch (parseError) {
+      // JSON parsing failed - log details for debugging
       console.error('[Analysis] Failed to parse response JSON for file:', fileId)
+      console.error('[Analysis] Response text (first 500 chars):', responseText.substring(0, 500))
+      console.error('[Analysis] Parse error:', parseError)
       return {
         data: null,
         error: {
