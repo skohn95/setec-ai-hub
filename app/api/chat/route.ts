@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { filterMessage, FilterError } from '@/lib/openai/filter-agent'
 import { streamMainAgentWithTools, type MainAgentEvent } from '@/lib/openai/main-agent'
 import { buildFileContext } from '@/lib/openai/file-context'
-import { createMessage, fetchMessages, updateMessageMetadata } from '@/lib/supabase/messages'
+import { createMessage, fetchMessages, updateMessageMetadata, updateMessageContent } from '@/lib/supabase/messages'
 import { updateConversationTimestamp } from '@/lib/supabase/conversations'
 import { encodeSSEMessage, createSSEResponse } from '@/lib/openai/streaming'
 import { REJECTION_MESSAGE } from '@/lib/openai/rejection-messages'
@@ -289,9 +289,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 // Extract arguments
                 const args = event.arguments as { analysis_type: string; file_id: string }
 
-                // Save partial content first if any (before tool result)
-                if (fullContent.length > 0 && !assistantMessageId) {
-                  const partialResult = await createMessage(conversationId, 'assistant', fullContent, undefined, supabase)
+                // Ensure assistant message exists before tool call so we can save metadata
+                // Create message with current content (may be empty, will be updated later)
+                if (!assistantMessageId) {
+                  const partialResult = await createMessage(conversationId, 'assistant', fullContent || '', undefined, supabase)
                   if (partialResult.data) {
                     assistantMessageId = partialResult.data.id
                   }
@@ -360,7 +361,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           // Save complete assistant message to database
           if (assistantMessageId) {
             // Update existing message with final content
-            await updateMessageMetadata(assistantMessageId, { finalContent: fullContent }, supabase)
+            await updateMessageContent(assistantMessageId, fullContent, supabase)
           } else {
             await createMessage(conversationId, 'assistant', fullContent, undefined, supabase)
           }

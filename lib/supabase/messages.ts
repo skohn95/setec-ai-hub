@@ -219,3 +219,38 @@ export async function updateMessageMetadata(
 
   return { data, error: null }
 }
+
+/**
+ * Update the content of an existing message
+ * Used when streaming completes to save the final content
+ *
+ * @param messageId - The message ID to update
+ * @param content - The new content for the message
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
+ */
+export async function updateMessageContent(
+  messageId: string,
+  content: string,
+  client?: TypedSupabaseClient
+): Promise<MessageResult> {
+  // Validate messageId format
+  if (!messageId || !isValidUUID(messageId)) {
+    return { data: null, error: new Error('Invalid message ID format') }
+  }
+
+  const supabase = client ?? createClient()
+
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ content })
+    .eq('id', messageId)
+    .select()
+    .single()
+
+  if (error) {
+    logSupabaseError(error, 'updateMessageContent', 'messages')
+    return { data: null, error: new Error(error.message) }
+  }
+
+  return { data, error: null }
+}
