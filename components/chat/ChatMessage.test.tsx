@@ -15,6 +15,28 @@ vi.mock('@/components/ui/tooltip', () => ({
   ),
 }))
 
+// Mock react-markdown to simplify testing - renders content with basic markdown parsing
+vi.mock('react-markdown', () => ({
+  default: ({ children }: { children: string }) => {
+    // Basic markdown parsing for bold text (**text**)
+    const parts = children.split(/(\*\*[^*]+\*\*)/g)
+    return (
+      <div data-testid="markdown-content">
+        {parts.map((part, index) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={index}>{part.slice(2, -2)}</strong>
+          }
+          return <span key={index}>{part}</span>
+        })}
+      </div>
+    )
+  },
+}))
+
+vi.mock('remark-gfm', () => ({
+  default: () => {},
+}))
+
 const createMessage = (overrides: Partial<MessageRowWithFiles> = {}): MessageRowWithFiles => ({
   id: 'msg-1',
   conversation_id: '123e4567-e89b-12d3-a456-426614174000',

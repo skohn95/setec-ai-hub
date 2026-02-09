@@ -1,6 +1,8 @@
 'use client'
 
 import { User, Bot } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -32,27 +34,6 @@ function formatTime(dateString: string): string {
   })
 }
 
-/**
- * Render text with basic markdown formatting (bold, line breaks)
- * Parses **text** for bold and preserves newlines
- */
-function renderFormattedText(text: string): React.ReactNode {
-  // Split by bold markers and line breaks
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-
-  return parts.map((part, index) => {
-    // Check if this part is bold text
-    if (part.startsWith('**') && part.endsWith('**')) {
-      const boldText = part.slice(2, -2)
-      return (
-        <strong key={index} className="font-semibold">
-          {boldText}
-        </strong>
-      )
-    }
-    return <span key={index}>{part}</span>
-  })
-}
 
 /**
  * Check if message content contains analysis results
@@ -155,10 +136,16 @@ export default function ChatMessage({
                   : 'bg-muted text-foreground rounded-bl-md'
               )}
             >
-              {/* Message content - supports multiline and basic markdown */}
-              <p className="whitespace-pre-wrap break-words">
-                {isUser ? message.content : renderFormattedText(message.content)}
-              </p>
+              {/* Message content - supports multiline and full markdown for assistant */}
+              {isUser ? (
+                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+              ) : (
+                <div className="markdown-content break-words">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           </TooltipTrigger>
           <TooltipContent side={isUser ? 'left' : 'right'}>
