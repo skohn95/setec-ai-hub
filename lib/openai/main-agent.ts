@@ -221,7 +221,7 @@ export async function* streamMainAgentWithTools(
       : JSON.stringify(msg.content).substring(0, 200)
     console.log(`[CHAT-DEBUG]   [${i}] ${msg.role}: ${content}`)
   })
-  console.log('[CHAT-DEBUG] Available tools:', AVAILABLE_TOOLS.map(t => t.function?.name).join(', '))
+  console.log('[CHAT-DEBUG] Available tools:', AVAILABLE_TOOLS.map(t => t.type === 'function' ? t.function.name : 'unknown').join(', '))
   console.log('[CHAT-DEBUG] ================================================\n')
 
   // Create streaming completion with tools
