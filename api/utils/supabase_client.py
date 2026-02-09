@@ -25,11 +25,12 @@ def get_supabase_client() -> Client:
     Raises:
         ValueError: If required environment variables are missing
     """
-    url = os.environ.get('SUPABASE_URL')
+    # Support both SUPABASE_URL (Vercel) and NEXT_PUBLIC_SUPABASE_URL (local)
+    url = os.environ.get('SUPABASE_URL') or os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
     key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if not url or not key:
-        raise ValueError('Missing Supabase environment variables: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required')
+        raise ValueError('Missing Supabase environment variables: SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required')
 
     return create_client(url, key)
 

@@ -87,13 +87,14 @@ function getAnalysisErrorMessage(code: string, originalMessage?: string): string
  * In Edge runtime, we need absolute URLs
  */
 function getApiBaseUrl(): string {
-  // Use VERCEL_URL in production/preview, localhost in development
+  // Use VERCEL_URL in production/preview
   const vercelUrl = process.env.VERCEL_URL
   if (vercelUrl) {
     return `https://${vercelUrl}`
   }
-  // Fallback to localhost for development
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  // For local development, use PYTHON_API_URL or fallback to port 3002
+  // The Python server runs separately from Next.js in local dev
+  return process.env.PYTHON_API_URL || 'http://localhost:3002'
 }
 
 /**

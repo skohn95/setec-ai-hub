@@ -335,9 +335,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 }
                 sendEvent(completeEvent)
 
-                // If analysis succeeded, update message metadata with chartData
+                // If analysis succeeded, update message metadata with results and chartData
                 if (analysisResult.data && assistantMessageId) {
                   await updateMessageMetadata(assistantMessageId, {
+                    results: analysisResult.data.results,
                     chartData: analysisResult.data.chartData,
                     analysisType: args.analysis_type,
                     fileId: args.file_id,
