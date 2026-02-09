@@ -47,16 +47,16 @@ import json
 import traceback
 import uuid
 
-from utils.response import success_response, error_response, validation_error_response, ERROR_MESSAGES
-from utils.supabase_client import (
+from api.utils.response import success_response, error_response, validation_error_response, ERROR_MESSAGES
+from api.utils.supabase_client import (
     fetch_file_from_storage,
     update_file_status,
     update_file_validation,
     save_analysis_results,
 )
-from utils.file_loader import load_excel_to_dataframe
-from utils.msa_validator import validate_msa_file
-from utils.msa_calculator import analyze_msa
+from api.utils.file_loader import load_excel_to_dataframe
+from api.utils.msa_validator import validate_msa_file
+from api.utils.msa_calculator import analyze_msa
 
 
 def is_valid_uuid(value: str) -> bool:
