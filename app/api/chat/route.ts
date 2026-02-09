@@ -14,8 +14,8 @@ import type { ApiResponse, SSEToolCallEvent, SSEToolResultEvent } from '@/types/
 import type { MessageRow } from '@/lib/supabase/messages'
 import type { Database } from '@/types/database'
 
-// Edge runtime for better performance (prep for streaming in Story 2.5)
-export const runtime = 'edge'
+// Use Node.js runtime for better compatibility with Python serverless functions
+export const runtime = 'nodejs'
 
 // UUID v4 regex pattern for validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
