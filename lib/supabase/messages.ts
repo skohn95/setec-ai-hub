@@ -2,6 +2,10 @@ import { createClient } from './client'
 import { logSupabaseError } from '@/lib/utils/error-utils'
 import type { Database, Json } from '@/types/database'
 import type { MessageFile } from '@/types/chat'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Type alias for Supabase client with our database types
+type TypedSupabaseClient = SupabaseClient<Database>
 
 // Type aliases for cleaner code
 export type MessageRow = Database['public']['Tables']['messages']['Row']
@@ -37,14 +41,19 @@ export interface MessageResult {
 /**
  * Fetch all messages for a conversation, sorted by created_at ascending
  * RLS policies ensure users can only access messages in their own conversations
+ * @param conversationId - UUID of the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  */
-export async function fetchMessages(conversationId: string): Promise<MessagesResult> {
+export async function fetchMessages(
+  conversationId: string,
+  client?: TypedSupabaseClient
+): Promise<MessagesResult> {
   // Validate conversationId format
   if (!conversationId || !isValidUUID(conversationId)) {
     return { data: null, error: new Error('Invalid conversation ID format') }
   }
 
-  const supabase = createClient()
+  const supabase = client ?? createClient()
 
   const { data, error } = await supabase
     .from('messages')
@@ -63,16 +72,19 @@ export async function fetchMessages(conversationId: string): Promise<MessagesRes
 /**
  * Fetch all messages for a conversation with their attached files
  * Uses a join to include files linked to each message
+ * @param conversationId - UUID of the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  */
 export async function fetchMessagesWithFiles(
-  conversationId: string
+  conversationId: string,
+  client?: TypedSupabaseClient
 ): Promise<MessagesWithFilesResult> {
   // Validate conversationId format
   if (!conversationId || !isValidUUID(conversationId)) {
     return { data: null, error: new Error('Invalid conversation ID format') }
   }
 
-  const supabase = createClient()
+  const supabase = client ?? createClient()
 
   const { data, error } = await supabase
     .from('messages')
@@ -101,12 +113,18 @@ export async function fetchMessagesWithFiles(
  * Create a new message in a conversation
  * RLS policies ensure users can only create messages in their own conversations
  * Optionally links an existing file to the message via metadata
+ * @param conversationId - UUID of the conversation
+ * @param role - Message role (user, assistant, system)
+ * @param content - Message content
+ * @param fileId - Optional file ID to link
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  */
 export async function createMessage(
   conversationId: string,
   role: MessageRole,
   content: string,
-  fileId?: string
+  fileId?: string,
+  client?: TypedSupabaseClient
 ): Promise<MessageResult> {
   // Validate conversationId format
   if (!conversationId || !isValidUUID(conversationId)) {
@@ -118,7 +136,7 @@ export async function createMessage(
     return { data: null, error: new Error('Message content cannot be empty') }
   }
 
-  const supabase = createClient()
+  const supabase = client ?? createClient()
 
   // Build metadata with optional fileId
   const metadata = fileId ? { fileId } : {}
@@ -153,17 +171,21 @@ export async function createMessage(
 /**
  * Update the metadata of an existing message
  * Used for adding analysis results, chartData, etc. to assistant messages
+ * @param messageId - UUID of the message to update
+ * @param metadata - Metadata fields to merge
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  */
 export async function updateMessageMetadata(
   messageId: string,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  client?: TypedSupabaseClient
 ): Promise<MessageResult> {
   // Validate messageId format
   if (!messageId || !isValidUUID(messageId)) {
     return { data: null, error: new Error('Invalid message ID format') }
   }
 
-  const supabase = createClient()
+  const supabase = client ?? createClient()
 
   // First fetch the current metadata
   const { data: currentMsg, error: fetchError } = await supabase

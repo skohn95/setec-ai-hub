@@ -7,6 +7,11 @@
  */
 
 import { getFilesByConversation, type FileRow, type FileStatus } from '@/lib/supabase/files'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
+
+// Type alias for Supabase client with our database types
+type TypedSupabaseClient = SupabaseClient<Database>
 
 /**
  * Simplified file information for the agent
@@ -43,10 +48,14 @@ const AVAILABLE_STATUSES: FileStatus[] = ['pending', 'valid']
  * are available for analysis (not yet processed).
  *
  * @param conversationId - UUID of the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  * @returns FileContext with available files and formatted context string
  */
-export async function buildFileContext(conversationId: string): Promise<FileContext> {
-  const result = await getFilesByConversation(conversationId)
+export async function buildFileContext(
+  conversationId: string,
+  client?: TypedSupabaseClient
+): Promise<FileContext> {
+  const result = await getFilesByConversation(conversationId, client)
 
   // Handle errors gracefully - return empty context
   if (result.error || !result.data) {

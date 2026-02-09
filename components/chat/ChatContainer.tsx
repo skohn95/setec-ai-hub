@@ -3,6 +3,7 @@
 import { useRef, useEffect, useCallback, useState, DragEvent } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/lib/providers/AuthProvider'
 import { useMessages } from '@/hooks/use-messages'
 import { useSendChatMessage, useStreamingChat } from '@/hooks/use-chat'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,9 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [droppedFile, setDroppedFile] = useState<File | null>(null)
 
+  // Get current user for file uploads
+  const { user } = useAuth()
+
   // Fetch messages for this conversation
   const {
     data: messages,
@@ -41,14 +45,14 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
   // Send message mutation via API (includes filter agent) - kept for isPending state
   const { isPending: isSending } = useSendChatMessage(conversationId)
 
-  // Streaming chat hook for real-time responses
+  // Streaming chat hook for real-time responses (pass userId for file uploads)
   const {
     sendMessage: sendStreamingMessage,
     streamingContent,
     isStreaming,
     error: streamingError,
     clearError,
-  } = useStreamingChat(conversationId)
+  } = useStreamingChat(conversationId, user?.id)
 
   /**
    * Scroll to bottom of messages list

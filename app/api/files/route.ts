@@ -108,8 +108,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<FileApiRespon
       )
     }
 
-    // 7. Upload file to storage and create database record
-    const result: FileUploadResult = await uploadFile(user.id, conversationId, file)
+    // 7. Upload file to storage and create database record (pass authenticated client)
+    const result: FileUploadResult = await uploadFile(user.id, conversationId, file, supabase)
 
     if (result.error || !result.fileId || !result.storagePath) {
       console.error('File upload error:', result.error)

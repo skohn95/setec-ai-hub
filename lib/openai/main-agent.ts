@@ -201,11 +201,28 @@ export async function* streamMainAgentWithTools(
   const systemPrompt = MAIN_SYSTEM_PROMPT + fileContext
 
   // Build messages array: system prompt + conversation history + new user message
+  const contextMessages = getConversationContext(conversationHistory)
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: 'system', content: systemPrompt },
-    ...getConversationContext(conversationHistory),
+    ...contextMessages,
     { role: 'user', content: userMessage },
   ]
+
+  // DEBUG LOGGING
+  console.log('\n[CHAT-DEBUG] ========== MAIN AGENT INPUT ==========')
+  console.log('[CHAT-DEBUG] User message:', userMessage)
+  console.log('[CHAT-DEBUG] File context:', fileContext || '(none)')
+  console.log('[CHAT-DEBUG] Conversation history count:', conversationHistory.length)
+  console.log('[CHAT-DEBUG] Context messages sent to OpenAI:', contextMessages.length)
+  console.log('[CHAT-DEBUG] Full messages array:')
+  messages.forEach((msg, i) => {
+    const content = typeof msg.content === 'string'
+      ? msg.content.substring(0, 200) + (msg.content.length > 200 ? '...' : '')
+      : JSON.stringify(msg.content).substring(0, 200)
+    console.log(`[CHAT-DEBUG]   [${i}] ${msg.role}: ${content}`)
+  })
+  console.log('[CHAT-DEBUG] Available tools:', AVAILABLE_TOOLS.map(t => t.function?.name).join(', '))
+  console.log('[CHAT-DEBUG] ================================================\n')
 
   // Create streaming completion with tools
   const response = await openai.chat.completions.create({
@@ -268,10 +285,15 @@ export async function* streamMainAgentWithTools(
 
     // Check for finish reason
     if (choice.finish_reason === 'tool_calls') {
+      console.log('\n[CHAT-DEBUG] ========== TOOL CALLS DETECTED ==========')
       // Yield accumulated tool calls
-      for (const [, toolCall] of toolCalls) {
+      for (const [index, toolCall] of toolCalls) {
         try {
           const args = JSON.parse(toolCall.arguments)
+          console.log(`[CHAT-DEBUG] Tool call #${index}:`)
+          console.log(`[CHAT-DEBUG]   Name: ${toolCall.name}`)
+          console.log(`[CHAT-DEBUG]   Call ID: ${toolCall.id}`)
+          console.log(`[CHAT-DEBUG]   Arguments:`, JSON.stringify(args, null, 2))
           yield {
             type: 'tool_call',
             name: toolCall.name,
@@ -279,11 +301,18 @@ export async function* streamMainAgentWithTools(
             arguments: args,
           }
         } catch (e) {
-          console.error('Failed to parse tool call arguments:', e)
+          console.error('[CHAT-DEBUG] Failed to parse tool call arguments:', e)
+          console.error('[CHAT-DEBUG] Raw arguments:', toolCall.arguments)
         }
       }
+      console.log('[CHAT-DEBUG] ================================================\n')
+    }
+
+    if (choice.finish_reason === 'stop') {
+      console.log('[CHAT-DEBUG] Stream finished with reason: stop')
     }
   }
 
+  console.log('[CHAT-DEBUG] Main agent streaming complete')
   yield { type: 'done' }
 }

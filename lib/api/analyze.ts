@@ -83,6 +83,20 @@ function getAnalysisErrorMessage(code: string, originalMessage?: string): string
 }
 
 /**
+ * Get the base URL for API calls
+ * In Edge runtime, we need absolute URLs
+ */
+function getApiBaseUrl(): string {
+  // Use VERCEL_URL in production/preview, localhost in development
+  const vercelUrl = process.env.VERCEL_URL
+  if (vercelUrl) {
+    return `https://${vercelUrl}`
+  }
+  // Fallback to localhost for development
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+}
+
+/**
  * Invoke the Python analysis endpoint
  *
  * @param analysisType - Type of analysis to perform (e.g., 'msa')
@@ -105,12 +119,18 @@ export async function invokeAnalysisTool(
     body.message_id = messageId
   }
 
+  // Build absolute URL for Edge runtime compatibility
+  const baseUrl = getApiBaseUrl()
+  const analyzeUrl = `${baseUrl}/api/analyze`
+
+  console.log('[CHAT-DEBUG] Analysis URL:', analyzeUrl)
+
   /**
    * Inner fetch function that can be retried
    * Only network errors are retryable - validation/calculation errors should not retry
    */
   const fetchAnalysis = async (): Promise<AnalysisResponse> => {
-    const response = await fetch('/api/analyze', {
+    const response = await fetch(analyzeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

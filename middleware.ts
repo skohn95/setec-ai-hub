@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/recuperar-password', '/api/auth']
+// Note: /api/analyze is internal (called server-to-server from /api/chat)
+const publicRoutes = ['/login', '/recuperar-password', '/api/auth', '/api/analyze']
 
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some((route) => pathname.startsWith(route))

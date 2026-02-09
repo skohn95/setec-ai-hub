@@ -24,15 +24,13 @@ import { useState, useEffect } from 'react'
  * ```
  */
 export function useNetworkStatus(): boolean {
-  // Initialize with navigator.onLine if available, default to true for SSR
-  const [isOnline, setIsOnline] = useState(() => {
-    if (typeof navigator !== 'undefined') {
-      return navigator.onLine
-    }
-    return true
-  })
+  // Always initialize as online to match SSR - prevents hydration mismatch
+  const [isOnline, setIsOnline] = useState(true)
 
   useEffect(() => {
+    // Set actual status after mount (client-side only)
+    setIsOnline(navigator.onLine)
+
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 

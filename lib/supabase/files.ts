@@ -1,6 +1,10 @@
 import { createClient } from './client'
 import { logSupabaseError } from '@/lib/utils/error-utils'
 import type { Database } from '@/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Type alias for Supabase client with our database types
+type TypedSupabaseClient = SupabaseClient<Database>
 
 // Type aliases for cleaner code
 export type FileRow = Database['public']['Tables']['files']['Row']
@@ -41,13 +45,18 @@ export interface LinkFileResult {
 /**
  * Upload a file to Supabase Storage and create a database record
  * Storage path follows pattern: {user_id}/{conversation_id}/{file_id}.xlsx
+ * @param userId - User ID for storage path
+ * @param conversationId - Conversation ID to attach file to
+ * @param file - File to upload
+ * @param client - Optional authenticated Supabase client (required for server-side uploads)
  */
 export async function uploadFile(
   userId: string,
   conversationId: string,
-  file: File
+  file: File,
+  client?: TypedSupabaseClient
 ): Promise<FileUploadResult> {
-  const supabase = createClient()
+  const supabase = client ?? createClient()
   const fileId = crypto.randomUUID()
   const storagePath = `${userId}/${conversationId}/${fileId}.xlsx`
 
@@ -172,8 +181,16 @@ export async function deleteFilesByConversation(
 /**
  * Get all files for a conversation, ordered by created_at ascending
  */
-export async function getFilesByConversation(conversationId: string): Promise<FilesResult> {
-  const supabase = createClient()
+/**
+ * Get all files for a conversation, ordered by created_at ascending
+ * @param conversationId - UUID of the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
+ */
+export async function getFilesByConversation(
+  conversationId: string,
+  client?: TypedSupabaseClient
+): Promise<FilesResult> {
+  const supabase = client ?? createClient()
 
   const { data, error } = await supabase
     .from('files')

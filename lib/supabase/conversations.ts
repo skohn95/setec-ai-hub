@@ -2,6 +2,10 @@ import { createClient } from './client'
 import { logSupabaseError } from '@/lib/utils/error-utils'
 import type { Database } from '@/types/database'
 import type { MessageRow } from './messages'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Type alias for Supabase client with our database types
+type TypedSupabaseClient = SupabaseClient<Database>
 
 // Type aliases for cleaner code
 export type ConversationRow = Database['public']['Tables']['conversations']['Row']
@@ -197,14 +201,19 @@ export interface UpdateTimestampResult {
 /**
  * Update the updated_at timestamp of a conversation
  * Called after new messages are added to keep conversation list sorted correctly
+ * @param id - UUID of the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
  */
-export async function updateConversationTimestamp(id: string): Promise<UpdateTimestampResult> {
+export async function updateConversationTimestamp(
+  id: string,
+  client?: TypedSupabaseClient
+): Promise<UpdateTimestampResult> {
   // Validate conversation ID format
   if (!id || !isValidUUID(id)) {
     return { success: false, error: new Error('Invalid conversation ID format') }
   }
 
-  const supabase = createClient()
+  const supabase = client ?? createClient()
 
   const { error } = await supabase
     .from('conversations')

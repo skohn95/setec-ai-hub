@@ -26,6 +26,7 @@ const MAX_MESSAGE_LENGTH = 10000
 interface ChatRequestBody {
   conversationId: string
   content: string
+  fileId?: string  // Optional file attachment
 }
 
 interface ChatResponseData {
@@ -44,6 +45,9 @@ type ChatApiResponse = ApiResponse<ChatResponseData>
  * If allowed, returns a placeholder response (Main Agent in Story 2.5).
  */
 export async function POST(req: NextRequest): Promise<NextResponse<ChatApiResponse> | Response> {
+  console.log('\n[CHAT-DEBUG] ========== CHAT API REQUEST ==========')
+  console.log('[CHAT-DEBUG] Timestamp:', new Date().toISOString())
+
   try {
     // 0. Verify user authentication
     const supabase = createServerClient<Database>(
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     }
 
     const body = (await req.json()) as Partial<ChatRequestBody>
-    const { conversationId, content } = body
+    const { conversationId, content, fileId } = body
 
     // Validate conversationId is present and valid UUID format
     if (!conversationId || typeof conversationId !== 'string' || !UUID_REGEX.test(conversationId)) {
@@ -92,21 +96,27 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       )
     }
 
-    // Validate content is present and not too long
-    if (!content || typeof content !== 'string' || content.trim() === '') {
+    // Validate content or fileId is present (allow file-only messages)
+    const hasContent = content && typeof content === 'string' && content.trim() !== ''
+    const hasFile = fileId && typeof fileId === 'string' && UUID_REGEX.test(fileId)
+
+    if (!hasContent && !hasFile) {
       return NextResponse.json(
         {
           data: null,
           error: {
             code: 'VALIDATION_ERROR',
-            message: 'El contenido del mensaje es requerido.',
+            message: 'El contenido del mensaje o un archivo es requerido.',
           },
         },
         { status: 400 }
       )
     }
 
-    if (content.length > MAX_MESSAGE_LENGTH) {
+    // Use file reference as message if no text content
+    const messageContent = hasContent ? content!.trim() : `[Archivo adjunto]`
+
+    if (messageContent.length > MAX_MESSAGE_LENGTH) {
       return NextResponse.json(
         {
           data: null,
@@ -119,8 +129,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       )
     }
 
+    // DEBUG LOGGING - Request validated
+    console.log('[CHAT-DEBUG] User ID:', user.id)
+    console.log('[CHAT-DEBUG] Conversation ID:', conversationId)
+    console.log('[CHAT-DEBUG] Message content:', messageContent)
+    console.log('[CHAT-DEBUG] File ID:', fileId || '(none)')
+    console.log('[CHAT-DEBUG] Has text content:', hasContent)
+    console.log('[CHAT-DEBUG] Has file:', hasFile)
+    console.log('[CHAT-DEBUG] ================================================\n')
+
     // 1. Save user message first (ensures persistence even if API fails)
-    const userMessageResult = await createMessage(conversationId, 'user', content.trim())
+    // Pass authenticated supabase client for Edge runtime RLS compliance
+    // Link file to message if fileId provided
+    const userMessageResult = await createMessage(conversationId, 'user', messageContent, fileId || undefined, supabase)
     if (userMessageResult.error || !userMessageResult.data) {
       return NextResponse.json(
         {
@@ -137,7 +158,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     // 2. Filter the message
     let filterResult: { allowed: boolean }
     try {
-      filterResult = await filterMessage(content.trim())
+      filterResult = await filterMessage(messageContent)
     } catch (error) {
       // Handle classified OpenAI errors with proper status codes
       if (error instanceof FilterError) {
@@ -169,12 +190,18 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       )
     }
 
+    // DEBUG LOGGING - Filter result
+    console.log('[CHAT-DEBUG] Filter result:', filterResult.allowed ? 'ALLOWED' : 'REJECTED')
+
     // 3. Handle rejected messages
     if (!filterResult.allowed) {
+      console.log('[CHAT-DEBUG] Message rejected by filter, returning rejection response')
       const assistantMessageResult = await createMessage(
         conversationId,
         'assistant',
-        REJECTION_MESSAGE
+        REJECTION_MESSAGE,
+        undefined,
+        supabase
       )
 
       if (assistantMessageResult.error || !assistantMessageResult.data) {
@@ -191,7 +218,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       }
 
       // Update conversation timestamp for sorting
-      await updateConversationTimestamp(conversationId)
+      await updateConversationTimestamp(conversationId, supabase)
 
       return NextResponse.json({
         data: {
@@ -204,15 +231,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     }
 
     // 4. For allowed messages, stream response from Main Agent with tool support
-    // Fetch conversation history for context
-    const messagesResult = await fetchMessages(conversationId)
+    // Fetch conversation history for context (pass authenticated client)
+    const messagesResult = await fetchMessages(conversationId, supabase)
     // Filter out the just-added user message from history (it's already saved)
     const conversationHistory = (messagesResult.data || []).filter(
       (msg) => msg.id !== userMessageResult.data!.id
     )
 
-    // Build file context for the agent
-    const fileContext = await buildFileContext(conversationId)
+    // Build file context for the agent (pass authenticated client for Edge runtime)
+    const fileContext = await buildFileContext(conversationId, supabase)
+
+    // DEBUG LOGGING - File context
+    console.log('\n[CHAT-DEBUG] ========== FILE CONTEXT ==========')
+    console.log('[CHAT-DEBUG] Files found:', fileContext.files.length)
+    fileContext.files.forEach((f, i) => {
+      console.log(`[CHAT-DEBUG]   File ${i + 1}: ID=${f.id}, Name=${f.name}, Status=${f.status}`)
+    })
+    console.log('[CHAT-DEBUG] Context string length:', fileContext.contextString.length)
+    console.log('[CHAT-DEBUG] ================================================\n')
 
     const encoder = new TextEncoder()
 
@@ -232,7 +268,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           // Stream response from Main Agent with tools
           for await (const event of streamMainAgentWithTools({
             conversationHistory,
-            userMessage: content.trim(),
+            userMessage: messageContent,
             fileContext: fileContext.contextString,
           })) {
             if (event.type === 'text') {
@@ -255,18 +291,33 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
 
                 // Save partial content first if any (before tool result)
                 if (fullContent.length > 0 && !assistantMessageId) {
-                  const partialResult = await createMessage(conversationId, 'assistant', fullContent)
+                  const partialResult = await createMessage(conversationId, 'assistant', fullContent, undefined, supabase)
                   if (partialResult.data) {
                     assistantMessageId = partialResult.data.id
                   }
                 }
 
                 // Call Python analysis endpoint
+                console.log('\n[CHAT-DEBUG] ========== INVOKING ANALYSIS TOOL ==========')
+                console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
+                console.log('[CHAT-DEBUG] File ID:', args.file_id)
+                console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
+
                 const analysisResult = await invokeAnalysisTool(
                   args.analysis_type,
                   args.file_id,
                   assistantMessageId || undefined
                 )
+
+                console.log('[CHAT-DEBUG] Analysis result:', analysisResult.error ? 'ERROR' : 'SUCCESS')
+                if (analysisResult.error) {
+                  console.log('[CHAT-DEBUG] Error:', JSON.stringify(analysisResult.error, null, 2))
+                } else if (analysisResult.data) {
+                  console.log('[CHAT-DEBUG] Results keys:', Object.keys(analysisResult.data.results || {}))
+                  console.log('[CHAT-DEBUG] Chart data items:', analysisResult.data.chartData?.length || 0)
+                  console.log('[CHAT-DEBUG] Instructions length:', analysisResult.data.instructions?.length || 0)
+                }
+                console.log('[CHAT-DEBUG] ================================================\n')
 
                 // Send tool result to client
                 const toolResultEvent: SSEToolResultEvent = {
@@ -290,7 +341,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                     chartData: analysisResult.data.chartData,
                     analysisType: args.analysis_type,
                     fileId: args.file_id,
-                  })
+                  }, supabase)
                 }
 
                 // Append tool result info to content for continuation
@@ -308,13 +359,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           // Save complete assistant message to database
           if (assistantMessageId) {
             // Update existing message with final content
-            await updateMessageMetadata(assistantMessageId, { finalContent: fullContent })
+            await updateMessageMetadata(assistantMessageId, { finalContent: fullContent }, supabase)
           } else {
-            await createMessage(conversationId, 'assistant', fullContent)
+            await createMessage(conversationId, 'assistant', fullContent, undefined, supabase)
           }
 
           // Update conversation timestamp for sorting
-          await updateConversationTimestamp(conversationId)
+          await updateConversationTimestamp(conversationId, supabase)
 
           // Send done event
           sendEvent({ type: 'done' })
@@ -328,10 +379,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
             const partialContent =
               fullContent + '\n\n' + STREAMING_MESSAGES.INCOMPLETE_RESPONSE
             if (!assistantMessageId) {
-              await createMessage(conversationId, 'assistant', partialContent)
+              await createMessage(conversationId, 'assistant', partialContent, undefined, supabase)
             }
             // Update conversation timestamp even for partial content
-            await updateConversationTimestamp(conversationId)
+            await updateConversationTimestamp(conversationId, supabase)
           }
 
           // Send classified error event to client
