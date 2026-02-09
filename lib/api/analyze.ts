@@ -85,16 +85,22 @@ function getAnalysisErrorMessage(code: string, originalMessage?: string): string
 /**
  * Get the base URL for API calls
  * In Edge runtime, we need absolute URLs
+ *
+ * Note: We use the production URL instead of VERCEL_URL because
+ * deployment-specific URLs have Vercel authentication protection
+ * which blocks internal API calls.
  */
 function getApiBaseUrl(): string {
-  // Use VERCEL_URL in production/preview
+  // In production, use the production URL to avoid auth protection on deployment URLs
+  if (process.env.VERCEL_ENV === 'production') {
+    return 'https://setec-ai-hub.vercel.app'
+  }
+  // In preview, use the deployment URL
   const vercelUrl = process.env.VERCEL_URL
-  console.log('[Analysis] VERCEL_URL:', vercelUrl || '(not set)')
   if (vercelUrl) {
     return `https://${vercelUrl}`
   }
   // For local development, use PYTHON_API_URL or fallback to port 3002
-  // The Python server runs separately from Next.js in local dev
   return process.env.PYTHON_API_URL || 'http://localhost:3002'
 }
 
