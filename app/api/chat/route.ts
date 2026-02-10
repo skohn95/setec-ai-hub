@@ -359,18 +359,18 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           }
 
           // Save complete assistant message to database
-          // Strip internal instruction brackets before saving (these are for AI context only)
-          // The instructions appear at the start of the content, before the actual response
+          // The instructions from Python contain pre-formatted results - strip wrapper and headers
           let cleanContent = fullContent
-            .replace(/^\s*\[Resultado del análisis recibido\. Instrucciones:[^\]]*\]\s*/g, '')
+            // Remove opening bracket and label, keep the formatted content
+            .replace(/^\s*\[Resultado del análisis recibido\. Instrucciones:\s*/g, '')
+            // Remove closing bracket at the end
+            .replace(/\](\s*)$/g, '$1')
+            // Remove error wrapper if present
             .replace(/^\s*\[Error en el análisis:[^\]]*\]\s*/g, '')
+            // Remove instruction headers that are meant for AI, not user display
+            .replace(/^##\s*INSTRUCCIONES PARA EL AGENTE\s*/gi, '')
+            .replace(/^PRESENTAR LOS RESULTADOS EN ESTE ORDEN:\s*/gim, '')
             .trim()
-
-          // If stripping removed all content but we had analysis, use a fallback message
-          // The actual results are stored in message metadata and shown via ResultsDisplay
-          if (!cleanContent && fullContent.includes('[Resultado del análisis recibido')) {
-            cleanContent = 'Análisis completado. Los resultados se muestran a continuación.'
-          }
 
           if (assistantMessageId) {
             // Update existing message with final content
