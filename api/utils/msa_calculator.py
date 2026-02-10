@@ -422,10 +422,18 @@ def format_chart_data(
     Returns:
         List of chart data entries
     """
+    # Get classification color for GRR Total
+    _, grr_color, _ = classify_grr(results['grr_percent'])
+
     # Variation Breakdown Chart
     variation_breakdown: ChartDataEntry = {
         'type': 'variationBreakdown',
         'data': [
+            {
+                'source': 'GRR Total',
+                'percentage': results['grr_percent'],
+                'color': grr_color,
+            },
             {
                 'source': 'Repetibilidad',
                 'percentage': results['repeatability_percent'],
