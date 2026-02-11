@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react'
 import {
   ComposedChart,
-  Bar,
   Scatter,
   XAxis,
   YAxis,
@@ -11,7 +10,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Cell,
   ZAxis,
 } from 'recharts'
 import { Download, Loader2 } from 'lucide-react'
@@ -48,9 +46,9 @@ function calculateQuartiles(values: number[]) {
   }
 }
 
-// Custom shape for whisker lines
+// Custom shape that draws the entire box plot
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const WhiskerShape = (props: any) => {
+const BoxPlotShape = (props: any) => {
   const { cx, payload, yAxisMap } = props
   if (!cx || !yAxisMap || !yAxisMap['0'] || !payload) return null
 
@@ -59,30 +57,41 @@ const WhiskerShape = (props: any) => {
   const maxY = scale(payload.max)
   const q1Y = scale(payload.q1)
   const q3Y = scale(payload.q3)
+  const medianY = scale(payload.median)
+
+  const boxWidth = 24
+  const halfWidth = boxWidth / 2
+  const whiskerWidth = 8
 
   return (
     <g>
-      {/* Lower whisker: min to Q1 */}
+      {/* Box (IQR: Q1 to Q3) */}
+      <rect
+        x={cx - halfWidth}
+        y={q3Y}
+        width={boxWidth}
+        height={q1Y - q3Y}
+        fill="#8B5CF6"
+        stroke="#7C3AED"
+        strokeWidth={1}
+        rx={2}
+      />
+      {/* Median line */}
+      <line
+        x1={cx - halfWidth}
+        y1={medianY}
+        x2={cx + halfWidth}
+        y2={medianY}
+        stroke="#EF4444"
+        strokeWidth={2}
+      />
+      {/* Lower whisker: Q1 to min */}
       <line x1={cx} y1={q1Y} x2={cx} y2={minY} stroke="#64748B" strokeWidth={2} />
-      <line x1={cx - 8} y1={minY} x2={cx + 8} y2={minY} stroke="#64748B" strokeWidth={2} />
+      <line x1={cx - whiskerWidth} y1={minY} x2={cx + whiskerWidth} y2={minY} stroke="#64748B" strokeWidth={2} />
       {/* Upper whisker: Q3 to max */}
       <line x1={cx} y1={q3Y} x2={cx} y2={maxY} stroke="#64748B" strokeWidth={2} />
-      <line x1={cx - 8} y1={maxY} x2={cx + 8} y2={maxY} stroke="#64748B" strokeWidth={2} />
+      <line x1={cx - whiskerWidth} y1={maxY} x2={cx + whiskerWidth} y2={maxY} stroke="#64748B" strokeWidth={2} />
     </g>
-  )
-}
-
-// Custom shape for median line
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MedianShape = (props: any) => {
-  const { cx, payload, yAxisMap } = props
-  if (!cx || !yAxisMap || !yAxisMap['0'] || !payload) return null
-
-  const scale = yAxisMap['0'].scale
-  const medianY = scale(payload.median)
-
-  return (
-    <line x1={cx - 12} y1={medianY} x2={cx + 12} y2={medianY} stroke="#EF4444" strokeWidth={2} />
   )
 }
 
@@ -99,15 +108,13 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
   }
 
   // Transform data for box plot visualization
-  const chartData = data.map((item, index) => {
+  const chartData = data.map((item) => {
     const quartiles = calculateQuartiles(item.measurements)
     return {
       operator: String(item.operator),
-      index, // For positioning
-      // Box values
-      q1Base: quartiles.q1, // Invisible bar to position the box
-      iqr: quartiles.q3 - quartiles.q1, // Height of the visible box (IQR)
-      // Quartile values for tooltips and whiskers
+      // Use median as the y value for positioning the scatter point
+      y: quartiles.median,
+      // Quartile values for the custom shape
       min: quartiles.min,
       q1: quartiles.q1,
       median: quartiles.median,
@@ -119,7 +126,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
   // Calculate overall mean for reference line
   const overallMean = data.reduce((sum, item) => sum + item.mean, 0) / data.length
 
-  // Calculate Y-axis domain
+  // Calculate Y-axis domain based on actual data
   const allMins = chartData.map((d) => d.min)
   const allMaxs = chartData.map((d) => d.max)
   const yMin = Math.min(...allMins)
@@ -166,20 +173,19 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           Diagrama de caja: caja = IQR (Q1-Q3), línea roja = mediana, bigotes = min/max.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
-              label={{ value: 'Operador', position: 'insideBottom', offset: -10, fontSize: 11 }}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
               tickFormatter={(value: number) => value.toFixed(2)}
-              label={{ value: 'Valor', angle: -90, position: 'insideLeft', fontSize: 11 }}
+              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
             />
             <ZAxis range={[0, 0]} />
             <Tooltip
@@ -193,8 +199,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
               formatter={(value, name) => {
                 const val = typeof value === 'number' ? value.toFixed(4) : String(value)
                 const labels: Record<string, string> = {
-                  iqr: 'IQR (Q3-Q1)',
-                  q1Base: 'Q1',
+                  y: 'Mediana',
                   median: 'Mediana',
                   min: 'Mínimo',
                   max: 'Máximo',
@@ -212,26 +217,11 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
               strokeDasharray="5 5"
               label={{ value: `Media=${overallMean.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
-            {/* Stacked bars for box plot */}
-            {/* Invisible base bar from 0 to Q1 */}
-            <Bar dataKey="q1Base" stackId="box" fill="transparent" barSize={24} />
-            {/* Visible IQR box from Q1 to Q3 */}
-            <Bar dataKey="iqr" stackId="box" fill="#8B5CF6" radius={[2, 2, 2, 2]} barSize={24}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill="#8B5CF6" />
-              ))}
-            </Bar>
-            {/* Whiskers using Scatter with custom shape */}
+            {/* Box plot using custom shape */}
             <Scatter
-              dataKey="q1"
+              dataKey="y"
               fill="transparent"
-              shape={(props) => <WhiskerShape {...props} />}
-            />
-            {/* Median line using Scatter with custom shape */}
-            <Scatter
-              dataKey="median"
-              fill="transparent"
-              shape={(props) => <MedianShape {...props} />}
+              shape={(props) => <BoxPlotShape {...props} />}
             />
           </ComposedChart>
         </ResponsiveContainer>

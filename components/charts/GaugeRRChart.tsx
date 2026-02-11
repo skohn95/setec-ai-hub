@@ -159,14 +159,12 @@ function OperatorComparisonChart({ data }: { data: OperatorComparisonDataItem[] 
             dataKey="operator"
             tick={{ fontSize: 12 }}
             className="fill-muted-foreground"
-            label={{ value: 'Operador', position: 'insideBottom', offset: -5, fontSize: 11 }}
           />
           <YAxis
             tick={{ fontSize: 12 }}
             className="fill-muted-foreground"
             domain={['dataMin - 0.5', 'dataMax + 0.5']}
             tickFormatter={(value: number) => value.toFixed(2)}
-            label={{ value: 'Media', angle: -90, position: 'insideLeft', fontSize: 11 }}
           />
           <Tooltip
             contentStyle={{
