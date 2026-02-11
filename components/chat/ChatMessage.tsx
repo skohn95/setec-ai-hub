@@ -186,7 +186,6 @@ export default function ChatMessage({
             )}
             {/* Dynamic charts (client-side Recharts) - backwards compatibility */}
             {chartData && chartData.length > 0 && <GaugeRRChart data={chartData} />}
-            {variationData && variationData.length > 0 && <VariationChart data={variationData} />}
             {rChartData && <RChartByOperator data={rChartData} />}
             {xBarChartData && <XBarChartByOperator data={xBarChartData} />}
             {measurementsByPartData && measurementsByPartData.length > 0 && (

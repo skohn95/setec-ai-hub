@@ -164,6 +164,7 @@ function OperatorComparisonChart({ data }: { data: OperatorComparisonDataItem[] 
             tick={{ fontSize: 12 }}
             className="fill-muted-foreground"
             domain={['dataMin - 0.5', 'dataMax + 0.5']}
+            tickFormatter={(value: number) => value.toFixed(2)}
           />
           <Tooltip
             contentStyle={{
@@ -173,11 +174,11 @@ function OperatorComparisonChart({ data }: { data: OperatorComparisonDataItem[] 
               fontSize: '12px',
               padding: '8px 12px',
             }}
-            labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
+            labelStyle={{ fontWeight: 600, marginBottom: '4px', color: 'hsl(var(--foreground))' }}
             formatter={(value, name) => {
               const displayValue = typeof value === 'number' ? value.toFixed(3) : '0.000'
               const displayName = name ?? ''
-              if (displayName === 'mean') return [displayValue, 'Media']
+              if (displayName === 'mean') return [<span key="mean" style={{ color: '#1E40AF', fontWeight: 600 }}>{displayValue}</span>, 'Media']
               return [displayValue, displayName]
             }}
           />

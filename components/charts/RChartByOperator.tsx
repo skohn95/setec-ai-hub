@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import {
   ComposedChart,
-  Scatter,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,19 +33,9 @@ interface RChartByOperatorProps {
   data: RChartData
 }
 
-// Define colors for different operators
-const OPERATOR_COLORS = [
-  '#3B82F6', // blue
-  '#10B981', // green
-  '#F97316', // orange
-  '#8B5CF6', // purple
-  '#EC4899', // pink
-  '#14B8A6', // teal
-]
-
 /**
  * RChartByOperator component displays Range chart by operator
- * Shows individual ranges for each part measured by each operator
+ * Shows AVERAGE range per operator (not individual measurements)
  * Includes UCL and center line (R-bar)
  */
 export default function RChartByOperator({ data }: RChartByOperatorProps) {
@@ -56,15 +46,19 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
     return null
   }
 
-  // Transform data for chart - create sequential index for x-axis
-  // Group points by operator for different series
-  const operators = [...new Set(data.points.map((p) => p.operator))]
+  // Aggregate ranges by operator - calculate average range per operator
+  const operatorRanges: Record<string, number[]> = {}
+  data.points.forEach((point) => {
+    if (!operatorRanges[point.operator]) {
+      operatorRanges[point.operator] = []
+    }
+    operatorRanges[point.operator].push(point.range)
+  })
 
-  // Create data with sequential index
-  const chartData = data.points.map((point, index) => ({
-    ...point,
-    index,
-    label: `${point.operator}-${point.part}`,
+  // Calculate average range per operator
+  const chartData = Object.entries(operatorRanges).map(([operator, ranges]) => ({
+    operator,
+    avgRange: ranges.reduce((sum, r) => sum + r, 0) / ranges.length,
   }))
 
   const handleExport = async () => {
@@ -104,24 +98,21 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
       <div ref={chartRef} data-testid="r-chart-by-operator" className="mb-4 bg-card rounded-lg border p-4">
         <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico R por Operador</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Rangos por pieza para cada operador. Puntos fuera de UCL indican variación excesiva.
+          Rango promedio por operador. Valores fuera de UCL indican variación excesiva.
         </p>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
-              dataKey="label"
-              tick={{ fontSize: 10 }}
+              dataKey="operator"
+              tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
-              angle={-45}
-              textAnchor="end"
-              height={60}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
-              domain={[0, Math.max(data.uclR * 1.1, Math.max(...data.points.map((p) => p.range)) * 1.1)]}
-              tickFormatter={(value: number) => value.toFixed(3)}
+              domain={[0, Math.max(data.uclR * 1.2, Math.max(...chartData.map((d) => d.avgRange)) * 1.2)]}
+              tickFormatter={(value: number) => value.toFixed(2)}
             />
             <Tooltip
               contentStyle={{
@@ -132,70 +123,53 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
                 padding: '8px 12px',
               }}
               labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
-              formatter={(value, name) => [typeof value === 'number' ? value.toFixed(4) : String(value), name === 'range' ? 'Rango' : String(name)]}
-              labelFormatter={(label) => `${label}`}
+              formatter={(value) => [typeof value === 'number' ? value.toFixed(4) : String(value), 'Rango Promedio']}
+              labelFormatter={(label) => `Operador: ${label}`}
             />
             {/* Reference lines for control limits */}
             <ReferenceLine
               y={data.uclR}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `UCL=${data.uclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `UCL: ${data.uclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
             <ReferenceLine
               y={data.rBar}
-              stroke="#3B82F6"
+              stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `R̄=${data.rBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#3B82F6' }}
+              label={{ value: `R̄: ${data.rBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             {data.lclR > 0 && (
               <ReferenceLine
                 y={data.lclR}
                 stroke="#EF4444"
                 strokeDasharray="5 5"
-                label={{ value: `LCL=${data.lclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+                label={{ value: `LCL: ${data.lclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
               />
             )}
-            {/* Scatter points colored by operator */}
-            <Scatter
-              dataKey="range"
-              fill="#3B82F6"
-              shape={(props) => {
-                const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: { operator: string } }
-                if (cx === undefined || cy === undefined || !payload) return null
-                const operatorIndex = operators.indexOf(payload.operator)
-                const color = OPERATOR_COLORS[operatorIndex % OPERATOR_COLORS.length]
-                return (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={4}
-                    fill={color}
-                    stroke={color}
-                    strokeWidth={1}
-                  />
-                )
-              }}
+            {/* Line chart for average range per operator */}
+            <Line
+              type="monotone"
+              dataKey="avgRange"
+              stroke="#3B82F6"
+              strokeWidth={2}
+              dot={{ r: 6, fill: '#3B82F6' }}
+              activeDot={{ r: 8 }}
             />
           </ComposedChart>
         </ResponsiveContainer>
-        {/* Legend for operators */}
+        {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
-          {operators.map((op, index) => (
-            <div key={op} className="flex items-center gap-1">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: OPERATOR_COLORS[index % OPERATOR_COLORS.length] }}
-              />
-              <span>{op}</span>
-            </div>
-          ))}
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#3B82F6]" />
-            <span>R̄ (Promedio)</span>
+            <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
+            <span>Rango Promedio</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderStyle: 'dashed' }} />
+            <div className="w-4 h-0.5 bg-[#10B981]" />
+            <span>R̄ (Media)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />
             <span>Límites de Control</span>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import {
   ComposedChart,
-  Scatter,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,19 +33,9 @@ interface XBarChartByOperatorProps {
   data: XBarChartData
 }
 
-// Define colors for different operators
-const OPERATOR_COLORS = [
-  '#3B82F6', // blue
-  '#10B981', // green
-  '#F97316', // orange
-  '#8B5CF6', // purple
-  '#EC4899', // pink
-  '#14B8A6', // teal
-]
-
 /**
  * XBarChartByOperator component displays X-bar (mean) chart by operator
- * Shows subgroup means for each part measured by each operator
+ * Shows AVERAGE mean per operator (not individual measurements)
  * Includes UCL, LCL, and center line (X-double-bar)
  */
 export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) {
@@ -56,21 +46,26 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
     return null
   }
 
-  // Get unique operators for coloring
-  const operators = [...new Set(data.points.map((p) => p.operator))]
+  // Aggregate means by operator - calculate average mean per operator
+  const operatorMeans: Record<string, number[]> = {}
+  data.points.forEach((point) => {
+    if (!operatorMeans[point.operator]) {
+      operatorMeans[point.operator] = []
+    }
+    operatorMeans[point.operator].push(point.mean)
+  })
 
-  // Transform data for chart - create sequential index for x-axis
-  const chartData = data.points.map((point, index) => ({
-    ...point,
-    index,
-    label: `${point.operator}-${point.part}`,
+  // Calculate average mean per operator
+  const chartData = Object.entries(operatorMeans).map(([operator, means]) => ({
+    operator,
+    avgMean: means.reduce((sum, m) => sum + m, 0) / means.length,
   }))
 
   // Calculate Y-axis domain with some padding
-  const allValues = [...data.points.map((p) => p.mean), data.uclXBar, data.lclXBar]
+  const allValues = [...chartData.map((d) => d.avgMean), data.uclXBar, data.lclXBar]
   const yMin = Math.min(...allValues)
   const yMax = Math.max(...allValues)
-  const yPadding = (yMax - yMin) * 0.1
+  const yPadding = (yMax - yMin) * 0.15
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -109,24 +104,21 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
       <div ref={chartRef} data-testid="xbar-chart-by-operator" className="mb-4 bg-card rounded-lg border p-4">
         <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico X̄ (Media) por Operador</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Promedios por pieza para cada operador. Puntos fuera de límites indican diferencias significativas.
+          Media promedio por operador. Valores fuera de límites indican diferencias significativas.
         </p>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
-              dataKey="label"
-              tick={{ fontSize: 10 }}
+              dataKey="operator"
+              tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
-              angle={-45}
-              textAnchor="end"
-              height={60}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
-              tickFormatter={(value: number) => value.toFixed(3)}
+              tickFormatter={(value: number) => value.toFixed(2)}
             />
             <Tooltip
               contentStyle={{
@@ -137,68 +129,51 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
                 padding: '8px 12px',
               }}
               labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
-              formatter={(value, name) => [typeof value === 'number' ? value.toFixed(4) : String(value), name === 'mean' ? 'Media' : String(name)]}
-              labelFormatter={(label) => `${label}`}
+              formatter={(value) => [typeof value === 'number' ? value.toFixed(4) : String(value), 'Media Promedio']}
+              labelFormatter={(label) => `Operador: ${label}`}
             />
             {/* Reference lines for control limits */}
             <ReferenceLine
               y={data.uclXBar}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `UCL=${data.uclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `UCL: ${data.uclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
             <ReferenceLine
               y={data.xDoubleBar}
-              stroke="#3B82F6"
+              stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `X̿=${data.xDoubleBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#3B82F6' }}
+              label={{ value: `X̄: ${data.xDoubleBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             <ReferenceLine
               y={data.lclXBar}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `LCL=${data.lclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `LCL: ${data.lclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
-            {/* Scatter points colored by operator */}
-            <Scatter
-              dataKey="mean"
-              fill="#3B82F6"
-              shape={(props) => {
-                const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: { operator: string } }
-                if (cx === undefined || cy === undefined || !payload) return null
-                const operatorIndex = operators.indexOf(payload.operator)
-                const color = OPERATOR_COLORS[operatorIndex % OPERATOR_COLORS.length]
-                return (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={4}
-                    fill={color}
-                    stroke={color}
-                    strokeWidth={1}
-                  />
-                )
-              }}
+            {/* Line chart for average mean per operator */}
+            <Line
+              type="monotone"
+              dataKey="avgMean"
+              stroke="#3B82F6"
+              strokeWidth={2}
+              dot={{ r: 6, fill: '#3B82F6' }}
+              activeDot={{ r: 8 }}
             />
           </ComposedChart>
         </ResponsiveContainer>
-        {/* Legend for operators */}
+        {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
-          {operators.map((op, index) => (
-            <div key={op} className="flex items-center gap-1">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: OPERATOR_COLORS[index % OPERATOR_COLORS.length] }}
-              />
-              <span>{op}</span>
-            </div>
-          ))}
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#3B82F6]" />
-            <span>X̿ (Gran Media)</span>
+            <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
+            <span>Media Promedio</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderStyle: 'dashed' }} />
+            <div className="w-4 h-0.5 bg-[#10B981]" />
+            <span>X̄ (Gran Media)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />
             <span>Límites de Control</span>
           </div>
         </div>

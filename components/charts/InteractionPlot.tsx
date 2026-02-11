@@ -142,9 +142,9 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
             />
             <Legend
               verticalAlign="bottom"
-              height={36}
+              height={50}
               iconType="line"
-              wrapperStyle={{ fontSize: '11px' }}
+              wrapperStyle={{ fontSize: '11px', paddingTop: '15px' }}
             />
             {/* One line per operator */}
             {data.operators.map((op, index) => (

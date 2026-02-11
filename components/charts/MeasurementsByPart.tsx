@@ -3,12 +3,13 @@
 import { useRef, useState } from 'react'
 import {
   ComposedChart,
-  Scatter,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ErrorBar,
   ReferenceLine,
 } from 'recharts'
 import { Download, Loader2 } from 'lucide-react'
@@ -28,10 +29,26 @@ interface MeasurementsByPartProps {
   data: MeasurementsByPartItem[]
 }
 
+// Calculate quartiles for box plot
+function calculateQuartiles(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const n = sorted.length
+  const q1Index = Math.floor(n * 0.25)
+  const q3Index = Math.floor(n * 0.75)
+  const medianIndex = Math.floor(n * 0.5)
+
+  return {
+    min: sorted[0],
+    q1: sorted[q1Index],
+    median: sorted[medianIndex],
+    q3: sorted[q3Index],
+    max: sorted[n - 1],
+  }
+}
+
 /**
- * MeasurementsByPart component displays all measurements grouped by part
- * Shows individual measurement points and mean line per part
- * Helps visualize part-to-part variation
+ * MeasurementsByPart component displays box plot of measurements grouped by part
+ * Shows min, Q1, median, Q3, max for each part (candle chart style)
  */
 export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
@@ -41,26 +58,33 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
     return null
   }
 
-  // Transform data for scatter plot - flatten all measurements with part index
-  const scatterData: { partIndex: number; part: string; value: number; measurementIndex: number }[] = []
-  data.forEach((item, partIndex) => {
-    item.measurements.forEach((value, measurementIndex) => {
-      scatterData.push({
-        partIndex,
-        part: item.part,
-        value,
-        measurementIndex,
-      })
-    })
+  // Transform data for box plot visualization
+  const chartData = data.map((item) => {
+    const quartiles = calculateQuartiles(item.measurements)
+    return {
+      part: String(item.part),
+      median: quartiles.median,
+      q1: quartiles.q1,
+      q3: quartiles.q3,
+      min: quartiles.min,
+      max: quartiles.max,
+      // For error bars: distance from median to min/max
+      errorLow: quartiles.median - quartiles.min,
+      errorHigh: quartiles.max - quartiles.median,
+      // IQR bar height
+      iqrLow: quartiles.median - quartiles.q1,
+      iqrHigh: quartiles.q3 - quartiles.median,
+    }
   })
 
   // Calculate overall mean for reference line
   const overallMean = data.reduce((sum, item) => sum + item.mean, 0) / data.length
 
   // Calculate Y-axis domain
-  const allValues = scatterData.map((d) => d.value)
-  const yMin = Math.min(...allValues)
-  const yMax = Math.max(...allValues)
+  const allMins = data.map((d) => d.min)
+  const allMaxs = data.map((d) => d.max)
+  const yMin = Math.min(...allMins)
+  const yMax = Math.max(...allMaxs)
   const yPadding = (yMax - yMin) * 0.1
 
   const handleExport = async () => {
@@ -100,15 +124,13 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
       <div ref={chartRef} data-testid="measurements-by-part" className="mb-4 bg-card rounded-lg border p-4">
         <h4 className="text-sm font-medium mb-3 text-foreground">Mediciones por Pieza</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Todas las mediciones agrupadas por pieza. La dispersión vertical muestra la variación total del sistema.
+          Diagrama de caja mostrando min, Q1, mediana, Q3 y max por pieza.
         </p>
         <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={scatterData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="part"
-              type="category"
-              allowDuplicatedCategory={false}
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
             />
@@ -116,7 +138,7 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
-              tickFormatter={(value: number) => value.toFixed(3)}
+              tickFormatter={(value: number) => value.toFixed(2)}
             />
             <Tooltip
               contentStyle={{
@@ -128,9 +150,14 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
               }}
               formatter={(value, name) => {
                 const val = typeof value === 'number' ? value.toFixed(4) : String(value)
-                if (name === 'value') return [val, 'Medición']
-                if (name === 'mean') return [val, 'Media']
-                return [val, String(name)]
+                const labels: Record<string, string> = {
+                  median: 'Mediana',
+                  min: 'Mínimo',
+                  max: 'Máximo',
+                  q1: 'Q1 (25%)',
+                  q3: 'Q3 (75%)',
+                }
+                return [val, labels[String(name)] || String(name)]
               }}
               labelFormatter={(label) => `Pieza: ${label}`}
             />
@@ -139,38 +166,39 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
               y={overallMean}
               stroke="#10B981"
               strokeDasharray="5 5"
-              label={{ value: `Media General=${overallMean.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
+              label={{ value: `Media=${overallMean.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
-            {/* Scatter points for individual measurements */}
-            <Scatter
-              dataKey="value"
-              fill="#3B82F6"
-              shape={(props) => {
-                const { cx, cy } = props as { cx?: number; cy?: number }
-                if (cx === undefined || cy === undefined) return null
-                return (
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={4}
-                    fill="#3B82F6"
-                    fillOpacity={0.6}
-                    stroke="#3B82F6"
-                    strokeWidth={1}
-                  />
-                )
-              }}
-            />
+            {/* Box plot bars */}
+            <Bar dataKey="median" fill="#3B82F6" radius={[2, 2, 2, 2]} barSize={30}>
+              <ErrorBar
+                dataKey="errorHigh"
+                direction="y"
+                width={15}
+                strokeWidth={2}
+                stroke="#64748B"
+              />
+              <ErrorBar
+                dataKey="errorLow"
+                direction="y"
+                width={15}
+                strokeWidth={2}
+                stroke="#64748B"
+              />
+            </Bar>
           </ComposedChart>
         </ResponsiveContainer>
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-[#3B82F6] opacity-60" />
-            <span>Mediciones individuales</span>
+            <div className="w-3 h-3 rounded bg-[#3B82F6]" />
+            <span>Mediana</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#10B981]" style={{ borderStyle: 'dashed' }} />
+            <div className="w-4 h-0.5 bg-[#64748B]" />
+            <span>Min/Max</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-0.5 bg-[#10B981]" style={{ borderTop: '2px dashed #10B981' }} />
             <span>Media General</span>
           </div>
         </div>
