@@ -53,76 +53,53 @@ export interface ChartExportOptions {
 }
 
 /**
- * Convert modern CSS color functions (lab, oklch, etc.) to RGB
+ * Get all CSS custom properties (variables) and their computed RGB values
  */
-function resolveColor(color: string): string {
-  if (!color || color === 'none' || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
-    return color
-  }
+function getCssVariableOverrides(): string {
+  const root = document.documentElement
+  const computed = getComputedStyle(root)
+  const overrides: string[] = []
 
-  // Check if needs conversion
-  if (color.includes('lab(') || color.includes('oklch(') || color.includes('color(') || color.includes('var(')) {
-    const temp = document.createElement('div')
-    temp.style.cssText = `color: ${color} !important;`
-    document.body.appendChild(temp)
-    const resolved = getComputedStyle(temp).color
-    document.body.removeChild(temp)
-    return resolved || color
-  }
+  // Get all custom properties from stylesheets
+  const customProps = new Set<string>()
 
-  return color
-}
-
-/**
- * Inline all computed styles on an element and its descendants,
- * converting modern CSS colors to RGB for html2canvas compatibility
- */
-function inlineStyles(element: HTMLElement): void {
-  const processElement = (el: Element) => {
-    const computed = getComputedStyle(el)
-    const htmlEl = el as HTMLElement
-
-    // Properties that might contain lab() colors
-    const colorProps = [
-      'color', 'backgroundColor', 'borderColor', 'borderTopColor',
-      'borderRightColor', 'borderBottomColor', 'borderLeftColor',
-      'outlineColor', 'fill', 'stroke'
-    ]
-
-    colorProps.forEach(prop => {
-      const value = computed.getPropertyValue(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()))
-      if (value && value !== 'none' && value !== 'transparent') {
-        const resolved = resolveColor(value)
-        if (resolved !== value) {
-          htmlEl.style.setProperty(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), resolved, 'important')
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules) {
+        const text = rule.cssText
+        const matches = text.matchAll(/var\((--[^,)]+)/g)
+        for (const match of matches) {
+          customProps.add(match[1])
         }
       }
-    })
-
-    // For SVG elements, also handle fill and stroke attributes
-    if (el instanceof SVGElement) {
-      const fill = computed.fill || el.getAttribute('fill')
-      const stroke = computed.stroke || el.getAttribute('stroke')
-
-      if (fill) {
-        const resolvedFill = resolveColor(fill)
-        htmlEl.style.setProperty('fill', resolvedFill, 'important')
-      }
-      if (stroke) {
-        const resolvedStroke = resolveColor(stroke)
-        htmlEl.style.setProperty('stroke', resolvedStroke, 'important')
-      }
+    } catch {
+      // Cross-origin stylesheets will throw
     }
   }
 
-  // Process the element and all descendants
-  processElement(element)
-  element.querySelectorAll('*').forEach(processElement)
+  // For each variable, get its computed value and convert to RGB if needed
+  customProps.forEach(prop => {
+    const value = computed.getPropertyValue(prop).trim()
+    if (value) {
+      // Create temp element to resolve any modern color functions
+      const temp = document.createElement('div')
+      temp.style.color = value
+      document.body.appendChild(temp)
+      const resolved = getComputedStyle(temp).color
+      document.body.removeChild(temp)
+
+      if (resolved && resolved !== value) {
+        overrides.push(`${prop}: ${resolved} !important;`)
+      }
+    }
+  })
+
+  return `:root { ${overrides.join(' ')} }`
 }
 
 /**
  * Export a chart element to PNG using html2canvas
- * Preprocesses the element to convert modern CSS colors to RGB
+ * Injects CSS overrides to convert modern colors to RGB
  */
 export async function exportChartToPng(
   chartRef: { current: HTMLDivElement | null },
@@ -134,35 +111,26 @@ export async function exportChartToPng(
   }
 
   const { backgroundColor = '#ffffff', scale = 2 } = options
-  const original = chartRef.current
+
+  // Create a style element with CSS variable overrides
+  const styleOverride = document.createElement('style')
+  styleOverride.id = 'html2canvas-color-fix'
+  styleOverride.textContent = getCssVariableOverrides()
 
   try {
-    // Clone the element to avoid modifying the original
-    const clone = original.cloneNode(true) as HTMLElement
+    // Inject the style overrides
+    document.head.appendChild(styleOverride)
 
-    // Position the clone off-screen but still in the document for style computation
-    clone.style.position = 'absolute'
-    clone.style.left = '-9999px'
-    clone.style.top = '0'
-    clone.style.width = `${original.offsetWidth}px`
-    clone.style.height = `${original.offsetHeight}px`
-    document.body.appendChild(clone)
+    // Small delay to ensure styles are applied
+    await new Promise(resolve => setTimeout(resolve, 50))
 
-    // Inline all styles, converting lab() colors to RGB
-    inlineStyles(clone)
-
-    // Use html2canvas on the preprocessed clone
-    const canvas = await html2canvas(clone, {
+    const canvas = await html2canvas(chartRef.current, {
       backgroundColor,
       scale,
       logging: false,
       useCORS: true,
     })
 
-    // Clean up
-    document.body.removeChild(clone)
-
-    // Convert to blob and download
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (blob) resolve(blob)
@@ -173,5 +141,8 @@ export async function exportChartToPng(
     triggerDownload(blob, filename)
   } catch (error) {
     throw new ChartExportError('Failed to export chart as image', error)
+  } finally {
+    // Always clean up the style override
+    styleOverride.remove()
   }
 }
