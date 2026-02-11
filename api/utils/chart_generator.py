@@ -1,19 +1,15 @@
 """
 Static Chart Generator for MSA Analysis.
 
-Generates PNG images of MSA charts using matplotlib for server-side rendering.
-Returns base64-encoded images that can be embedded directly in HTML.
+Generates SVG images of MSA charts using pygal for lightweight server-side rendering.
+Returns base64-encoded SVG images that can be embedded directly in HTML.
 """
 import base64
-import io
 from typing import Any
 from collections import defaultdict
 
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
+import pygal
+from pygal.style import Style
 
 
 # =============================================================================
@@ -43,29 +39,27 @@ CONTRAST_COLORS = [
     '#00B4D8',  # Cyan
 ]
 
-# Chart dimensions
-CHART_WIDTH = 8
-CHART_HEIGHT = 4
-DPI = 150
-
-# Set default font
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.size'] = 10
+# Custom style
+custom_style = Style(
+    background='white',
+    plot_background='white',
+    foreground=COLORS['text'],
+    foreground_strong=COLORS['text'],
+    foreground_subtle=COLORS['muted'],
+    colors=(COLORS['primary'], COLORS['secondary'], COLORS['success'],
+            COLORS['warning'], COLORS['danger']),
+    font_family='sans-serif',
+)
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
 
-def fig_to_base64(fig: plt.Figure) -> str:
-    """Convert a matplotlib figure to a base64-encoded PNG string."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=DPI, bbox_inches='tight',
-                facecolor='white', edgecolor='none')
-    buf.seek(0)
-    b64 = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close(fig)
-    return f'data:image/png;base64,{b64}'
+def svg_to_base64(svg_string: str) -> str:
+    """Convert SVG string to base64-encoded data URL."""
+    b64 = base64.b64encode(svg_string.encode('utf-8')).decode('utf-8')
+    return f'data:image/svg+xml;base64,{b64}'
 
 
 def get_grr_color(grr_percent: float) -> str:
@@ -89,80 +83,45 @@ def generate_variation_breakdown_chart(data: list[dict[str, Any]]) -> str:
     # Filter out GRR Total for the bars
     bar_data = [d for d in data if d['source'] != 'GRR Total']
 
-    sources = [d['source'] for d in bar_data]
-    percentages = [d['percentage'] for d in bar_data]
-    colors = [d['color'] for d in bar_data]
+    chart = pygal.HorizontalBar(
+        style=custom_style,
+        show_legend=False,
+        title='Desglose de Variación',
+        x_title='% de Variación Total',
+        print_values=True,
+        print_values_position='top',
+        value_formatter=lambda x: f'{x:.1f}%',
+        range=(0, max(100, max(d['percentage'] for d in bar_data) * 1.2)),
+        height=300,
+        width=600,
+    )
 
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    for d in bar_data:
+        chart.add(d['source'], [{'value': d['percentage'], 'color': d['color']}])
 
-    y_pos = np.arange(len(sources))
-    bars = ax.barh(y_pos, percentages, color=colors, height=0.6)
-
-    # Add value labels
-    for i, (bar, pct) in enumerate(zip(bars, percentages)):
-        ax.text(bar.get_width() + 1, bar.get_y() + bar.get_height()/2,
-                f'{pct:.1f}%', va='center', fontsize=9, color=COLORS['text'])
-
-    # Add reference lines at 10% and 30%
-    ax.axvline(x=10, color=COLORS['success'], linestyle='--', linewidth=2, label='10%')
-    ax.axvline(x=30, color=COLORS['danger'], linestyle='--', linewidth=2, label='30%')
-
-    # Add threshold labels
-    ax.text(10, len(sources) - 0.3, '10%', color=COLORS['success'], fontsize=9, ha='center')
-    ax.text(30, len(sources) - 0.3, '30%', color=COLORS['danger'], fontsize=9, ha='center')
-
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(sources)
-    ax.set_xlabel('% de Variación Total')
-    ax.set_xlim(0, max(100, max(percentages) * 1.3))
-    ax.set_title('Desglose de Variación', fontsize=12, fontweight='bold')
-    ax.grid(axis='x', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_operator_comparison_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate bar chart comparing operator means with error bars.
     """
-    operators = [str(d['operator']) for d in data]
-    means = [d['mean'] for d in data]
-    std_devs = [d['stdDev'] for d in data]
+    chart = pygal.Bar(
+        style=custom_style,
+        show_legend=False,
+        title='Comparación de Operadores',
+        x_title='Operador',
+        y_title='Media',
+        print_values=True,
+        value_formatter=lambda x: f'{x:.3f}',
+        height=300,
+        width=600,
+    )
 
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    chart.x_labels = [str(d['operator']) for d in data]
+    chart.add('Media', [d['mean'] for d in data])
 
-    x_pos = np.arange(len(operators))
-    bars = ax.bar(x_pos, means, color=COLORS['primary'], width=0.6,
-                  yerr=std_devs, capsize=5, error_kw={'color': COLORS['danger'], 'linewidth': 2})
-
-    # Add value labels inside bars
-    for bar, mean in zip(bars, means):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() - (bar.get_height() * 0.1),
-                f'{mean:.3f}', ha='center', va='top', fontsize=9, color='white', fontweight='bold')
-
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(operators)
-    ax.set_xlabel('Operador')
-    ax.set_ylabel('Media')
-    ax.set_title('Comparación de Operadores', fontsize=12, fontweight='bold')
-
-    # Add subtitle for error bars
-    ax.text(0.5, 1.02, 'Barras de error: ±1 Desv. Est.', transform=ax.transAxes,
-            ha='center', fontsize=9, color=COLORS['muted'])
-
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    # Adjust y-axis to fit error bars
-    max_val = max(m + s for m, s in zip(means, std_devs))
-    min_val = min(m - s for m, s in zip(means, std_devs))
-    padding = (max_val - min_val) * 0.2
-    ax.set_ylim(min_val - padding, max_val + padding)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_r_chart(data: dict[str, Any]) -> str:
@@ -182,50 +141,42 @@ def generate_r_chart(data: dict[str, Any]) -> str:
     operators = list(operator_ranges.keys())
     avg_ranges = [sum(ranges) / len(ranges) for ranges in operator_ranges.values()]
 
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    # Calculate y range
+    max_y = max(max(avg_ranges), ucl_r) * 1.2
+    min_y = 0
 
-    x_pos = np.arange(len(operators))
+    chart = pygal.Line(
+        style=custom_style,
+        show_legend=True,
+        legend_at_bottom=True,
+        title='Gráfico R por Operador',
+        x_title='Operador',
+        y_title='Rango Promedio',
+        print_values=True,
+        value_formatter=lambda x: f'{x:.4f}' if x else '',
+        range=(min_y, max_y),
+        height=350,
+        width=600,
+        dots_size=5,
+    )
 
-    # Plot control limits
-    ax.axhline(y=ucl_r, color=COLORS['danger'], linestyle='--', linewidth=1.5)
-    ax.axhline(y=r_bar, color=COLORS['success'], linestyle='-', linewidth=1.5)
+    chart.x_labels = operators
+
+    # Add data series
+    chart.add('Rango', avg_ranges, stroke_style={'width': 2})
+
+    # Add control limits as horizontal lines (using constant values)
+    chart.add(f'UCL ({ucl_r:.4f})', [ucl_r] * len(operators),
+              stroke_style={'width': 1, 'dasharray': '5,5'},
+              show_dots=False, fill=False)
+    chart.add(f'R̄ ({r_bar:.4f})', [r_bar] * len(operators),
+              stroke_style={'width': 1}, show_dots=False, fill=False)
     if lcl_r > 0:
-        ax.axhline(y=lcl_r, color=COLORS['danger'], linestyle='--', linewidth=1.5)
+        chart.add(f'LCL ({lcl_r:.4f})', [lcl_r] * len(operators),
+                  stroke_style={'width': 1, 'dasharray': '5,5'},
+                  show_dots=False, fill=False)
 
-    # Plot data line
-    ax.plot(x_pos, avg_ranges, 'o-', color=COLORS['primary'], linewidth=2,
-            markersize=10, markerfacecolor=COLORS['primary'])
-
-    # Add data point labels
-    for i, (x, val) in enumerate(zip(x_pos, avg_ranges)):
-        ax.annotate(f'{val:.4f}', (x, val), textcoords="offset points",
-                    xytext=(0, 12), ha='center', fontsize=9, color=COLORS['text'],
-                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=COLORS['grid']))
-
-    # Add control limit labels on the right
-    ax.text(len(operators) - 0.5, ucl_r, f'UCL: {ucl_r:.4f}', va='center', fontsize=9,
-            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-    ax.text(len(operators) - 0.5, r_bar, f'R̄: {r_bar:.4f}', va='center', fontsize=9,
-            color=COLORS['success'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-    if lcl_r > 0:
-        ax.text(len(operators) - 0.5, lcl_r, f'LCL: {lcl_r:.4f}', va='center', fontsize=9,
-                color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(operators)
-    ax.set_xlabel('Operador')
-    ax.set_ylabel('Rango Promedio')
-    ax.set_title('Gráfico R por Operador', fontsize=12, fontweight='bold')
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    # Set y-axis range
-    max_y = max(max(avg_ranges), ucl_r) * 1.25
-    ax.set_ylim(0, max_y)
-    ax.set_xlim(-0.5, len(operators) + 0.5)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_xbar_chart(data: dict[str, Any]) -> str:
@@ -245,104 +196,82 @@ def generate_xbar_chart(data: dict[str, Any]) -> str:
     operators = list(operator_means.keys())
     avg_means = [sum(means) / len(means) for means in operator_means.values()]
 
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
-
-    x_pos = np.arange(len(operators))
-
-    # Plot control limits
-    ax.axhline(y=ucl, color=COLORS['danger'], linestyle='--', linewidth=1.5)
-    ax.axhline(y=x_double_bar, color=COLORS['success'], linestyle='-', linewidth=1.5)
-    ax.axhline(y=lcl, color=COLORS['danger'], linestyle='--', linewidth=1.5)
-
-    # Plot data line
-    ax.plot(x_pos, avg_means, 'o-', color=COLORS['primary'], linewidth=2,
-            markersize=10, markerfacecolor=COLORS['primary'])
-
-    # Add data point labels
-    for i, (x, val) in enumerate(zip(x_pos, avg_means)):
-        ax.annotate(f'{val:.4f}', (x, val), textcoords="offset points",
-                    xytext=(0, 12), ha='center', fontsize=9, color=COLORS['text'],
-                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=COLORS['grid']))
-
-    # Add control limit labels on the right
-    ax.text(len(operators) - 0.5, ucl, f'UCL: {ucl:.4f}', va='center', fontsize=9,
-            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-    ax.text(len(operators) - 0.5, x_double_bar, f'X̄: {x_double_bar:.4f}', va='center', fontsize=9,
-            color=COLORS['success'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-    ax.text(len(operators) - 0.5, lcl, f'LCL: {lcl:.4f}', va='center', fontsize=9,
-            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
-
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(operators)
-    ax.set_xlabel('Operador')
-    ax.set_ylabel('Media')
-    ax.set_title('Gráfico X̄ por Operador', fontsize=12, fontweight='bold')
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    # Set y-axis range
+    # Calculate y range
     y_min = min(min(avg_means), lcl)
     y_max = max(max(avg_means), ucl)
-    padding = (y_max - y_min) * 0.25
-    ax.set_ylim(y_min - padding, y_max + padding)
-    ax.set_xlim(-0.5, len(operators) + 0.5)
+    padding = (y_max - y_min) * 0.2
 
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    chart = pygal.Line(
+        style=custom_style,
+        show_legend=True,
+        legend_at_bottom=True,
+        title='Gráfico X̄ por Operador',
+        x_title='Operador',
+        y_title='Media',
+        print_values=True,
+        value_formatter=lambda x: f'{x:.4f}' if x else '',
+        range=(y_min - padding, y_max + padding),
+        height=350,
+        width=600,
+        dots_size=5,
+    )
+
+    chart.x_labels = operators
+
+    # Add data series
+    chart.add('Media', avg_means, stroke_style={'width': 2})
+
+    # Add control limits
+    chart.add(f'UCL ({ucl:.4f})', [ucl] * len(operators),
+              stroke_style={'width': 1, 'dasharray': '5,5'},
+              show_dots=False, fill=False)
+    chart.add(f'X̄ ({x_double_bar:.4f})', [x_double_bar] * len(operators),
+              stroke_style={'width': 1}, show_dots=False, fill=False)
+    chart.add(f'LCL ({lcl:.4f})', [lcl] * len(operators),
+              stroke_style={'width': 1, 'dasharray': '5,5'},
+              show_dots=False, fill=False)
+
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_measurements_by_part_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate box plot of measurements grouped by part.
     """
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    chart = pygal.Box(
+        style=custom_style,
+        show_legend=False,
+        title='Mediciones por Parte',
+        x_title='Parte',
+        y_title='Medición',
+        height=300,
+        width=600,
+    )
 
-    parts = [str(d['part']) for d in data]
-    measurements = [d['measurements'] for d in data]
+    for d in data:
+        chart.add(str(d['part']), d['measurements'])
 
-    bp = ax.boxplot(measurements, labels=parts, patch_artist=True, showmeans=True,
-                    meanprops=dict(marker='D', markerfacecolor='white', markeredgecolor='black', markersize=6))
-
-    # Color the boxes
-    colors_list = plt.cm.Set2(np.linspace(0, 1, len(parts)))
-    for patch, color in zip(bp['boxes'], colors_list):
-        patch.set_facecolor(color)
-
-    ax.set_xlabel('Parte')
-    ax.set_ylabel('Medición')
-    ax.set_title('Mediciones por Parte', fontsize=12, fontweight='bold')
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_measurements_by_operator_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate box plot of measurements grouped by operator.
     """
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    chart = pygal.Box(
+        style=custom_style,
+        show_legend=False,
+        title='Mediciones por Operador',
+        x_title='Operador',
+        y_title='Medición',
+        height=300,
+        width=600,
+    )
 
-    operators = [str(d['operator']) for d in data]
-    measurements = [d['measurements'] for d in data]
+    for d in data:
+        chart.add(str(d['operator']), d['measurements'])
 
-    bp = ax.boxplot(measurements, labels=operators, patch_artist=True, showmeans=True,
-                    meanprops=dict(marker='D', markerfacecolor='white', markeredgecolor='black', markersize=6))
-
-    # Color the boxes
-    colors_list = plt.cm.Set2(np.linspace(0, 1, len(operators)))
-    for patch, color in zip(bp['boxes'], colors_list):
-        patch.set_facecolor(color)
-
-    ax.set_xlabel('Operador')
-    ax.set_ylabel('Medición')
-    ax.set_title('Mediciones por Operador', fontsize=12, fontweight='bold')
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_interaction_plot(data: dict[str, Any]) -> str:
@@ -352,33 +281,38 @@ def generate_interaction_plot(data: dict[str, Any]) -> str:
     operators_data = data['operators']
     parts = [str(p) for p in data['parts']]
 
-    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+    # Create style with contrast colors
+    interaction_style = Style(
+        background='white',
+        plot_background='white',
+        foreground=COLORS['text'],
+        foreground_strong=COLORS['text'],
+        foreground_subtle=COLORS['muted'],
+        colors=CONTRAST_COLORS,
+        font_family='sans-serif',
+    )
 
-    x_pos = np.arange(len(parts))
+    chart = pygal.Line(
+        style=interaction_style,
+        show_legend=True,
+        legend_at_bottom=True,
+        title='Gráfico de Interacción (Operador × Parte)',
+        x_title='Parte',
+        y_title='Media',
+        height=350,
+        width=600,
+        dots_size=4,
+    )
 
-    for i, op_data in enumerate(operators_data):
+    chart.x_labels = parts
+
+    for op_data in operators_data:
         operator = op_data['operator']
         part_means = op_data['partMeans']
-        color = CONTRAST_COLORS[i % len(CONTRAST_COLORS)]
-
-        # Get means in order of parts
         y_values = [part_means.get(str(p), None) for p in parts]
+        chart.add(operator, y_values, stroke_style={'width': 2})
 
-        ax.plot(x_pos, y_values, 'o-', color=color, linewidth=2.5,
-                markersize=8, label=operator, markerfacecolor=color)
-
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(parts)
-    ax.set_xlabel('Parte')
-    ax.set_ylabel('Media')
-    ax.set_title('Gráfico de Interacción (Operador × Parte)', fontsize=12, fontweight='bold')
-    ax.legend(title='Operador', loc='upper center', bbox_to_anchor=(0.5, -0.15),
-              ncol=len(operators_data), fontsize=9)
-    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
-    ax.set_axisbelow(True)
-
-    plt.tight_layout()
-    return fig_to_base64(fig)
+    return svg_to_base64(chart.render().decode('utf-8'))
 
 
 # =============================================================================
@@ -387,13 +321,13 @@ def generate_interaction_plot(data: dict[str, Any]) -> str:
 
 def generate_all_charts(chart_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
-    Generate all MSA charts as base64 PNG images.
+    Generate all MSA charts as base64 SVG images.
 
     Args:
         chart_data: List of chart data entries from format_chart_data()
 
     Returns:
-        List of dicts with 'type' and 'image' keys (base64 PNG)
+        List of dicts with 'type' and 'image' keys (base64 SVG)
     """
     result = []
 
