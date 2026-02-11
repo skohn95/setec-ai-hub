@@ -79,7 +79,7 @@ export default function FileUpload({
             size="icon"
             onClick={handleButtonClick}
             disabled={disabled}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
+            className="shrink-0 h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors"
             aria-label={FILE_UPLOAD_LABELS.ATTACH_FILE}
           >
             <Paperclip className="h-5 w-5" />

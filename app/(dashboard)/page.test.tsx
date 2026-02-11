@@ -12,13 +12,14 @@ vi.mock('@/components/layout/NewConversationButton', () => ({
 describe('DashboardPage', () => {
   it('renders the welcome title', () => {
     render(<DashboardPage />)
-    expect(screen.getByText('Bienvenido a Setec AI Hub')).toBeInTheDocument()
+    expect(screen.getByText(/bienvenido a/i)).toBeInTheDocument()
+    expect(screen.getByText('Setec AI')).toBeInTheDocument()
   })
 
   it('renders the guidance text', () => {
     render(<DashboardPage />)
     expect(
-      screen.getByText('Inicia una nueva conversacion para comenzar tu analisis')
+      screen.getByText(/tu asistente inteligente para análisis estadístico/i)
     ).toBeInTheDocument()
   })
 
@@ -33,9 +34,10 @@ describe('DashboardPage', () => {
     expect(wrapper).toHaveClass('flex', 'items-center', 'justify-center')
   })
 
-  it('uses Setec charcoal color for title', () => {
+  it('renders capability cards', () => {
     render(<DashboardPage />)
-    const title = screen.getByText('Bienvenido a Setec AI Hub')
-    expect(title).toHaveClass('text-setec-charcoal')
+    expect(screen.getByText('Análisis MSA')).toBeInTheDocument()
+    expect(screen.getByText('Control Charts')).toBeInTheDocument()
+    expect(screen.getByText('Interpretación')).toBeInTheDocument()
   })
 })

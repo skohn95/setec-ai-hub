@@ -2,138 +2,110 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
-import { PASSWORD_RECOVERY_MESSAGES } from '@/constants/messages'
 
 // Zod validation schema
-const passwordResetSchema = z.object({
+const resetPasswordRequestSchema = z.object({
   email: z
     .string()
-    .min(1, PASSWORD_RECOVERY_MESSAGES.EMAIL_REQUIRED)
-    .email(PASSWORD_RECOVERY_MESSAGES.INVALID_EMAIL),
+    .min(1, 'El correo electrónico es requerido.')
+    .email('Por favor ingresa un correo electrónico válido.'),
 })
 
-interface FormErrors {
-  email?: string
-}
+type ResetPasswordRequestData = z.infer<typeof resetPasswordRequestSchema>
 
+/**
+ * Password reset request form component
+ * Allows users to request a password reset email with magic link
+ * Integrates with Supabase Auth and provides Spanish language UI
+ */
 export function PasswordResetForm() {
-  const [email, setEmail] = useState('')
-  const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
-  // Memoize Supabase client to avoid recreation on each render
+  // Memoize Supabase client
   const supabase = useMemo(() => createClient(), [])
 
-  const validateForm = (): boolean => {
-    const result = passwordResetSchema.safeParse({ email })
-    if (!result.success) {
-      const fieldErrors: FormErrors = {}
-      const issues = result.error.issues || []
-      issues.forEach((err) => {
-        const field = err.path[0] as keyof FormErrors
-        if (field && !fieldErrors[field]) {
-          fieldErrors[field] = err.message
-        }
-      })
-      setErrors(fieldErrors)
-      return false
-    }
-    setErrors({})
-    return true
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ResetPasswordRequestData>({
+    resolver: zodResolver(resetPasswordRequestSchema),
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
-
+  const onSubmit = async (data: ResetPasswordRequestData) => {
     setIsLoading(true)
-    setErrors({})
+    setShowSuccess(false)
 
     try {
-      // Always show success message regardless of email existence (security: prevent enumeration)
-      await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/api/auth/callback?type=recovery`,
+      // Request password reset - redirect to confirm page
+      await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: `${window.location.origin}/recuperar-password/confirmar`,
       })
 
-      setIsSuccess(true)
+      // Always show success message (security best practice - don't reveal if email exists)
+      setShowSuccess(true)
     } catch {
-      // Even on error, show success message to prevent email enumeration
-      setIsSuccess(true)
+      // Even on error, show success message for security
+      setShowSuccess(true)
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (isSuccess) {
+  // Show success state without form
+  if (showSuccess) {
     return (
-      <div className="space-y-6">
-        <div
-          role="status"
-          aria-live="polite"
-          className="p-4 text-sm text-green-800 bg-green-50 border border-green-200 rounded-md"
-        >
-          {PASSWORD_RECOVERY_MESSAGES.PASSWORD_RESET_SENT}
-        </div>
+      <div className="space-y-5">
+        <Alert className="bg-success/10 text-success border-success/20">
+          <AlertDescription>
+            Si existe una cuenta con este correo, recibirás un enlace de
+            restablecimiento
+          </AlertDescription>
+        </Alert>
 
         <div className="text-center">
-          <Link
-            href="/login"
-            className="text-sm text-muted-foreground hover:text-setec-orange transition-colors"
-          >
-            Volver a iniciar sesión
-          </Link>
+          <Button variant="link" asChild className="text-sm min-h-[44px]">
+            <Link href="/login">Volver al inicio de sesión</Link>
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-      {/* Email field */}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      {/* Email Input */}
       <div className="space-y-2">
-        <label
-          htmlFor="email"
-          className="text-sm font-medium text-setec-charcoal"
-        >
-          Correo electrónico
-        </label>
+        <Label htmlFor="email">Correo Electrónico</Label>
         <Input
           id="email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="usuario@ejemplo.com"
-          aria-describedby={errors.email ? 'email-error' : undefined}
-          aria-invalid={!!errors.email}
+          {...register('email')}
+          className={`h-12 ${errors.email ? 'border-destructive' : ''}`}
           disabled={isLoading}
-          className="h-11"
+          autoFocus
           autoComplete="email"
         />
         {errors.email && (
-          <p
-            id="email-error"
-            role="alert"
-            className="text-sm text-destructive"
-          >
-            {errors.email}
-          </p>
+          <p className="text-sm text-destructive">{errors.email.message}</p>
         )}
       </div>
 
-      {/* Submit button */}
+      {/* Submit Button */}
       <Button
         type="submit"
+        className="w-full h-12 mt-6 bg-setec-orange hover:bg-setec-orange-hover cursor-pointer transition-colors"
         disabled={isLoading}
-        className="w-full h-11 bg-setec-orange hover:bg-setec-orange/90 text-white font-medium"
       >
         {isLoading ? (
           <>
@@ -141,18 +113,15 @@ export function PasswordResetForm() {
             Enviando...
           </>
         ) : (
-          'Enviar enlace'
+          'Restablecer contraseña'
         )}
       </Button>
 
-      {/* Back to login link */}
+      {/* Back to Login Link */}
       <div className="text-center">
-        <Link
-          href="/login"
-          className="text-sm text-muted-foreground hover:text-setec-orange transition-colors"
-        >
-          Volver a iniciar sesión
-        </Link>
+        <Button variant="link" asChild className="text-sm min-h-[44px]">
+          <Link href="/login">Volver al inicio de sesión</Link>
+        </Button>
       </div>
     </form>
   )

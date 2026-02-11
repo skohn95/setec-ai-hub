@@ -77,6 +77,8 @@ export const CONVERSATION_MESSAGES = {
   CREATE_ERROR: 'No se pudo crear la conversacion. Intenta de nuevo.',
   DELETE_SUCCESS: 'Conversacion eliminada',
   DELETE_ERROR: 'No se pudo eliminar la conversacion',
+  UPDATE_TITLE_SUCCESS: 'Nombre actualizado',
+  UPDATE_TITLE_ERROR: 'No se pudo actualizar el nombre',
 } as const
 
 export const UI_LABELS = {

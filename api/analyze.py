@@ -9,7 +9,8 @@ Request Body:
     {
         "analysis_type": string,  // Required. Analysis type (MVP: "msa")
         "file_id": string,        // Required. UUID of file in files table
-        "message_id": string      // Optional. UUID of associated message
+        "message_id": string,     // Optional. UUID of associated message
+        "specification": number   // Optional. Target/nominal value for bias calculation
     }
 
 Success Response (200):
@@ -136,6 +137,7 @@ class handler(BaseHTTPRequestHandler):
             analysis_type = body['analysis_type']
             file_id = body['file_id']
             message_id = body.get('message_id')  # Optional
+            specification = body.get('specification')  # Optional - target value for bias calculation
 
             # Validate file_id is a valid UUID format
             if not is_valid_uuid(file_id):
@@ -194,7 +196,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Route to appropriate analyzer
             if analysis_type == 'msa':
-                analysis_output, analysis_error = analyze_msa(df, validated_columns)
+                analysis_output, analysis_error = analyze_msa(df, validated_columns, specification)
             else:
                 # This shouldn't happen due to earlier validation, but handle it
                 response = error_response(

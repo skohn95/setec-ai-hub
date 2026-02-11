@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { filterMessage, FilterError } from '@/lib/openai/filter-agent'
+import { filterMessage, FilterError, type FilterContext } from '@/lib/openai/filter-agent'
 import { streamMainAgentWithTools, type MainAgentEvent } from '@/lib/openai/main-agent'
 import { buildFileContext } from '@/lib/openai/file-context'
 import { createMessage, fetchMessages, updateMessageMetadata, updateMessageContent } from '@/lib/supabase/messages'
@@ -138,7 +138,17 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     console.log('[CHAT-DEBUG] Has file:', hasFile)
     console.log('[CHAT-DEBUG] ================================================\n')
 
-    // 1. Save user message first (ensures persistence even if API fails)
+    // 1. Fetch conversation history FIRST (needed for filter context and main agent)
+    const messagesResult = await fetchMessages(conversationId, supabase)
+    const existingMessages = messagesResult.data || []
+
+    // Find the last assistant message for filter context
+    // This helps the filter understand if user is responding to a question
+    const lastAssistantMessage = [...existingMessages]
+      .reverse()
+      .find((msg) => msg.role === 'assistant')
+
+    // 2. Save user message (ensures persistence even if API fails)
     // Pass authenticated supabase client for Edge runtime RLS compliance
     // Link file to message if fileId provided
     const userMessageResult = await createMessage(conversationId, 'user', messageContent, fileId || undefined, supabase)
@@ -155,10 +165,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       )
     }
 
-    // 2. Filter the message
+    // 3. Filter the message with conversation context
+    // Check if last assistant message contains analysis results (has metadata with analysisType)
+    const lastMessageMetadata = lastAssistantMessage?.metadata as Record<string, unknown> | null
+    const analysisJustPerformed = Boolean(lastMessageMetadata?.analysisType)
+    const analysisType = lastMessageMetadata?.analysisType as string | undefined
+
+    const filterContext: FilterContext | undefined = lastAssistantMessage
+      ? {
+          lastAssistantMessage: lastAssistantMessage.content,
+          analysisJustPerformed,
+          analysisType,
+        }
+      : undefined
+
     let filterResult: { allowed: boolean }
     try {
-      filterResult = await filterMessage(messageContent)
+      filterResult = await filterMessage(messageContent, filterContext)
     } catch (error) {
       // Handle classified OpenAI errors with proper status codes
       if (error instanceof FilterError) {
@@ -231,12 +254,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     }
 
     // 4. For allowed messages, stream response from Main Agent with tool support
-    // Fetch conversation history for context (pass authenticated client)
-    const messagesResult = await fetchMessages(conversationId, supabase)
-    // Filter out the just-added user message from history (it's already saved)
-    const conversationHistory = (messagesResult.data || []).filter(
-      (msg) => msg.id !== userMessageResult.data!.id
-    )
+    // Use already-fetched messages (don't include the just-added user message)
+    const conversationHistory = existingMessages
 
     // Build file context for the agent (pass authenticated client for Edge runtime)
     const fileContext = await buildFileContext(conversationId, supabase)
@@ -256,6 +275,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       async start(controller) {
         let fullContent = ''
         let assistantMessageId: string | null = null
+        let analysisMetadata: Record<string, unknown> | null = null
 
         /**
          * Helper to send SSE event
@@ -287,27 +307,35 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 sendEvent(toolCallEvent)
 
                 // Extract arguments
-                const args = event.arguments as { analysis_type: string; file_id: string }
+                const args = event.arguments as { analysis_type: string; file_id: string; specification?: number }
 
                 // Ensure assistant message exists before tool call so we can save metadata
                 // Create message with current content (may be empty, will be updated later)
                 if (!assistantMessageId) {
+                  console.log('[CHAT-DEBUG] Creating assistant message for tool call...')
                   const partialResult = await createMessage(conversationId, 'assistant', fullContent || '', undefined, supabase)
                   if (partialResult.data) {
                     assistantMessageId = partialResult.data.id
+                    console.log('[CHAT-DEBUG] Assistant message created with ID:', assistantMessageId)
+                  } else {
+                    console.error('[CHAT-DEBUG] Failed to create assistant message:', partialResult.error)
                   }
+                } else {
+                  console.log('[CHAT-DEBUG] Assistant message already exists:', assistantMessageId)
                 }
 
                 // Call Python analysis endpoint
                 console.log('\n[CHAT-DEBUG] ========== INVOKING ANALYSIS TOOL ==========')
                 console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
                 console.log('[CHAT-DEBUG] File ID:', args.file_id)
+                console.log('[CHAT-DEBUG] Specification:', args.specification ?? '(none)')
                 console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
 
                 const analysisResult = await invokeAnalysisTool(
                   args.analysis_type,
                   args.file_id,
-                  assistantMessageId || undefined
+                  assistantMessageId || undefined,
+                  args.specification
                 )
 
                 console.log('[CHAT-DEBUG] Analysis result:', analysisResult.error ? 'ERROR' : 'SUCCESS')
@@ -336,21 +364,34 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 }
                 sendEvent(completeEvent)
 
-                // If analysis succeeded, update message metadata with results and chartData
-                if (analysisResult.data && assistantMessageId) {
-                  await updateMessageMetadata(assistantMessageId, {
+                // Store analysis metadata for later (will be saved with final message)
+                if (analysisResult.data) {
+                  analysisMetadata = {
                     results: analysisResult.data.results,
                     chartData: analysisResult.data.chartData,
                     analysisType: args.analysis_type,
                     fileId: args.file_id,
-                  }, supabase)
-                }
+                  }
+                  console.log('[CHAT-DEBUG] Analysis metadata stored for final save')
 
-                // Append tool result info to content for continuation
-                if (analysisResult.data) {
-                  fullContent += `\n\n[Resultado del análisis recibido. Instrucciones: ${analysisResult.data.instructions}]`
+                  // Clean and stream the instructions content to the user
+                  // Remove agent-only sections wrapped in <!-- AGENT_ONLY --> comments
+                  // This pattern works for any analysis type that follows this convention
+                  const cleanedInstructions = (analysisResult.data.instructions || '')
+                    .replace(/<!--\s*AGENT_ONLY\s*-->[\s\S]*?<!--\s*\/AGENT_ONLY\s*-->/g, '')
+                    .trim()
+
+                  if (cleanedInstructions) {
+                    // Stream the analysis content to the user
+                    sendEvent({ type: 'text', content: '\n\n' + cleanedInstructions })
+                    fullContent += '\n\n' + cleanedInstructions
+                    console.log('[CHAT-DEBUG] Streamed cleaned instructions to user, length:', cleanedInstructions.length)
+                  }
                 } else if (analysisResult.error) {
-                  fullContent += `\n\n[Error en el análisis: ${analysisResult.error.message}]`
+                  // Stream error message to user
+                  const errorMsg = `\n\nError en el análisis: ${analysisResult.error.message}`
+                  sendEvent({ type: 'text', content: errorMsg })
+                  fullContent += errorMsg
                 }
               }
             } else if (event.type === 'done') {
@@ -359,24 +400,30 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
           }
 
           // Save complete assistant message to database
-          // The instructions from Python contain pre-formatted results - strip wrapper and headers
+          // Clean any internal markers that shouldn't be shown to users
           let cleanContent = fullContent
-            // Remove opening bracket and label, keep the formatted content
-            .replace(/^\s*\[Resultado del análisis recibido\. Instrucciones:\s*/g, '')
-            // Remove closing bracket at the end
-            .replace(/\](\s*)$/g, '$1')
+            // Remove instruction wrapper (no ^ anchor - match anywhere in string)
+            .replace(/\[Resultado del análisis recibido\. Instrucciones:[^\]]*\]/g, '')
             // Remove error wrapper if present
-            .replace(/^\s*\[Error en el análisis:[^\]]*\]\s*/g, '')
-            // Remove instruction headers that are meant for AI, not user display
-            .replace(/^##\s*INSTRUCCIONES PARA EL AGENTE\s*/gi, '')
-            .replace(/^PRESENTAR LOS RESULTADOS EN ESTE ORDEN:\s*/gim, '')
+            .replace(/\[Error en el análisis:[^\]]*\]/g, '')
+            // Remove agent-only sections wrapped in HTML comments (scalable for all analysis types)
+            .replace(/<!--\s*AGENT_ONLY\s*-->[\s\S]*?<!--\s*\/AGENT_ONLY\s*-->/g, '')
             .trim()
 
           if (assistantMessageId) {
             // Update existing message with final content
             await updateMessageContent(assistantMessageId, cleanContent, supabase)
+            // Update metadata if we have analysis results
+            if (analysisMetadata) {
+              await updateMessageMetadata(assistantMessageId, analysisMetadata, supabase)
+            }
           } else {
-            await createMessage(conversationId, 'assistant', cleanContent, undefined, supabase)
+            // Create new message
+            const newMsgResult = await createMessage(conversationId, 'assistant', cleanContent, undefined, supabase)
+            // If we have analysis metadata and message was created, update it
+            if (analysisMetadata && newMsgResult.data) {
+              await updateMessageMetadata(newMsgResult.data.id, analysisMetadata, supabase)
+            }
           }
 
           // Update conversation timestamp for sorting

@@ -10,6 +10,7 @@ import {
   getConversation,
   deleteConversation,
   createConversation,
+  updateConversationTitle,
   type ConversationRow,
   type ConversationWithMessages,
 } from '@/lib/supabase/conversations'
@@ -178,10 +179,11 @@ export function useCreateConversation() {
       )
 
       // Create optimistic conversation (will be replaced by real one on success)
+      // Use null title so it shows the formatted date immediately
       const optimisticConversation: ConversationRow = {
         id: `temp-${Date.now()}`,
         user_id: user?.id || '',
-        title: title ?? 'Nueva conversacion',
+        title: title ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -214,7 +216,85 @@ export function useCreateConversation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() })
       // Navigate to the new conversation
       router.push(`/conversacion/${data.id}`)
-      toast.success(CONVERSATION_MESSAGES.CREATE_SUCCESS)
+    },
+  })
+}
+
+/**
+ * Hook to update a conversation title with optimistic updates
+ */
+export function useUpdateConversationTitle() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { success, error } = await updateConversationTitle(id, title)
+
+      if (error || !success) {
+        throw error || new Error('Failed to update conversation title')
+      }
+
+      return { id, title }
+    },
+
+    // Optimistic update
+    onMutate: async ({ id, title }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.conversations.lists() })
+      await queryClient.cancelQueries({ queryKey: queryKeys.conversations.detail(id) })
+
+      // Snapshot the previous values
+      const previousConversations = queryClient.getQueryData<ConversationRow[]>(
+        queryKeys.conversations.lists()
+      )
+      const previousConversation = queryClient.getQueryData<ConversationWithMessages>(
+        queryKeys.conversations.detail(id)
+      )
+
+      // Optimistically update the conversation in the list
+      if (previousConversations) {
+        queryClient.setQueryData<ConversationRow[]>(
+          queryKeys.conversations.lists(),
+          previousConversations.map((c) =>
+            c.id === id ? { ...c, title, updated_at: new Date().toISOString() } : c
+          )
+        )
+      }
+
+      // Optimistically update the conversation detail
+      if (previousConversation) {
+        queryClient.setQueryData<ConversationWithMessages>(
+          queryKeys.conversations.detail(id),
+          { ...previousConversation, title, updated_at: new Date().toISOString() }
+        )
+      }
+
+      // Return context with snapshots for rollback
+      return { previousConversations, previousConversation }
+    },
+
+    // Rollback on error
+    onError: (_error, { id }, context) => {
+      if (context?.previousConversations) {
+        queryClient.setQueryData(
+          queryKeys.conversations.lists(),
+          context.previousConversations
+        )
+      }
+      if (context?.previousConversation) {
+        queryClient.setQueryData(
+          queryKeys.conversations.detail(id),
+          context.previousConversation
+        )
+      }
+      toast.error(CONVERSATION_MESSAGES.UPDATE_TITLE_ERROR, { duration: TOAST_DURATIONS.ERROR })
+    },
+
+    onSuccess: ({ id }) => {
+      // Invalidate caches to get fresh data from server
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.lists() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.conversations.detail(id) })
+      toast.success(CONVERSATION_MESSAGES.UPDATE_TITLE_SUCCESS)
     },
   })
 }

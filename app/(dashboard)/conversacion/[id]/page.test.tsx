@@ -9,15 +9,17 @@ Element.prototype.scrollIntoView = vi.fn()
 
 // Mock the hooks
 const mockUseConversation = vi.fn()
+const mockUseUpdateConversationTitle = vi.fn()
 vi.mock('@/hooks/use-conversations', () => ({
   useConversation: (...args: unknown[]) => mockUseConversation(...args),
+  useUpdateConversationTitle: () => mockUseUpdateConversationTitle(),
 }))
 
 // Mock useMessages and useSendMessage for ChatContainer
-const mockUseMessages = vi.fn()
+const mockUseMessagesWithFiles = vi.fn()
 const mockUseSendMessage = vi.fn()
 vi.mock('@/hooks/use-messages', () => ({
-  useMessages: (...args: unknown[]) => mockUseMessages(...args),
+  useMessagesWithFiles: (...args: unknown[]) => mockUseMessagesWithFiles(...args),
   useSendMessage: (...args: unknown[]) => mockUseSendMessage(...args),
 }))
 
@@ -72,14 +74,22 @@ describe('ConversationDetailPage', () => {
     vi.clearAllMocks()
 
     // Default mock implementations for ChatContainer hooks
-    mockUseMessages.mockReturnValue({
-      data: [],
+    mockUseMessagesWithFiles.mockReturnValue({
+      messages: [],
+      files: [],
       isLoading: false,
       isError: false,
       error: null,
+      refetch: vi.fn(),
     })
 
     mockUseSendMessage.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    })
+
+    // Default mock for useUpdateConversationTitle
+    mockUseUpdateConversationTitle.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     })
@@ -161,7 +171,7 @@ describe('ConversationDetailPage', () => {
   })
 
   describe('Success state', () => {
-    it('shows conversation title', () => {
+    it('renders conversation detail container', () => {
       mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
       mockUseConversation.mockReturnValue({
         data: mockConversation,
@@ -172,10 +182,9 @@ describe('ConversationDetailPage', () => {
       render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('conversation-detail')).toBeInTheDocument()
-      expect(screen.getByText('Test Conversation')).toBeInTheDocument()
     })
 
-    it('shows "Nueva conversacion" when title is null', () => {
+    it('renders chat interface when conversation exists', () => {
       mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
       mockUseConversation.mockReturnValue({
         data: { ...mockConversation, title: null },
@@ -185,7 +194,8 @@ describe('ConversationDetailPage', () => {
 
       render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('Nueva conversación')).toBeInTheDocument()
+      // ChatContainer should be rendered (title is shown in sidebar, not on page)
+      expect(screen.getByTestId('conversation-detail')).toBeInTheDocument()
     })
 
     it('renders ChatContainer with conversation ID', () => {
@@ -198,8 +208,8 @@ describe('ConversationDetailPage', () => {
 
       render(<ConversationDetailPage />, { wrapper: createWrapper() })
 
-      // ChatContainer should call useMessages with the conversation ID
-      expect(mockUseMessages).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000')
+      // ChatContainer should call useMessagesWithFiles with the conversation ID
+      expect(mockUseMessagesWithFiles).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000')
     })
 
     it('renders chat input for sending messages', () => {
@@ -214,6 +224,33 @@ describe('ConversationDetailPage', () => {
 
       // ChatInput should be rendered
       expect(screen.getByPlaceholderText('Escribe tu mensaje...')).toBeInTheDocument()
+    })
+
+    it('renders ChatHeader with conversation title', () => {
+      mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
+      mockUseConversation.mockReturnValue({
+        data: mockConversation,
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
+
+      expect(screen.getByTestId('chat-header')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-header-title')).toHaveTextContent('Test Conversation')
+    })
+
+    it('renders ChatHeader with fallback title when conversation title is null', () => {
+      mockUseParams.mockReturnValue({ id: '123e4567-e89b-12d3-a456-426614174000' })
+      mockUseConversation.mockReturnValue({
+        data: { ...mockConversation, title: null },
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<ConversationDetailPage />, { wrapper: createWrapper() })
+
+      expect(screen.getByTestId('chat-header-title')).toHaveTextContent('Nueva conversacion')
     })
   })
 })

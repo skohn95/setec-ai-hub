@@ -17,7 +17,7 @@ const mockMutate = vi.fn()
 const mockSendMessage = vi.fn()
 
 vi.mock('@/hooks/use-messages', () => ({
-  useMessages: (...args: unknown[]) => mockUseMessages(...args),
+  useMessagesWithFiles: (...args: unknown[]) => mockUseMessages(...args),
 }))
 
 vi.mock('@/hooks/use-chat', () => ({
@@ -80,6 +80,7 @@ describe('ChatContainer', () => {
       sendMessage: mockSendMessage,
       streamingContent: '',
       isStreaming: false,
+      
       error: null,
       clearError: vi.fn(),
     })
@@ -196,7 +197,7 @@ describe('ChatContainer', () => {
       wrapper: createWrapper(),
     })
 
-    expect(screen.getByText(/inicia la conversacion/i)).toBeInTheDocument()
+    expect(screen.getByText(/en qué puedo ayudarte/i)).toBeInTheDocument()
   })
 
   it('passes conversationId to useMessages', () => {
@@ -221,6 +222,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: 'This is streaming content...',
         isStreaming: true,
+        
         error: null,
         clearError: vi.fn(),
       })
@@ -238,6 +240,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: 'Partial response',
         isStreaming: true,
+        
         error: null,
         clearError: vi.fn(),
       })
@@ -254,6 +257,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: '',
         isStreaming: false,
+        
         error: null,
         clearError: vi.fn(),
       })
@@ -287,6 +291,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: 'Streaming...',
         isStreaming: true,
+        
         error: null,
         clearError: vi.fn(),
       })
@@ -303,6 +308,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: 'Partial',
         isStreaming: false,
+        
         error: 'Something went wrong',
         clearError: vi.fn(),
       })
@@ -378,6 +384,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: '',
         isStreaming: false,
+        
         error: null,
         clearError: vi.fn(),
       })
@@ -395,6 +402,7 @@ describe('ChatContainer', () => {
         sendMessage: mockSendMessage,
         streamingContent: 'El ndc significa número de categorías distintas...',
         isStreaming: true,
+        
         error: null,
         clearError: vi.fn(),
       })

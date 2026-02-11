@@ -1,136 +1,49 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import ConfirmarPasswordPage from './page'
-
-// Mock Supabase client
-const mockGetSession = vi.fn()
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getSession: mockGetSession,
-    },
-  }),
-}))
 
 // Mock PasswordConfirmForm to avoid testing its internals
 vi.mock('@/components/auth', () => ({
-  PasswordConfirmForm: () => <div data-testid="password-confirm-form">PasswordConfirmForm</div>,
-  AuthHeader: ({ title }: { title?: string }) => (
-    <div data-testid="auth-header">
-      <h1>SETEC</h1>
-      {title && <h2>{title}</h2>}
-    </div>
+  PasswordConfirmForm: () => (
+    <div data-testid="password-confirm-form">PasswordConfirmForm</div>
   ),
 }))
 
 describe('ConfirmarPasswordPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Loading State', () => {
-    it('shows loading spinner while checking session', async () => {
-      mockGetSession.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 100))
-      )
-
+  describe('Layout', () => {
+    it('renders the page with correct structure', () => {
       render(<ConfirmarPasswordPage />)
 
-      // Should show loading spinner initially
-      const spinner = document.querySelector('.animate-spin')
-      expect(spinner).toBeInTheDocument()
+      // Check for logo
+      expect(screen.getByAltText('Setec AI Hub')).toBeInTheDocument()
+
+      // Check for welcome message
+      expect(
+        screen.getByText('Bienvenido a Setec AI Hub')
+      ).toBeInTheDocument()
+
+      // Check for card title
+      expect(screen.getByText('Restablecer contraseña')).toBeInTheDocument()
     })
 
-    it('shows auth header during loading', async () => {
-      mockGetSession.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), 100))
-      )
-
+    it('renders the PasswordConfirmForm component', () => {
       render(<ConfirmarPasswordPage />)
 
-      expect(screen.getByTestId('auth-header')).toBeInTheDocument()
-    })
-  })
-
-  describe('Valid Session', () => {
-    it('shows password confirm form when session is valid', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: { user: { id: '123' } } },
-      })
-
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('password-confirm-form')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('password-confirm-form')).toBeInTheDocument()
     })
 
-    it('shows page title "Nueva contraseña" when session is valid', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: { user: { id: '123' } } },
-      })
+    it('renders with centered layout', () => {
+      const { container } = render(<ConfirmarPasswordPage />)
 
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText('Nueva contraseña')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Invalid/Expired Session', () => {
-    it('shows error message when session is null', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      })
-
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('Este enlace ha expirado o no es válido. Solicita uno nuevo.')
-        ).toBeInTheDocument()
-      })
+      const mainContainer = container.querySelector('.min-h-screen')
+      expect(mainContainer).toHaveClass('flex', 'items-center', 'justify-center')
     })
 
-    it('shows link to request new reset email', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      })
+    it('renders card with correct width constraint', () => {
+      const { container } = render(<ConfirmarPasswordPage />)
 
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        const link = screen.getByText('Solicitar nuevo enlace')
-        expect(link).toHaveAttribute('href', '/recuperar-password')
-      })
-    })
-
-    it('shows error alert with proper role', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      })
-
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        const alert = screen.getByRole('alert')
-        expect(alert).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Session Check Error', () => {
-    it('shows error state when getSession throws', async () => {
-      mockGetSession.mockRejectedValue(new Error('Network error'))
-
-      render(<ConfirmarPasswordPage />)
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('Este enlace ha expirado o no es válido. Solicita uno nuevo.')
-        ).toBeInTheDocument()
-      })
+      const cardContainer = container.querySelector('.max-w-md')
+      expect(cardContainer).toBeInTheDocument()
     })
   })
 })

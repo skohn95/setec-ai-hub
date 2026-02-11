@@ -21,7 +21,7 @@ export function NewConversationButton({ onSuccess }: NewConversationButtonProps)
 
   return (
     <Button
-      className="w-full bg-setec-orange hover:bg-setec-orange/90 text-white font-medium"
+      className="w-full bg-setec-orange hover:bg-setec-orange/90 text-white font-medium cursor-pointer"
       onClick={handleClick}
       disabled={isPending}
       aria-label="Nueva conversacion"

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LogOut, Menu } from 'lucide-react'
+import Link from 'next/link'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -54,8 +55,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </Button>
 
-        {/* Setec Logo */}
-        <span className="text-xl font-bold text-setec-orange">SETEC</span>
+        {/* Setec Logo - clickable to go home */}
+        <Link href="/" className="text-xl font-bold text-setec-orange hover:opacity-80 transition-opacity cursor-pointer">
+          SETEC
+        </Link>
       </div>
 
       {/* Right side: User dropdown menu */}

@@ -280,7 +280,7 @@ class TestChartDataStructure:
         assert isinstance(output['chartData'], list)
 
     def test_chart_data_has_variation_breakdown(self):
-        """Test that chartData contains variation breakdown."""
+        """Test that chartData contains variation breakdown as static image."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
@@ -293,10 +293,11 @@ class TestChartDataStructure:
                 break
 
         assert variation_breakdown is not None
-        assert 'data' in variation_breakdown
+        # Static charts have 'image' key with base64 data URL
+        assert 'image' in variation_breakdown
 
     def test_variation_breakdown_structure(self):
-        """Test the structure of variation breakdown data."""
+        """Test the structure of variation breakdown static chart."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
@@ -309,23 +310,16 @@ class TestChartDataStructure:
                 break
 
         assert variation_breakdown is not None
-        data = variation_breakdown['data']
+        # Static charts return base64 PNG images
+        image = variation_breakdown['image']
 
-        # Should have entries for repeatability, reproducibility, part-to-part
-        sources = [d['source'] for d in data]
-        assert 'Repetibilidad' in sources
-        assert 'Reproducibilidad' in sources
-        assert 'Parte a Parte' in sources
-
-        # Each entry should have source, percentage, color
-        for entry in data:
-            assert 'source' in entry
-            assert 'percentage' in entry
-            assert 'color' in entry
-            assert isinstance(entry['percentage'], (int, float))
+        # Should be a valid data URL for PNG
+        assert image.startswith('data:image/png;base64,')
+        # Should have substantial content (not empty)
+        assert len(image) > 1000
 
     def test_chart_data_has_operator_comparison(self):
-        """Test that chartData contains operator comparison."""
+        """Test that chartData contains operator comparison as static image."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
@@ -338,10 +332,11 @@ class TestChartDataStructure:
                 break
 
         assert operator_comparison is not None
-        assert 'data' in operator_comparison
+        # Static charts have 'image' key with base64 data URL
+        assert 'image' in operator_comparison
 
     def test_operator_comparison_structure(self):
-        """Test the structure of operator comparison data."""
+        """Test the structure of operator comparison static chart."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
@@ -354,17 +349,13 @@ class TestChartDataStructure:
                 break
 
         assert operator_comparison is not None
-        data = operator_comparison['data']
+        # Static charts return base64 PNG images
+        image = operator_comparison['image']
 
-        # Should have one entry per operator
-        assert len(data) == 2  # A and B
-
-        for entry in data:
-            assert 'operator' in entry
-            assert 'mean' in entry
-            assert 'stdDev' in entry
-            assert isinstance(entry['mean'], (int, float))
-            assert isinstance(entry['stdDev'], (int, float))
+        # Should be a valid data URL for PNG
+        assert image.startswith('data:image/png;base64,')
+        # Should have substantial content (not empty)
+        assert len(image) > 1000
 
     def test_operator_stddev_not_nan_with_single_measurement(self):
         """Test that stdDev does not return NaN when operator has single measurement."""
@@ -377,6 +368,8 @@ class TestChartDataStructure:
             'repeatability_percent': 10.0,
             'reproducibility_percent': 15.0,
             'part_to_part_percent': 75.0,
+            'grr_percent': 25.0,
+            'classification': 'marginal',
         }
 
         df = pd.DataFrame({
@@ -385,7 +378,14 @@ class TestChartDataStructure:
             'M1': [10.0, 20.0],  # Single measurement per operator
         })
 
-        chart_data = format_chart_data(results, df, 'Operator', ['M1'])
+        # Create long_df for the test
+        long_df = pd.DataFrame({
+            'part': [1, 2],
+            'operator': ['A', 'B'],
+            'measurement': [10.0, 20.0],
+        })
+
+        chart_data = format_chart_data(results, df, 'Operator', 'Part', ['M1'], long_df)
 
         operator_comparison = None
         for item in chart_data:
@@ -721,13 +721,14 @@ class TestEnhancedInstructions:
     """Tests for enhanced instruction generation (Story 5.1)."""
 
     def test_instructions_contains_executive_summary_section(self):
-        """Test that instructions contain an executive summary section."""
+        """Test that instructions contain structured parts."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
         output, _ = analyze_msa(df)
 
-        assert 'RESUMEN EJECUTIVO' in output['instructions'] or 'Resumen Ejecutivo' in output['instructions']
+        # New format has three parts
+        assert 'PARTE 1' in output['instructions'] or 'ANÁLISIS TÉCNICO MSA' in output['instructions']
 
     def test_instructions_contains_detailed_results_section(self):
         """Test that instructions contain detailed results section."""
@@ -739,16 +740,17 @@ class TestEnhancedInstructions:
         assert 'RESULTADOS' in output['instructions'].upper()
 
     def test_instructions_contains_metric_explanation_section(self):
-        """Test that instructions explain what each metric measures."""
+        """Test that instructions include variance components and metrics."""
         from utils.msa_calculator import analyze_msa
 
         df = create_reference_dataset()
         output, _ = analyze_msa(df)
 
-        # Should explain repeatability
-        assert 'mismo operador' in output['instructions'].lower() or 'MISMO operador' in output['instructions']
-        # Should explain reproducibility
-        assert 'diferentes operadores' in output['instructions'].lower() or 'DIFERENTES operadores' in output['instructions']
+        # Should include variance components section
+        assert 'Componentes de Varianza' in output['instructions'] or 'varianza' in output['instructions'].lower()
+        # Should include repeatability and reproducibility metrics
+        assert 'Repetibilidad' in output['instructions'] or 'repetibilidad' in output['instructions'].lower()
+        assert 'Reproducibilidad' in output['instructions'] or 'reproducibilidad' in output['instructions'].lower()
 
     def test_instructions_contains_contextual_interpretation(self):
         """Test that instructions include contextual interpretation of results."""

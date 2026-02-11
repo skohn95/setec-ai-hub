@@ -18,15 +18,17 @@ export function formatDisplayDate(date: Date | string): string {
 }
 
 /**
- * Format time for display
- * Example: "14:30"
+ * Format time for display in 24-hour format
+ * Example: "14:30h"
  */
 export function formatDisplayTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleTimeString(LOCALE, {
+  const time = d.toLocaleTimeString(LOCALE, {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
+  return `${time}h`
 }
 
 /**

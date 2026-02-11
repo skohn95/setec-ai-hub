@@ -187,6 +187,36 @@ export function useStreamingChat(conversationId: string, userId?: string) {
       // Store file for potential retry
       pendingFileRef.current = file || null
 
+      // Optimistic update - show user message immediately (with or without file)
+      const hasContent = content.trim().length > 0
+      const hasFile = !!file
+
+      if (hasContent || hasFile) {
+        const optimisticUserMessage = {
+          id: `temp-user-${Date.now()}`,
+          conversation_id: conversationId,
+          role: 'user' as const,
+          content: hasContent ? content.trim() : '[Archivo adjunto]',
+          metadata: {},
+          created_at: new Date().toISOString(),
+          // Include file info for immediate display
+          files: hasFile ? [{
+            id: `temp-file-${Date.now()}`,
+            conversation_id: conversationId,
+            message_id: null,
+            original_name: file.name,
+            storage_path: '',
+            mime_type: file.type,
+            size_bytes: file.size,
+            created_at: new Date().toISOString(),
+          }] : [],
+        }
+        queryClient.setQueryData(
+          queryKeys.messages.list(conversationId),
+          (old: unknown[]) => [...(old || []), optimisticUserMessage]
+        )
+      }
+
       // Upload file first if provided
       let fileId: string | null = null
       if (file) {
@@ -290,6 +320,8 @@ export function useStreamingChat(conversationId: string, userId?: string) {
         setError(STREAMING_MESSAGES.CONNECTION_ERROR)
       } finally {
         setIsStreaming(false)
+        // Clear streaming content immediately - ChatMessage takes over from refetch
+        setStreamingContent('')
         // Always invalidate conversations to update timestamps
         queryClient.invalidateQueries({
           queryKey: queryKeys.conversations.all,

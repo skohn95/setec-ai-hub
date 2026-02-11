@@ -13,103 +13,105 @@ export const PRIVACY_PAGE = {
   /** Main header section */
   HEADER: {
     TITLE: 'Cómo Protegemos tus Datos',
-    INTRODUCTION: `En Setec AI Hub, la privacidad de tus datos es nuestra máxima prioridad.
-Hemos diseñado nuestra plataforma para que puedas analizar tus datos operativos
-con total confianza, sabiendo que tu información sensible nunca sale de nuestros servidores.`,
+    INTRODUCTION: `Setec AI Hub es una plataforma de análisis estadístico que ayuda a profesionales de Lean Six Sigma a realizar análisis de datos sin necesidad de software especializado. Los datos operacionales que subes a la plataforma nunca se envían a proveedores externos de inteligencia artificial. Tus datos crudos permanecen en nuestros servidores.`,
   },
 
-  /** Data flow visualization section */
-  DATA_FLOW: {
-    TITLE: 'Flujo de Datos',
-    SUBTITLE: '¿Qué datos van a dónde?',
-    ITEMS: [
-      {
-        icon: 'FileSpreadsheet',
-        component: 'Archivos Excel',
-        location: 'Supabase Storage',
-        data: 'Datos originales (cifrados AES-256)',
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
-        highlight: false,
-      },
-      {
-        icon: 'Server',
-        component: 'Procesamiento',
-        location: 'Servidor Setec',
-        data: 'Cálculos estadísticos temporales',
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
-        highlight: false,
-      },
-      {
-        icon: 'MessageSquare',
-        component: 'Asistente IA',
-        location: 'OpenAI API',
-        data: 'SOLO resultados agregados',
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50',
-        highlight: true,
-      },
+  /** How it works section */
+  HOW_IT_WORKS: {
+    TITLE: '¿Cómo Funciona?',
+    STEPS: [
+      'Subes un archivo Excel con tus datos de medición',
+      'Nuestro servidor procesa los datos y calcula los resultados estadísticos',
+      'Solo los resultados agregados (porcentajes, métricas, clasificaciones) se envían a la IA para generar explicaciones',
+      'Recibes los resultados con interpretación y recomendaciones',
     ],
   },
 
-  /** Detailed sections content */
-  SECTIONS: {
-    DATA_PROCESSING: {
-      title: '¿Qué datos se procesan?',
-      icon: 'FileSpreadsheet',
-      content: [
-        'Tus archivos Excel se almacenan de forma segura en Supabase Storage, un servicio de almacenamiento en la nube con certificación SOC 2.',
-        'El contenido de tus archivos (valores de celdas, mediciones originales) NUNCA se envía a OpenAI ni a ningún servicio de inteligencia artificial externo.',
-        'Tus datos originales permanecen exclusivamente en nuestros servidores seguros.',
+  /** What data is collected */
+  DATA_COLLECTED: {
+    TITLE: '¿Qué Datos se Recopilan?',
+    ITEMS: [
+      { type: 'Credenciales de acceso', example: 'Email, contraseña', stored: true, encrypted: true },
+      { type: 'Archivos Excel subidos', example: 'Datos de medición MSA', stored: true, encrypted: true },
+      { type: 'Historial de conversaciones', example: 'Preguntas y respuestas', stored: true, encrypted: false },
+      { type: 'Resultados de análisis', example: 'Métricas calculadas', stored: true, encrypted: false },
+    ],
+  },
+
+  /** What AI sees and doesn't see */
+  AI_VISIBILITY: {
+    TITLE: '¿Qué Ve la Inteligencia Artificial?',
+    DOES_NOT_SEE: {
+      TITLE: 'Lo que la IA NO recibe',
+      ITEMS: [
+        'Archivos Excel originales',
+        'Datos crudos de mediciones',
+        'Valores individuales de tu proceso',
+        'Información identificable de tu empresa o productos',
       ],
     },
-    FILE_PROTECTION: {
-      title: '¿Cómo se protegen tus archivos?',
-      icon: 'Lock',
-      content: [
-        'Cifrado AES-256 en reposo: Tus archivos se almacenan cifrados.',
-        'Cifrado HTTPS en tránsito: Toda la comunicación está protegida con TLS.',
-        'Supabase cuenta con certificación SOC 2 Type II, garantizando los más altos estándares de seguridad.',
-        'Cumplimiento GDPR: Nuestro manejo de datos sigue las normativas europeas de protección de datos.',
-        'Acceso restringido: Solo tú puedes acceder a tus archivos.',
+    DOES_SEE: {
+      TITLE: 'Lo que la IA SÍ recibe',
+      ITEMS: [
+        'Resultados estadísticos agregados (ej: "variación del sistema: 18.2%")',
+        'Clasificaciones (ej: "categoría marginal")',
+        'Tu conversación con el asistente (preguntas de seguimiento)',
       ],
     },
-    AI_VISIBILITY: {
-      title: '¿Qué ve el asistente de IA?',
-      icon: 'MessageSquare',
-      content: [
-        'El asistente de IA SOLO recibe resultados estadísticos agregados:',
-        '• Porcentajes de R&R y variación',
-        '• Clasificaciones (Aceptable, Marginal, Inaceptable)',
-        '• Métricas calculadas sin datos identificables',
-        'NUNCA ve: valores individuales de mediciones, nombres de operadores reales, ni contenido de celdas originales.',
-      ],
-    },
-    CONVERSATION_STORAGE: {
-      title: 'Almacenamiento de conversaciones',
-      icon: 'Database',
-      content: [
-        'Tus conversaciones se almacenan en Supabase PostgreSQL, una base de datos segura y confiable.',
-        'Cada conversación está asociada exclusivamente a tu cuenta de usuario.',
-        'Aplicamos las mismas políticas de cifrado y acceso restringido que a tus archivos.',
-      ],
-    },
+    NOTE: 'Nuestro proveedor de inteligencia artificial no utiliza tus datos para entrenar sus modelos.',
+  },
+
+  /** Security measures */
+  SECURITY: {
+    TITLE: 'Medidas de Seguridad',
+    ITEMS: [
+      { measure: 'Cifrado en tránsito', detail: 'TLS 1.2+ (HTTPS)' },
+      { measure: 'Cifrado en reposo', detail: 'AES-256 para todos los datos almacenados' },
+      { measure: 'Autenticación segura', detail: 'Hash seguro de contraseñas' },
+      { measure: 'Aislamiento de datos', detail: 'Cada usuario solo puede acceder a sus propios datos' },
+    ],
+  },
+
+  /** Data retention */
+  RETENTION: {
+    TITLE: 'Retención de Datos',
+    ITEMS: [
+      { data: 'Conversaciones', period: 'Indefinido (hasta eliminación por usuario)' },
+      { data: 'Archivos subidos', period: 'Indefinido (hasta eliminación por usuario)' },
+      { data: 'Credenciales', period: 'Mientras la cuenta esté activa' },
+    ],
+    DELETE_NOTE: 'Puedes solicitar la eliminación completa de tu cuenta y todos los datos asociados contactando a Setec.',
+  },
+
+  /** FAQ */
+  FAQ: {
+    TITLE: 'Preguntas Frecuentes',
+    ITEMS: [
+      {
+        question: '¿Mis competidores podrían ver mis datos?',
+        answer: 'No. Cada usuario está completamente aislado. No hay forma de que un usuario acceda a datos de otro.',
+      },
+      {
+        question: '¿La IA podría usar mis datos para entrenar sus modelos?',
+        answer: 'No. Nuestro proveedor de inteligencia artificial no utiliza tus datos para entrenar sus modelos.',
+      },
+      {
+        question: '¿Puedo obtener una copia de mis datos?',
+        answer: 'Sí. Puedes solicitar una exportación completa de tus conversaciones y archivos contactando a Setec.',
+      },
+      {
+        question: '¿Cumplen con las normativas europeas de protección de datos (RGPD)?',
+        answer: 'La arquitectura de la plataforma está diseñada para facilitar el cumplimiento con el Reglamento General de Protección de Datos. Contacta a Setec para discutir requisitos específicos de tu organización.',
+      },
+    ],
   },
 
   /** Contact section */
   CONTACT: {
     TITLE: '¿Tienes preguntas sobre privacidad?',
     CONTENT:
-      'Si tienes dudas sobre cómo manejamos tus datos o deseas ejercer tus derechos de privacidad, no dudes en contactarnos.',
-    EMAIL: 'privacidad@setec.com.mx',
-    REASSURANCE:
-      'Nos comprometemos a responder todas tus consultas sobre privacidad en un plazo máximo de 48 horas.',
-  },
-
-  /** Navigation */
-  NAVIGATION: {
-    BACK_TO_DASHBOARD: 'Volver al Dashboard',
+      'Para preguntas sobre privacidad y manejo de datos, contáctanos.',
+    EMAIL: 'setec@setec.com.ar',
   },
 } as const
 
@@ -117,7 +119,7 @@ con total confianza, sabiendo que tu información sensible nunca sale de nuestro
 export const PRIVACY_HIGHLIGHTS = {
   NEVER_SENT_TO_AI:
     'Tus datos originales nunca salen de nuestros servidores',
-  AI_ONLY_SEES_AGGREGATES: 'El asistente de IA solo ve resultados agregados',
+  AI_ONLY_SEES_AGGREGATES: 'La IA solo ve resultados agregados, nunca tus datos crudos',
   ALL_DATA_ENCRYPTED:
     'Toda la información se cifra tanto en tránsito como en reposo',
 } as const

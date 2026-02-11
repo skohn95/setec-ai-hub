@@ -1,21 +1,30 @@
 'use client'
 
-import { User, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { GaugeRRChart, VariationChart } from '@/components/charts'
+  GaugeRRChart,
+  VariationChart,
+  RChartByOperator,
+  XBarChartByOperator,
+  MeasurementsByPart,
+  MeasurementsByOperator,
+  InteractionPlot,
+  StaticChartDisplay,
+} from '@/components/charts'
 import FileAttachmentCard from './FileAttachmentCard'
-import ResultsDisplay from './ResultsDisplay'
 import type { MessageRowWithFiles } from '@/lib/supabase/messages'
-import type { ChartDataItem, MSAResults, VariationChartDataItem } from '@/types/api'
+import type {
+  ChartDataItem,
+  StaticChartDataItem,
+  VariationChartDataItem,
+  RChartData,
+  XBarChartData,
+  MeasurementsByPartItem,
+  MeasurementsByOperatorItem,
+  InteractionPlotData,
+} from '@/types/api'
 
 interface ChatMessageProps {
   message: MessageRowWithFiles
@@ -31,24 +40,17 @@ function formatTime(dateString: string): string {
   return date.toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
 }
 
-
-/**
- * Check if message content contains analysis results
- * Only requires 'results' - chartData is separately checked for GaugeRRChart
- */
-function hasAnalysisResults(metadata: Record<string, unknown> | null): boolean {
-  return Boolean(metadata?.results)
-}
 
 /**
  * ChatMessage component displays a single message in the chat
  * User messages are aligned right with primary background
  * Assistant messages are aligned left with muted background
  * Renders file attachments above the message content
- * Shows analysis results with ResultsDisplay component when available
+ * Shows charts when available
  */
 export default function ChatMessage({
   message,
@@ -61,10 +63,15 @@ export default function ChatMessage({
   // Extract chartData from metadata for assistant messages
   // metadata is typed as Json which can be various types - need to cast for access
   const metadata = message.metadata as Record<string, unknown> | null
-  const chartData =
-    !isUser && metadata?.chartData
-      ? (metadata.chartData as ChartDataItem[])
-      : null
+  const rawChartData = !isUser && metadata?.chartData
+    ? (metadata.chartData as (ChartDataItem | StaticChartDataItem)[])
+    : null
+
+  // Detect if charts are static (server-rendered images) or dynamic (JSON data)
+  // Static charts have 'image' property, dynamic charts have 'data' property
+  const isStaticCharts = rawChartData && rawChartData.length > 0 && 'image' in rawChartData[0]
+  const staticChartData = isStaticCharts ? (rawChartData as StaticChartDataItem[]) : null
+  const chartData = !isStaticCharts ? (rawChartData as ChartDataItem[] | null) : null
 
   // Extract operator comparison data and transform to variation data for VariationChart
   const variationData: VariationChartDataItem[] | null = (() => {
@@ -80,11 +87,36 @@ export default function ChatMessage({
     )
   })()
 
-  // Extract analysis results from metadata for ResultsDisplay
-  const analysisResults =
-    !isUser && hasAnalysisResults(metadata)
-      ? (metadata?.results as MSAResults)
-      : null
+  // Extract new chart data types
+  const rChartData: RChartData | null = (() => {
+    if (!chartData) return null
+    const chart = chartData.find((d) => d.type === 'rChartByOperator')
+    return chart ? (chart.data as unknown as RChartData) : null
+  })()
+
+  const xBarChartData: XBarChartData | null = (() => {
+    if (!chartData) return null
+    const chart = chartData.find((d) => d.type === 'xBarChartByOperator')
+    return chart ? (chart.data as unknown as XBarChartData) : null
+  })()
+
+  const measurementsByPartData: MeasurementsByPartItem[] | null = (() => {
+    if (!chartData) return null
+    const chart = chartData.find((d) => d.type === 'measurementsByPart')
+    return chart ? (chart.data as MeasurementsByPartItem[]) : null
+  })()
+
+  const measurementsByOperatorData: MeasurementsByOperatorItem[] | null = (() => {
+    if (!chartData) return null
+    const chart = chartData.find((d) => d.type === 'measurementsByOperator')
+    return chart ? (chart.data as MeasurementsByOperatorItem[]) : null
+  })()
+
+  const interactionPlotData: InteractionPlotData | null = (() => {
+    if (!chartData) return null
+    const chart = chartData.find((d) => d.type === 'interactionPlot')
+    return chart ? (chart.data as unknown as InteractionPlotData) : null
+  })()
 
   const handleDownload = (fileId: string) => {
     onDownload?.(fileId)
@@ -94,25 +126,15 @@ export default function ChatMessage({
     <div
       data-testid="chat-message"
       role="listitem"
-      className={cn(
-        'flex items-end gap-2 px-4 py-2',
-        isUser ? 'justify-end' : 'justify-start'
-      )}
+      className="group px-4 md:px-8 py-2"
     >
-      {/* Avatar for assistant messages (shown on left) */}
-      {!isUser && (
-        <Avatar size="sm" data-testid="bot-avatar">
-          <AvatarFallback className="bg-muted">
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </AvatarFallback>
-        </Avatar>
-      )}
-
-      {/* Message content container with file attachments */}
-      <div className={cn('flex flex-col gap-2 max-w-[70%]', isUser && 'items-end')}>
-        {/* File attachments - displayed above message content */}
+      <div className={cn(
+        'flex flex-col',
+        isUser ? 'items-end' : 'items-start'
+      )}>
+        {/* File attachments */}
         {hasFiles && (
-          <div data-testid="file-attachments" className="flex flex-col gap-2">
+          <div data-testid="file-attachments" className="flex flex-col gap-2 mb-2">
             {message.files!.map((file) => (
               <FileAttachmentCard
                 key={file.id}
@@ -124,66 +146,59 @@ export default function ChatMessage({
           </div>
         )}
 
-        {/* Message bubble with tooltip for timestamp */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              data-testid="message-bubble"
-              className={cn(
-                'rounded-2xl px-4 py-2 text-sm',
-                isUser
-                  ? 'bg-primary text-primary-foreground rounded-br-md'
-                  : 'bg-muted text-foreground rounded-bl-md'
-              )}
-            >
-              {/* Message content - supports multiline and full markdown for assistant */}
-              {isUser ? (
-                <p className="whitespace-pre-wrap break-words">{message.content}</p>
-              ) : (
-                <div className="markdown-content break-words">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side={isUser ? 'left' : 'right'}>
-            {formatTime(message.created_at)}
-          </TooltipContent>
-        </Tooltip>
+        {/* Message bubble - hide if only file attachment placeholder */}
+        {!(hasFiles && message.content === '[Archivo adjunto]') && (
+          <div
+            data-testid="message-bubble"
+            className={cn(
+              'inline-block text-sm leading-relaxed max-w-[85%] md:max-w-[70%]',
+              isUser
+                ? 'bg-setec-orange text-white px-4 py-3 rounded-2xl rounded-tr-md shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl rounded-tl-md shadow-sm'
+            )}
+          >
+            {isUser ? (
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            ) : (
+              <div className="markdown-content break-words prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-2 prose-li:my-0">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Analysis Results Container - grouped for clear visual delineation */}
-        {(analysisResults || (chartData && chartData.length > 0)) && (
-          <Card data-testid="analysis-results-container" className="mt-2 border-l-4 border-orange-500">
-            <CardContent className="p-4 space-y-4">
-              {/* Results summary card */}
-              {analysisResults && (
-                <ResultsDisplay
-                  data-testid="analysis-results-display"
-                  results={analysisResults}
-                  className="w-full"
-                />
-              )}
+        {/* Timestamp below bubble */}
+        <span className="text-[10px] text-gray-400 mt-1 px-1">
+          {formatTime(message.created_at)}
+        </span>
 
-              {/* Chart display for assistant messages with analysis results */}
-              {chartData && chartData.length > 0 && <GaugeRRChart data={chartData} />}
-
-              {/* Variation chart showing per-operator variation (derived from operatorComparison data) */}
-              {variationData && variationData.length > 0 && <VariationChart data={variationData} />}
-            </CardContent>
-          </Card>
+        {/* Charts Container */}
+        {(staticChartData || (chartData && chartData.length > 0)) && (
+          <div
+            data-testid="analysis-results-container"
+            className="mt-4 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded-2xl rounded-tl-md shadow-sm max-w-[85%] md:max-w-[70%] space-y-4"
+          >
+            {/* Static charts (server-rendered images) */}
+            {staticChartData && staticChartData.length > 0 && (
+              <StaticChartDisplay charts={staticChartData} />
+            )}
+            {/* Dynamic charts (client-side Recharts) - backwards compatibility */}
+            {chartData && chartData.length > 0 && <GaugeRRChart data={chartData} />}
+            {variationData && variationData.length > 0 && <VariationChart data={variationData} />}
+            {rChartData && <RChartByOperator data={rChartData} />}
+            {xBarChartData && <XBarChartByOperator data={xBarChartData} />}
+            {measurementsByPartData && measurementsByPartData.length > 0 && (
+              <MeasurementsByPart data={measurementsByPartData} />
+            )}
+            {measurementsByOperatorData && measurementsByOperatorData.length > 0 && (
+              <MeasurementsByOperator data={measurementsByOperatorData} />
+            )}
+            {interactionPlotData && <InteractionPlot data={interactionPlotData} />}
+          </div>
         )}
       </div>
-
-      {/* Avatar for user messages (shown on right) */}
-      {isUser && (
-        <Avatar size="sm" data-testid="user-avatar">
-          <AvatarFallback className="bg-primary">
-            <User className="h-4 w-4 text-primary-foreground" />
-          </AvatarFallback>
-        </Avatar>
-      )}
     </div>
   )
 }

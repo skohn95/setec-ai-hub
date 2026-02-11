@@ -23,29 +23,23 @@ describe('PasswordResetForm', () => {
       render(<PasswordResetForm />)
 
       // Check for email input
-      expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument()
+      expect(screen.getByLabelText('Correo Electrónico')).toBeInTheDocument()
 
       // Check for submit button
       expect(
-        screen.getByRole('button', { name: 'Enviar enlace' })
+        screen.getByRole('button', { name: 'Restablecer contraseña' })
       ).toBeInTheDocument()
 
       // Check for back to login link
       expect(
-        screen.getByText('Volver a iniciar sesión')
+        screen.getByText('Volver al inicio de sesión')
       ).toBeInTheDocument()
-    })
-
-    it('renders email field with correct placeholder', () => {
-      render(<PasswordResetForm />)
-
-      expect(screen.getByPlaceholderText('usuario@ejemplo.com')).toBeInTheDocument()
     })
 
     it('renders submit button with Setec orange styling', () => {
       render(<PasswordResetForm />)
 
-      const button = screen.getByRole('button', { name: 'Enviar enlace' })
+      const button = screen.getByRole('button', { name: 'Restablecer contraseña' })
       expect(button).toHaveClass('bg-setec-orange')
     })
   })
@@ -55,7 +49,7 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -69,10 +63,10 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'invalid-email')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -86,7 +80,7 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -102,15 +96,15 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(
-          screen.getByText('Te enviamos un enlace para restablecer tu contraseña. Revisa tu correo.')
+          screen.getByText(/Si existe una cuenta con este correo/i)
         ).toBeInTheDocument()
       })
     })
@@ -121,17 +115,17 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
           'test@example.com',
           expect.objectContaining({
-            redirectTo: expect.stringContaining('/api/auth/callback?type=recovery'),
+            redirectTo: expect.stringContaining('/recuperar-password/confirmar'),
           })
         )
       })
@@ -146,15 +140,15 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'nonexistent@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(
-          screen.getByText('Te enviamos un enlace para restablecer tu contraseña. Revisa tu correo.')
+          screen.getByText(/Si existe una cuenta con este correo/i)
         ).toBeInTheDocument()
       })
     })
@@ -165,15 +159,15 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(
-          screen.getByText('Te enviamos un enlace para restablecer tu contraseña. Revisa tu correo.')
+          screen.getByText(/Si existe una cuenta con este correo/i)
         ).toBeInTheDocument()
       })
     })
@@ -184,17 +178,17 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         // Form should be hidden
-        expect(screen.queryByLabelText('Correo electrónico')).not.toBeInTheDocument()
+        expect(screen.queryByLabelText('Correo Electrónico')).not.toBeInTheDocument()
         // Back to login link should be visible
-        expect(screen.getByText('Volver a iniciar sesión')).toBeInTheDocument()
+        expect(screen.getByText('Volver al inicio de sesión')).toBeInTheDocument()
       })
     })
   })
@@ -208,10 +202,10 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       // Button should show loading state
@@ -228,10 +222,10 @@ describe('PasswordResetForm', () => {
       const user = userEvent.setup()
       render(<PasswordResetForm />)
 
-      const emailInput = screen.getByLabelText('Correo electrónico')
+      const emailInput = screen.getByLabelText('Correo Electrónico')
       await user.type(emailInput, 'test@example.com')
 
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -245,65 +239,21 @@ describe('PasswordResetForm', () => {
     it('has proper label associations via htmlFor', () => {
       render(<PasswordResetForm />)
 
-      expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument()
-    })
-
-    it('sets aria-invalid on input when error exists', async () => {
-      const user = userEvent.setup()
-      render(<PasswordResetForm />)
-
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        const emailInput = screen.getByLabelText('Correo electrónico')
-        expect(emailInput).toHaveAttribute('aria-invalid', 'true')
-      })
+      expect(screen.getByLabelText('Correo Electrónico')).toBeInTheDocument()
     })
 
     it('has proper form structure with noValidate', () => {
       render(<PasswordResetForm />)
 
-      const form = screen.getByRole('button', { name: 'Enviar enlace' }).closest('form')
+      const form = screen.getByRole('button', { name: 'Restablecer contraseña' }).closest('form')
       expect(form).toHaveAttribute('noValidate')
-    })
-
-    it('links error message to input via aria-describedby', async () => {
-      const user = userEvent.setup()
-      render(<PasswordResetForm />)
-
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        const emailInput = screen.getByLabelText('Correo electrónico')
-        expect(emailInput).toHaveAttribute('aria-describedby', 'email-error')
-      })
     })
 
     it('back to login link uses Next.js Link for SPA navigation', () => {
       render(<PasswordResetForm />)
 
-      const link = screen.getByText('Volver a iniciar sesión')
+      const link = screen.getByText('Volver al inicio de sesión')
       expect(link).toHaveAttribute('href', '/login')
-    })
-
-    it('success message has proper role for screen readers', async () => {
-      mockResetPasswordForEmail.mockResolvedValue({ data: {}, error: null })
-
-      const user = userEvent.setup()
-      render(<PasswordResetForm />)
-
-      const emailInput = screen.getByLabelText('Correo electrónico')
-      await user.type(emailInput, 'test@example.com')
-
-      const submitButton = screen.getByRole('button', { name: 'Enviar enlace' })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        const successMessage = screen.getByRole('status')
-        expect(successMessage).toBeInTheDocument()
-      })
     })
   })
 })

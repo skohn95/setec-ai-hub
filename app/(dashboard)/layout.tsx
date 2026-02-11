@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/lib/providers/AuthProvider'
-import { Header, Sidebar } from '@/components/layout'
-import { ErrorBoundary, Footer } from '@/components/common'
+import { Sidebar } from '@/components/layout'
+import { ErrorBoundary } from '@/components/common'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Menu } from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -13,28 +16,36 @@ interface DashboardLayoutProps {
 
 function LoadingSkeleton() {
   return (
-    <div data-testid="loading-skeleton" className="min-h-screen bg-background">
-      {/* Header skeleton */}
-      <div className="h-14 border-b bg-white flex items-center justify-between px-4">
-        <Skeleton className="h-6 w-24" />
-        <Skeleton className="h-8 w-8 rounded-full" />
+    <div data-testid="loading-skeleton" className="min-h-screen bg-background flex">
+      {/* Sidebar skeleton - dark charcoal per UX spec, fixed position */}
+      <div className="hidden md:flex fixed inset-y-0 left-0 w-[280px] border-r border-sidebar-border bg-sidebar flex-col z-50">
+        {/* Logo area */}
+        <div className="p-4 flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded bg-sidebar-hover" />
+          <Skeleton className="h-5 w-16 bg-sidebar-hover" />
+        </div>
+        {/* Button */}
+        <div className="px-4 pb-4">
+          <Skeleton className="h-10 w-full bg-sidebar-hover" />
+        </div>
+        {/* Nav */}
+        <div className="p-2">
+          <Skeleton className="h-8 w-full bg-sidebar-hover" />
+        </div>
+        {/* Conversations */}
+        <div className="flex-1 p-2 space-y-2">
+          <Skeleton className="h-6 w-full bg-sidebar-hover" />
+          <Skeleton className="h-6 w-full bg-sidebar-hover" />
+          <Skeleton className="h-6 w-full bg-sidebar-hover" />
+        </div>
+        {/* User menu */}
+        <div className="p-2 border-t border-sidebar-border">
+          <Skeleton className="h-12 w-full bg-sidebar-hover" />
+        </div>
       </div>
-      {/* Content skeleton */}
-      <div className="flex">
-        {/* Sidebar skeleton */}
-        <div className="hidden md:block w-[280px] border-r bg-[#F5F5F5] p-4 space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <div className="pt-4 space-y-2">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-          </div>
-        </div>
-        {/* Main content skeleton */}
-        <div className="flex-1 p-6">
-          <Skeleton className="h-32 w-full" />
-        </div>
+      {/* Main content skeleton - offset for fixed sidebar */}
+      <div className="flex-1 p-6 md:ml-[280px]">
+        <Skeleton className="h-32 w-full" />
       </div>
     </div>
   )
@@ -65,13 +76,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div
       data-testid="dashboard-layout"
-      className="min-h-screen bg-background grid grid-rows-[56px_1fr] grid-cols-1 md:grid-cols-[280px_1fr]"
+      className="h-screen bg-background flex overflow-hidden"
     >
-      {/* Header spans full width */}
-      <div className="col-span-1 md:col-span-2">
-        <Header onMenuClick={handleMenuClick} />
-      </div>
-
       {/* Sidebar - handles both desktop (always visible) and mobile (toggleable) */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -79,13 +85,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         selectedConversationId={selectedConversationId}
       />
 
-      {/* Main content area with footer - wrapped in nested ErrorBoundary for dashboard isolation */}
-      <main className="overflow-auto p-4 md:p-6 flex flex-col min-h-0">
-        <ErrorBoundary>
-          <div className="flex-1">{children}</div>
-        </ErrorBoundary>
-        <Footer />
-      </main>
+      {/* Main content area - offset for fixed sidebar on desktop */}
+      <div className="flex-1 flex flex-col h-full md:ml-[280px]">
+        {/* Mobile header with menu button */}
+        <div className="md:hidden h-14 border-b border-sidebar-border bg-sidebar flex items-center px-4 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleMenuClick}
+            aria-label="Abrir menú"
+            className="text-sidebar-foreground hover:bg-sidebar-hover"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <Image
+            src="/setec-logo.png"
+            alt="Setec AI Hub"
+            width={140}
+            height={32}
+            className="ml-3 h-8 w-auto"
+          />
+        </div>
+
+        {/* Main content */}
+        <main className="flex-1 flex flex-col min-h-0">
+          <ErrorBoundary>
+            <div className="flex-1 flex flex-col min-h-0">{children}</div>
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
   )
 }

@@ -120,20 +120,12 @@ export async function getConversation(id: string): Promise<ConversationResult> {
 }
 
 /**
- * Generate default conversation title with timestamp
+ * Generate default conversation title
+ * Returns null so the UI can display "Nueva conversación" and
+ * the title can be updated later based on the first message
  */
-function generateDefaultTitle(): string {
-  const now = new Date()
-  const date = now.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const time = now.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `Nueva conversacion - ${date} ${time}`
+function generateDefaultTitle(): null {
+  return null
 }
 
 /**
@@ -222,6 +214,41 @@ export async function updateConversationTimestamp(
 
   if (error) {
     logSupabaseError(error, 'updateConversationTimestamp', 'conversations')
+    return { success: false, error: new Error(error.message) }
+  }
+
+  return { success: true, error: null }
+}
+
+/**
+ * Update conversation title
+ * Used to set a meaningful title after the first message
+ * @param id - UUID of the conversation
+ * @param title - New title for the conversation
+ * @param client - Optional authenticated Supabase client (required for Edge runtime)
+ */
+export async function updateConversationTitle(
+  id: string,
+  title: string,
+  client?: TypedSupabaseClient
+): Promise<UpdateTimestampResult> {
+  // Validate conversation ID format
+  if (!id || !isValidUUID(id)) {
+    return { success: false, error: new Error('Invalid conversation ID format') }
+  }
+
+  // Truncate title if too long
+  const truncatedTitle = title.length > 100 ? title.slice(0, 97) + '...' : title
+
+  const supabase = client ?? createClient()
+
+  const { error } = await supabase
+    .from('conversations')
+    .update({ title: truncatedTitle })
+    .eq('id', id)
+
+  if (error) {
+    logSupabaseError(error, 'updateConversationTitle', 'conversations')
     return { success: false, error: new Error(error.message) }
   }
 

@@ -101,9 +101,14 @@ export async function uploadFile(
 /**
  * Generate a signed URL for downloading a file from storage
  * URLs expire after 1 hour
+ * @param storagePath - Path to file in storage
+ * @param client - Optional authenticated Supabase client (required for server-side)
  */
-export async function getFileDownloadUrl(storagePath: string): Promise<string | null> {
-  const supabase = createClient()
+export async function getFileDownloadUrl(
+  storagePath: string,
+  client?: TypedSupabaseClient
+): Promise<string | null> {
+  const supabase = client ?? createClient()
 
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)

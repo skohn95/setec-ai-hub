@@ -16,11 +16,11 @@ from typing import Any
 # =============================================================================
 
 VALIDATION_MESSAGES = {
-    'MISSING_COLUMNS': 'Faltan columnas requeridas: {columns}. La plantilla debe incluir Part, Operator, y columnas de medición.',
+    'MISSING_COLUMNS': 'Faltan columnas requeridas: {columns}. La plantilla debe incluir Pieza, Operador, y columnas de medición (Medición 1, Medición 2, etc.).',
     'NON_NUMERIC_CELL': 'La celda {column}{row} contiene \'{value}\' pero se esperaba un número.',
     'NON_NUMERIC_SUMMARY': 'Las siguientes celdas contienen datos no numéricos:',
     'EMPTY_CELLS': 'Celdas vacías encontradas en: {cells}. Todos los campos de medición son requeridos.',
-    'INSUFFICIENT_PARTS': 'Datos insuficientes: Se requieren al menos 2 partes diferentes (encontradas: {count}).',
+    'INSUFFICIENT_PARTS': 'Datos insuficientes: Se requieren al menos 2 piezas diferentes (encontradas: {count}).',
     'INSUFFICIENT_OPERATORS': 'Datos insuficientes: Se requieren al menos 2 operadores diferentes (encontrados: {count}).',
     'INSUFFICIENT_MEASUREMENTS': 'Datos insuficientes: Se requieren al menos 2 columnas de medición (encontradas: {count}).',
 }
@@ -107,12 +107,12 @@ def find_required_columns(df: pd.DataFrame) -> tuple[dict[str, Any], list[str]]:
     # Find Part column
     part_col = _find_column_by_patterns(df, PART_PATTERNS)
     if part_col is None:
-        missing.append('Part')
+        missing.append('Pieza')
 
     # Find Operator column
     operator_col = _find_column_by_patterns(df, OPERATOR_PATTERNS)
     if operator_col is None:
-        missing.append('Operator')
+        missing.append('Operador')
 
     # Find Measurement columns
     measurement_cols = detect_measurement_columns(df)

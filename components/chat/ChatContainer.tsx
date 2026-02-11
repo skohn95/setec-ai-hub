@@ -1,13 +1,12 @@
 'use client'
 
 import { useRef, useEffect, useCallback, useState, DragEvent } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, MessageCircle, Upload, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/providers/AuthProvider'
-import { useMessages } from '@/hooks/use-messages'
+import { useMessagesWithFiles } from '@/hooks/use-messages'
 import { useSendChatMessage, useStreamingChat } from '@/hooks/use-chat'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { CHAT_MESSAGES } from '@/constants/messages'
 import { FILE_UPLOAD_LABELS } from '@/constants/files'
 import { validateExcelFile } from '@/lib/utils/file-validation'
@@ -30,17 +29,18 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
   const [inputValue, setInputValue] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [droppedFile, setDroppedFile] = useState<File | null>(null)
+  const [downloadingFileIds, setDownloadingFileIds] = useState<string[]>([])
 
   // Get current user for file uploads
   const { user } = useAuth()
 
-  // Fetch messages for this conversation
+  // Fetch messages for this conversation (with file attachments)
   const {
     data: messages,
     isLoading,
     isError,
     refetch,
-  } = useMessages(conversationId)
+  } = useMessagesWithFiles(conversationId)
 
   // Send message mutation via API (includes filter agent) - kept for isPending state
   const { isPending: isSending } = useSendChatMessage(conversationId)
@@ -54,16 +54,43 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
     clearError,
   } = useStreamingChat(conversationId, user?.id)
 
+  // Track previous message count to detect new messages
+  const prevMessageCountRef = useRef(0)
+  const wasStreamingRef = useRef(false)
+
   /**
    * Scroll to bottom of messages list
    */
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToBottom = useCallback((instant = false) => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: instant ? 'instant' : 'smooth'
+    })
   }, [])
 
-  // Scroll to bottom on initial load, when messages change, or during streaming
+  // Scroll to bottom when new content arrives, but not during stream->complete transition
   useEffect(() => {
-    if ((messages && messages.length > 0) || streamingContent) {
+    const messageCount = messages?.length ?? 0
+    const isNewMessage = messageCount > prevMessageCountRef.current
+    const justFinishedStreaming = wasStreamingRef.current && !streamingContent
+
+    // Update refs for next render
+    prevMessageCountRef.current = messageCount
+    wasStreamingRef.current = !!streamingContent
+
+    // During streaming: scroll smoothly as content grows
+    if (streamingContent) {
+      scrollToBottom()
+      return
+    }
+
+    // When streaming just finished and new message appeared: instant scroll (no animation)
+    if (justFinishedStreaming && isNewMessage) {
+      scrollToBottom(true)
+      return
+    }
+
+    // New message added (not from streaming): scroll smoothly
+    if (isNewMessage) {
       scrollToBottom()
     }
   }, [messages, streamingContent, scrollToBottom])
@@ -83,6 +110,22 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
     },
     [sendStreamingMessage, clearError]
   )
+
+  /**
+   * Handle file download
+   * Opens the file download API in a new tab
+   */
+  const handleDownload = useCallback((fileId: string) => {
+    setDownloadingFileIds((prev) => [...prev, fileId])
+
+    // Open download URL in new tab (API redirects to signed URL)
+    window.open(`/api/files/${fileId}`, '_blank')
+
+    // Remove from downloading state after a short delay
+    setTimeout(() => {
+      setDownloadingFileIds((prev) => prev.filter((id) => id !== fileId))
+    }, 1000)
+  }, [])
 
   /**
    * Drag and drop event handlers
@@ -168,7 +211,7 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
 
   return (
     <div
-      className="relative flex flex-col h-full"
+      className="relative flex flex-col h-full min-h-0"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -188,26 +231,47 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
         </div>
       )}
 
-      {/* Messages area */}
-      <ScrollArea className="flex-1">
-        <div role="list" className="py-4">
-          {isEmpty && !isStreaming ? (
-            <div className="flex items-center justify-center h-full min-h-[200px] p-4">
-              <p className="text-muted-foreground text-center">
-                {CHAT_MESSAGES.EMPTY_CONVERSATION}
-              </p>
+      {/* Messages area - extra bottom padding when file attached */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div role="list" className="py-4 px-4 md:px-6">
+          {isEmpty && !streamingContent ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-8">
+              <div className="text-center space-y-5 max-w-md">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-setec-orange to-orange-500 text-white shadow-lg shadow-orange-500/20 mb-2">
+                  <MessageCircle className="h-8 w-8" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                  ¿En qué puedo ayudarte?
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Pregúntame sobre análisis estadístico, sube un archivo Excel para obtener resultados, o consulta dudas sobre metodología y control de calidad.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 text-xs text-gray-400">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-setec-orange" />
+                    <span>Interpretación con IA</span>
+                  </div>
+                  <span className="hidden sm:inline">•</span>
+                  <div className="flex items-center gap-1.5">
+                    <Upload className="h-3.5 w-3.5 text-setec-orange" />
+                    <span>Arrastra archivos Excel</span>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <>
               {messages?.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  onDownload={handleDownload}
+                  downloadingFileIds={downloadingFileIds}
+                />
               ))}
               {/* Show streaming message while receiving response */}
-              {isStreaming && (
-                <StreamingMessage
-                  content={streamingContent}
-                  isComplete={false}
-                />
+              {streamingContent && (
+                <StreamingMessage content={streamingContent} />
               )}
             </>
           )}
@@ -220,7 +284,7 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
           {/* Invisible element for scrolling to bottom */}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input area */}
       <ChatInput

@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { MessageSquare, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useConversation } from '@/hooks/use-conversations'
-import { ChatContainer } from '@/components/chat'
+import { useConversation, useUpdateConversationTitle } from '@/hooks/use-conversations'
+import { ChatContainer, ChatHeader } from '@/components/chat'
 
 // UUID v4 regex pattern for validation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -21,6 +21,7 @@ export default function ConversationDetailPage() {
   const { data: conversation, isLoading, isError } = useConversation(
     isValidUUID ? conversationId : null
   )
+  const updateTitleMutation = useUpdateConversationTitle()
 
   // Invalid ID format
   if (!isValidUUID) {
@@ -94,15 +95,12 @@ export default function ConversationDetailPage() {
 
   // Success - show chat interface
   return (
-    <div className="flex flex-col h-full" data-testid="conversation-detail">
-      {/* Header with conversation title */}
-      <div className="border-b p-4">
-        <h1 className="text-lg font-semibold text-setec-charcoal truncate">
-          {conversation.title || 'Nueva conversación'}
-        </h1>
-      </div>
-
-      {/* Chat container with messages and input */}
+    <div className="flex flex-col h-full min-h-0" data-testid="conversation-detail">
+      <ChatHeader
+        conversation={conversation}
+        onTitleUpdate={(title) => updateTitleMutation.mutate({ id: conversationId, title })}
+        isUpdating={updateTitleMutation.isPending}
+      />
       <ChatContainer conversationId={conversationId} />
     </div>
   )

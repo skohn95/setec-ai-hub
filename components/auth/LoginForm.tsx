@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Loader2 } from 'lucide-react'
 
 // Zod validation schema with Spanish error messages
@@ -18,187 +23,120 @@ const loginSchema = z.object({
   password: z.string().min(1, 'La contraseña es requerida.'),
 })
 
-interface FormErrors {
-  email?: string
-  password?: string
-  auth?: string
-}
+type LoginFormData = z.infer<typeof loginSchema>
 
 /**
- * Sanitize redirectTo URL to prevent open redirect vulnerabilities.
- * Only allows paths that start with / and don't start with // (protocol-relative URLs).
+ * Login form component with email/password authentication
+ * Integrates with Supabase Auth and provides Spanish language UI
  */
-function sanitizeRedirectUrl(redirectTo: string | null): string {
-  if (!redirectTo) return '/'
-  // Only allow paths starting with single / (not //)
-  if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
-    // Additional check: must not contain protocol indicators
-    if (!redirectTo.includes('://')) {
-      return redirectTo
-    }
-  }
-  return '/'
-}
-
 export function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  // Memoize Supabase client to avoid recreation on each render
+  // Memoize Supabase client
   const supabase = useMemo(() => createClient(), [])
 
-  const validateForm = (): boolean => {
-    const result = loginSchema.safeParse({ email, password })
-    if (!result.success) {
-      const fieldErrors: FormErrors = {}
-      // Zod v4 uses .issues instead of .errors
-      const issues = result.error.issues || []
-      issues.forEach((err) => {
-        const field = err.path[0] as keyof FormErrors
-        if (field && !fieldErrors[field]) {
-          fieldErrors[field] = err.message
-        }
-      })
-      setErrors(fieldErrors)
-      return false
+  // Check for messages in URL params
+  useEffect(() => {
+    const message = searchParams.get('message')
+
+    if (message === 'password-reset-success') {
+      setSuccessMessage(
+        'Contraseña restablecida exitosamente. Por favor, inicia sesión con tu nueva contraseña.'
+      )
     }
-    setErrors({})
-    return true
-  }
+  }, [searchParams])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  })
 
-    if (!validateForm()) {
-      return
-    }
-
-    // Rate limiting: Add delay after multiple failed attempts
-    if (failedAttempts >= 3) {
-      const delayMs = Math.min(failedAttempts * 1000, 5000) // Max 5 second delay
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-    }
-
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
-    setErrors({})
+    setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
       })
 
-      if (error) {
-        setFailedAttempts((prev) => prev + 1)
-        setErrors({
-          auth: 'Credenciales incorrectas. Verifica tu email y contraseña.',
-        })
-        setPassword('') // Clear password on error
+      if (authError) {
+        setError('Correo electrónico o contraseña incorrectos')
+        setValue('password', '')
+        setIsLoading(false)
         return
       }
 
-      // Successful login - reset failed attempts and redirect
-      setFailedAttempts(0)
-      const redirectTo = sanitizeRedirectUrl(searchParams.get('redirectTo'))
-      router.push(redirectTo)
-      router.refresh()
+      // Redirect to homepage on success
+      window.location.href = '/'
     } catch {
-      setFailedAttempts((prev) => prev + 1)
-      setErrors({
-        auth: 'Error al iniciar sesión. Por favor, intenta nuevamente.',
-      })
-      setPassword('')
-    } finally {
+      setError('Ocurrió un error. Por favor, intenta nuevamente.')
+      setValue('password', '')
       setIsLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-      {/* Authentication error alert */}
-      {errors.auth && (
-        <div
-          role="alert"
-          aria-live="polite"
-          className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md"
-        >
-          {errors.auth}
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      {/* Success Message */}
+      {successMessage && (
+        <Alert className="bg-success/10 text-success border-success/20">
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Email field */}
+      {/* Email Input */}
       <div className="space-y-2">
-        <label
-          htmlFor="email"
-          className="text-sm font-medium text-setec-charcoal"
-        >
-          Correo electrónico
-        </label>
+        <Label htmlFor="email">Correo Electrónico</Label>
         <Input
           id="email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="usuario@ejemplo.com"
-          aria-describedby={errors.email ? 'email-error' : undefined}
-          aria-invalid={!!errors.email}
+          {...register('email')}
+          className={`h-12 ${errors.email ? 'border-destructive' : ''}`}
           disabled={isLoading}
-          className="h-11"
+          autoFocus
           autoComplete="email"
         />
         {errors.email && (
-          <p
-            id="email-error"
-            role="alert"
-            className="text-sm text-destructive"
-          >
-            {errors.email}
-          </p>
+          <p className="text-sm text-destructive">{errors.email.message}</p>
         )}
       </div>
 
-      {/* Password field */}
+      {/* Password Input */}
       <div className="space-y-2">
-        <label
-          htmlFor="password"
-          className="text-sm font-medium text-setec-charcoal"
-        >
-          Contraseña
-        </label>
-        <Input
+        <Label htmlFor="password">Contraseña</Label>
+        <PasswordInput
           id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          aria-describedby={errors.password ? 'password-error' : undefined}
-          aria-invalid={!!errors.password}
+          {...register('password')}
+          className={`h-12 ${errors.password ? 'border-destructive' : ''}`}
           disabled={isLoading}
-          className="h-11"
           autoComplete="current-password"
         />
         {errors.password && (
-          <p
-            id="password-error"
-            role="alert"
-            className="text-sm text-destructive"
-          >
-            {errors.password}
-          </p>
+          <p className="text-sm text-destructive">{errors.password.message}</p>
         )}
       </div>
 
-      {/* Submit button */}
+      {/* Error Message */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Submit Button */}
       <Button
         type="submit"
+        className="w-full h-12 mt-6 bg-setec-orange hover:bg-setec-orange-hover cursor-pointer transition-colors"
         disabled={isLoading}
-        className="w-full h-11 bg-setec-orange hover:bg-setec-orange/90 text-white font-medium"
-        aria-label="Iniciar sesión"
       >
         {isLoading ? (
           <>
@@ -206,18 +144,15 @@ export function LoginForm() {
             Iniciando sesión...
           </>
         ) : (
-          'Iniciar sesión'
+          'Iniciar Sesión'
         )}
       </Button>
 
-      {/* Forgot password link */}
+      {/* Password Reset Link */}
       <div className="text-center">
-        <Link
-          href="/recuperar-password"
-          className="text-sm text-muted-foreground hover:text-setec-orange transition-colors"
-        >
-          ¿Olvidaste tu contraseña?
-        </Link>
+        <Button variant="link" asChild className="text-sm min-h-[44px]">
+          <Link href="/recuperar-password">¿Olvidaste tu contraseña?</Link>
+        </Button>
       </div>
     </form>
   )

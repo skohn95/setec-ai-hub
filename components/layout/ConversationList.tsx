@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { useConversations, useDeleteConversation } from '@/hooks/use-conversations'
+import { useConversations, useDeleteConversation, useUpdateConversationTitle } from '@/hooks/use-conversations'
 import { ConversationItem } from './ConversationItem'
 import { DeleteConversationDialog } from './DeleteConversationDialog'
 
@@ -21,7 +20,12 @@ export function ConversationList({ selectedConversationId, onNavigate }: Convers
   const router = useRouter()
   const { data: conversations, isLoading, isError, refetch } = useConversations()
   const deleteConversationMutation = useDeleteConversation()
+  const updateTitleMutation = useUpdateConversationTitle()
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null)
+
+  const handleTitleUpdate = (id: string, title: string) => {
+    updateTitleMutation.mutate({ id, title })
+  }
 
   const handleDeleteRequest = (id: string) => {
     setConversationToDelete(id)
@@ -47,34 +51,35 @@ export function ConversationList({ selectedConversationId, onNavigate }: Convers
     setConversationToDelete(null)
   }
 
-  // Loading state
+  // Loading state - adapted for dark sidebar
   if (isLoading) {
     return (
       <div className="space-y-2 p-2" data-testid="conversations-loading">
         {[...Array(SKELETON_COUNT)].map((_, i) => (
           <div key={i} className="px-3 py-2">
-            <Skeleton className="h-4 w-3/4 mb-2" />
-            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-4 w-3/4 mb-2 bg-sidebar-hover" />
+            <Skeleton className="h-3 w-1/2 bg-sidebar-hover" />
           </div>
         ))}
       </div>
     )
   }
 
-  // Error state
+  // Error state - adapted for dark sidebar
   if (isError) {
     return (
       <div
         className="flex flex-col items-center justify-center p-4 text-center"
         data-testid="conversations-error"
       >
-        <p className="text-sm text-destructive mb-2">
+        <p className="text-sm text-red-400 mb-2">
           Error al cargar conversaciones
         </p>
         <Button
           variant="outline"
           size="sm"
           onClick={() => refetch()}
+          className="border-sidebar-border text-sidebar-foreground hover:bg-sidebar-hover"
         >
           Reintentar
         </Button>
@@ -82,18 +87,18 @@ export function ConversationList({ selectedConversationId, onNavigate }: Convers
     )
   }
 
-  // Empty state
+  // Empty state - adapted for dark sidebar
   if (!conversations || conversations.length === 0) {
     return (
       <div
         className="flex flex-col items-center justify-center p-6 text-center"
         data-testid="conversations-empty"
       >
-        <MessageSquare className="h-8 w-8 text-muted-foreground mb-3" />
-        <p className="text-sm font-medium text-setec-charcoal mb-1">
+        <MessageSquare className="h-8 w-8 text-sidebar-muted mb-3" />
+        <p className="text-sm font-medium text-sidebar-foreground mb-1">
           No tienes conversaciones aún
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-sidebar-muted">
           Inicia una nueva para comenzar tu análisis
         </p>
       </div>
@@ -103,7 +108,7 @@ export function ConversationList({ selectedConversationId, onNavigate }: Convers
   // Conversations list
   return (
     <>
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto overscroll-contain sidebar-scrollbar">
         <div className="space-y-1 p-2" data-testid="conversations-list">
           {conversations.map((conversation) => (
             <ConversationItem
@@ -111,11 +116,13 @@ export function ConversationList({ selectedConversationId, onNavigate }: Convers
               conversation={conversation}
               isSelected={selectedConversationId === conversation.id}
               onDelete={handleDeleteRequest}
+              onTitleUpdate={handleTitleUpdate}
+              isUpdating={updateTitleMutation.isPending}
               onNavigate={onNavigate}
             />
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       <DeleteConversationDialog
         open={!!conversationToDelete}

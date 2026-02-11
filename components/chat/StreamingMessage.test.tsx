@@ -4,45 +4,34 @@ import StreamingMessage from './StreamingMessage'
 
 describe('StreamingMessage', () => {
   it('renders content text', () => {
-    render(<StreamingMessage content="Hello, I am responding..." isComplete={false} />)
+    render(<StreamingMessage content="Hello, I am responding..." />)
     expect(screen.getByText(/Hello, I am responding/)).toBeInTheDocument()
   })
 
-  it('shows typing cursor when not complete', () => {
-    const { container } = render(
-      <StreamingMessage content="Streaming..." isComplete={false} />
-    )
-    // Cursor should be present - either as text or as a styled element
+  it('shows typing cursor', () => {
+    const { container } = render(<StreamingMessage content="Streaming..." />)
     const cursor = container.querySelector('[data-testid="typing-cursor"]')
     expect(cursor).toBeInTheDocument()
   })
 
-  it('hides typing cursor when complete', () => {
-    const { container } = render(
-      <StreamingMessage content="Done!" isComplete={true} />
-    )
-    const cursor = container.querySelector('[data-testid="typing-cursor"]')
-    expect(cursor).not.toBeInTheDocument()
-  })
-
   it('renders with assistant message styling', () => {
-    const { container } = render(
-      <StreamingMessage content="Response" isComplete={false} />
-    )
-    // Should have the assistant styling class
+    const { container } = render(<StreamingMessage content="Response" />)
     const messageEl = container.firstChild
     expect(messageEl).toBeInTheDocument()
   })
 
-  it('renders empty content when no text yet', () => {
-    render(<StreamingMessage content="" isComplete={false} />)
-    // Should still render cursor for empty content
+  it('renders cursor even with empty content', () => {
+    render(<StreamingMessage content="" />)
     expect(screen.getByTestId('typing-cursor')).toBeInTheDocument()
   })
 
   it('preserves whitespace in content', () => {
-    render(<StreamingMessage content="Line 1\nLine 2" isComplete={false} />)
-    // Content should be rendered (whitespace handling depends on CSS)
+    render(<StreamingMessage content="Line 1\nLine 2" />)
     expect(screen.getByText(/Line 1/)).toBeInTheDocument()
+  })
+
+  it('shows streaming indicator', () => {
+    render(<StreamingMessage content="Loading..." />)
+    expect(screen.getByText('Analizando...')).toBeInTheDocument()
   })
 })

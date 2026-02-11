@@ -4,17 +4,6 @@ import ChatMessage from './ChatMessage'
 import type { MessageRowWithFiles } from '@/lib/supabase/messages'
 import type { MessageFile } from '@/types/chat'
 
-// Mock the tooltip component to simplify testing
-vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
-    <span data-testid="tooltip-trigger">{children}</span>
-  ),
-  TooltipContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-content">{children}</div>
-  ),
-}))
-
 // Mock react-markdown to simplify testing - renders content with basic markdown parsing
 vi.mock('react-markdown', () => ({
   default: ({ children }: { children: string }) => {
@@ -76,49 +65,49 @@ describe('ChatMessage', () => {
     expect(screen.getByText('Test assistant message')).toBeInTheDocument()
   })
 
-  it('renders user messages on the right side', () => {
+  it('renders user messages aligned to the right', () => {
     const message = createMessage({ role: 'user' })
-    render(<ChatMessage message={message} />)
+    const { container } = render(<ChatMessage message={message} />)
 
-    const container = screen.getByTestId('chat-message')
-    expect(container).toHaveClass('justify-end')
+    // User messages are aligned to items-end
+    const flexContainer = container.querySelector('.items-end')
+    expect(flexContainer).toBeInTheDocument()
   })
 
-  it('renders assistant messages on the left side', () => {
+  it('renders assistant messages aligned to the left', () => {
     const message = createMessage({ role: 'assistant' })
-    render(<ChatMessage message={message} />)
+    const { container } = render(<ChatMessage message={message} />)
 
-    const container = screen.getByTestId('chat-message')
-    expect(container).toHaveClass('justify-start')
+    // Assistant messages are aligned to items-start
+    const flexContainer = container.querySelector('.items-start')
+    expect(flexContainer).toBeInTheDocument()
   })
 
-  it('renders user avatar for user messages', () => {
+  it('renders user message bubble aligned right', () => {
     const message = createMessage({ role: 'user' })
-    render(<ChatMessage message={message} />)
+    const { container } = render(<ChatMessage message={message} />)
 
-    // User icon should be present
-    const avatar = screen.getByTestId('user-avatar')
-    expect(avatar).toBeInTheDocument()
+    // User messages should be aligned to the end (right)
+    const flexContainer = container.querySelector('.items-end')
+    expect(flexContainer).toBeInTheDocument()
   })
 
-  it('renders bot avatar for assistant messages', () => {
+  it('renders assistant message bubble aligned left', () => {
     const message = createMessage({ role: 'assistant' })
-    render(<ChatMessage message={message} />)
+    const { container } = render(<ChatMessage message={message} />)
 
-    // Bot icon should be present
-    const avatar = screen.getByTestId('bot-avatar')
-    expect(avatar).toBeInTheDocument()
+    // Assistant messages should be aligned to the start (left)
+    const flexContainer = container.querySelector('.items-start')
+    expect(flexContainer).toBeInTheDocument()
   })
 
-  it('shows timestamp on hover', () => {
+  it('shows timestamp inline', () => {
     const message = createMessage({ created_at: '2026-02-04T10:30:00Z' })
     render(<ChatMessage message={message} />)
 
-    // Timestamp should be in a tooltip
-    const tooltipContent = screen.getByTestId('tooltip-content')
-    expect(tooltipContent).toBeInTheDocument()
-    // The tooltip should contain a formatted time
-    expect(tooltipContent.textContent).toBeTruthy()
+    // Timestamp should be displayed inline (HH:MM format, timezone-agnostic check)
+    // Using regex to match time format since actual value depends on local timezone
+    expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeInTheDocument()
   })
 
   it('applies user message styling', () => {
@@ -126,8 +115,8 @@ describe('ChatMessage', () => {
     render(<ChatMessage message={message} />)
 
     const bubble = screen.getByTestId('message-bubble')
-    // User messages should have primary background color
-    expect(bubble).toHaveClass('bg-primary')
+    // User messages should have setec-orange background color
+    expect(bubble).toHaveClass('bg-setec-orange')
   })
 
   it('applies assistant message styling', () => {
@@ -135,8 +124,8 @@ describe('ChatMessage', () => {
     render(<ChatMessage message={message} />)
 
     const bubble = screen.getByTestId('message-bubble')
-    // Assistant messages should have muted background
-    expect(bubble).toHaveClass('bg-muted')
+    // Assistant messages should have gray background bubble
+    expect(bubble).toHaveClass('bg-gray-100')
   })
 
   it('renders with correct accessibility attributes', () => {
@@ -426,31 +415,19 @@ describe('ChatMessage', () => {
       },
     ]
 
-    it('renders ResultsDisplay when results are present in metadata', () => {
+    it('renders charts when chartData is present in metadata', () => {
       const message = createMessage({
         role: 'assistant',
         content: 'Análisis completado',
-        metadata: { results: mockResults, chartData: mockChartData },
+        metadata: { chartData: mockChartData },
       })
 
       render(<ChatMessage message={message} />)
 
-      expect(screen.getByTestId('results-display')).toBeInTheDocument()
+      expect(screen.getByTestId('analysis-results-container')).toBeInTheDocument()
     })
 
-    it('shows classification badge in ResultsDisplay', () => {
-      const message = createMessage({
-        role: 'assistant',
-        content: 'Análisis completado',
-        metadata: { results: mockResults, chartData: mockChartData },
-      })
-
-      render(<ChatMessage message={message} />)
-
-      expect(screen.getByTestId('classification-badge')).toBeInTheDocument()
-    })
-
-    it('does not render ResultsDisplay without results', () => {
+    it('does not render charts container without chartData', () => {
       const message = createMessage({
         role: 'assistant',
         content: 'Normal message',
@@ -459,21 +436,7 @@ describe('ChatMessage', () => {
 
       render(<ChatMessage message={message} />)
 
-      expect(screen.queryByTestId('results-display')).not.toBeInTheDocument()
-    })
-
-    it('renders ResultsDisplay even without chartData (results only)', () => {
-      const message = createMessage({
-        role: 'assistant',
-        content: 'Análisis completado',
-        metadata: { results: mockResults },
-      })
-
-      render(<ChatMessage message={message} />)
-
-      expect(screen.getByTestId('results-display')).toBeInTheDocument()
-      // Should not render chart when chartData is missing
-      expect(screen.queryByTestId('variation-breakdown-chart')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('analysis-results-container')).not.toBeInTheDocument()
     })
   })
 
@@ -488,7 +451,7 @@ describe('ChatMessage', () => {
       },
     ]
 
-    it('wraps analysis results in a container with visual delineation', () => {
+    it('wraps analysis results in a container matching message bubble style', () => {
       const message = createMessage({
         role: 'assistant',
         content: 'Análisis completado',
@@ -499,8 +462,8 @@ describe('ChatMessage', () => {
 
       const container = screen.getByTestId('analysis-results-container')
       expect(container).toBeInTheDocument()
-      expect(container).toHaveClass('border-l-4')
-      expect(container).toHaveClass('border-orange-500')
+      expect(container).toHaveClass('bg-gray-100')
+      expect(container).toHaveClass('rounded-2xl')
     })
 
     it('renders analysis container after message bubble', () => {
@@ -534,27 +497,16 @@ describe('ChatMessage', () => {
       expect(screen.queryByTestId('analysis-results-container')).not.toBeInTheDocument()
     })
 
-    it('groups results and charts within the same container', () => {
-      const mockResults = {
-        grr_percent: 18.0,
-        repeatability_percent: 12.5,
-        reproducibility_percent: 5.5,
-        part_to_part_percent: 82.0,
-        ndc: 4,
-        classification: 'marginal' as const,
-      }
-
+    it('renders charts within the container', () => {
       const message = createMessage({
         role: 'assistant',
         content: 'Análisis completado',
-        metadata: { results: mockResults, chartData: mockChartData },
+        metadata: { chartData: mockChartData },
       })
 
       render(<ChatMessage message={message} />)
 
       const container = screen.getByTestId('analysis-results-container')
-      // Both results and chart should be within the container
-      expect(container.querySelector('[data-testid="results-display"]')).toBeInTheDocument()
       expect(container.querySelector('[data-testid="variation-breakdown-chart"]')).toBeInTheDocument()
     })
   })

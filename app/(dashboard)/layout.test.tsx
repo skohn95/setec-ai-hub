@@ -10,13 +10,11 @@ vi.mock('@/lib/providers/AuthProvider', () => ({
 
 // Mock the layout components
 vi.mock('@/components/layout', () => ({
-  Header: () => <header data-testid="header">Header</header>,
   Sidebar: () => <aside data-testid="sidebar">Sidebar</aside>,
 }))
 
 // Mock the common components
 vi.mock('@/components/common', () => ({
-  Footer: () => <footer data-testid="footer">Footer</footer>,
   // ErrorBoundary passes children through for testing
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
@@ -41,7 +39,7 @@ describe('DashboardLayout', () => {
     expect(screen.queryByText('Dashboard Content')).not.toBeInTheDocument()
   })
 
-  it('renders layout with header, sidebar and main content when authenticated', () => {
+  it('renders layout with sidebar and main content when authenticated', () => {
     mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
 
     render(
@@ -50,15 +48,13 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     )
 
-    // Should show header
-    expect(screen.getByTestId('header')).toBeInTheDocument()
     // Should show sidebar
     expect(screen.getByTestId('sidebar')).toBeInTheDocument()
     // Should show main content
     expect(screen.getByText('Dashboard Content')).toBeInTheDocument()
   })
 
-  it('has proper CSS grid layout structure', () => {
+  it('has proper CSS flex layout structure', () => {
     mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
 
     const { container } = render(
@@ -67,12 +63,12 @@ describe('DashboardLayout', () => {
       </DashboardLayout>
     )
 
-    // Main container should have grid layout classes
+    // Main container should have flex layout classes with proper scroll containment
     const layout = container.querySelector('[data-testid="dashboard-layout"]')
     expect(layout).toBeInTheDocument()
-    expect(layout).toHaveClass('grid')
-    expect(layout).toHaveClass('grid-rows-[56px_1fr]')
-    expect(layout).toHaveClass('md:grid-cols-[280px_1fr]')
+    expect(layout).toHaveClass('flex')
+    expect(layout).toHaveClass('h-screen')
+    expect(layout).toHaveClass('overflow-hidden')
   })
 
   it('shows loading skeleton when user is null after loading (defense-in-depth)', () => {
@@ -90,20 +86,7 @@ describe('DashboardLayout', () => {
     expect(screen.queryByText('Dashboard Content')).not.toBeInTheDocument()
   })
 
-  it('renders footer in main content area when authenticated', () => {
-    mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
-
-    render(
-      <DashboardLayout>
-        <div>Dashboard Content</div>
-      </DashboardLayout>
-    )
-
-    // Should show footer
-    expect(screen.getByTestId('footer')).toBeInTheDocument()
-  })
-
-  it('positions footer below main content', () => {
+  it('positions main content within flex container', () => {
     mockUseAuth.mockReturnValue({ user: { id: '1', email: 'test@example.com' }, loading: false })
 
     const { container } = render(
@@ -116,9 +99,5 @@ describe('DashboardLayout', () => {
     const main = container.querySelector('main')
     expect(main).toHaveClass('flex')
     expect(main).toHaveClass('flex-col')
-
-    // Footer should be inside main
-    const footer = screen.getByTestId('footer')
-    expect(main).toContainElement(footer)
   })
 })

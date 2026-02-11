@@ -27,7 +27,7 @@ export default function FilePreview({ file, onRemove }: FilePreviewProps) {
         variant="ghost"
         size="icon"
         onClick={onRemove}
-        className="shrink-0 h-6 w-6 text-muted-foreground hover:text-destructive"
+        className="shrink-0 h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer transition-colors"
         aria-label={FILE_UPLOAD_LABELS.REMOVE_FILE}
       >
         <X className="h-4 w-4" />

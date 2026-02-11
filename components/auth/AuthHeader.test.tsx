@@ -3,18 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { AuthHeader } from './AuthHeader'
 
 describe('AuthHeader', () => {
-  it('renders Setec logo', () => {
+  it('renders Setec logo and AI Hub text', () => {
     render(<AuthHeader />)
 
-    expect(screen.getByText('SETEC')).toBeInTheDocument()
+    // Logo is an Image with alt="Setec"
+    expect(screen.getByAltText('Setec')).toBeInTheDocument()
     expect(screen.getByText('AI Hub')).toBeInTheDocument()
   })
 
-  it('renders with Setec orange color', () => {
+  it('renders welcome message', () => {
     render(<AuthHeader />)
 
-    const logo = screen.getByText('SETEC')
-    expect(logo).toHaveClass('text-setec-orange')
+    expect(screen.getByText('Bienvenido a Setec AI Hub')).toBeInTheDocument()
   })
 
   it('renders title when provided', () => {

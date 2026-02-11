@@ -70,6 +70,13 @@ export default function ChatInput({
     adjustHeight()
   }, [value, adjustHeight])
 
+  // Auto-focus textarea on mount
+  useEffect(() => {
+    if (!disabled) {
+      textareaRef.current?.focus()
+    }
+  }, [])
+
   /**
    * Handle form submission
    * Note: Parent component is responsible for clearing input on success
@@ -89,10 +96,15 @@ export default function ChatInput({
 
   /**
    * Handle file selection from FileUpload component
+   * Focuses the textarea after file selection for immediate typing
    */
   const handleFileSelect = useCallback((file: File | null) => {
     setSelectedFile(file)
     onFileChange?.(file)
+    // Focus the textarea after file selection
+    if (file) {
+      textareaRef.current?.focus()
+    }
   }, [onFileChange])
 
   /**
@@ -111,60 +123,66 @@ export default function ChatInput({
   )
 
   return (
-    <div className="p-4 border-t bg-background">
-      {/* File preview when file is selected */}
-      {selectedFile && (
-        <FilePreview file={selectedFile} onRemove={() => {
-          setSelectedFile(null)
-          onFileChange?.(null)
-        }} />
-      )}
+    <div className="shrink-0 border-t bg-white dark:bg-gray-900">
+      <div className="py-4 px-8 md:px-12">
+        {/* File preview when file is selected */}
+        {selectedFile && (
+          <FilePreview file={selectedFile} onRemove={() => {
+            setSelectedFile(null)
+            onFileChange?.(null)
+          }} />
+        )}
 
-      {/* Input row with file upload, textarea, and send button */}
-      <div className="flex items-end gap-2">
-        <PrivacyTooltip>
-          <FileUpload
-            onFileSelect={handleFileSelect}
-            selectedFile={selectedFile}
+        {/* Input container */}
+        <div className="relative flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-2 shadow-sm transition-all focus-within:border-setec-orange focus-within:ring-2 focus-within:ring-setec-orange/20">
+          {/* File upload button */}
+          <PrivacyTooltip>
+            <FileUpload
+              onFileSelect={handleFileSelect}
+              selectedFile={selectedFile}
+              disabled={isDisabled}
+            />
+          </PrivacyTooltip>
+
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={CHAT_MESSAGES.PLACEHOLDER}
             disabled={isDisabled}
+            rows={1}
+            className={cn(
+              'flex-1 resize-none bg-transparent px-2 py-2.5',
+              'text-sm leading-6 text-gray-900 dark:text-gray-100 placeholder:text-gray-400',
+              'focus:outline-none',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              'overflow-y-auto'
+            )}
+            style={{ minHeight: '40px', maxHeight: '120px' }}
           />
-        </PrivacyTooltip>
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={CHAT_MESSAGES.PLACEHOLDER}
-          disabled={isDisabled}
-          rows={1}
-          className={cn(
-            'flex-1 resize-none rounded-lg border border-input bg-background px-4 py-3',
-            'text-sm placeholder:text-muted-foreground',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            'overflow-y-auto'
-          )}
-          style={{ minHeight: '48px', maxHeight: '120px' }}
-        />
-        <Button
-          onClick={handleSend}
-          disabled={isDisabled || (!value.trim() && !selectedFile)}
-          size="lg"
-          className="shrink-0"
-          aria-label={isLoading ? CHAT_MESSAGES.SENDING : CHAT_MESSAGES.SEND_BUTTON}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              {CHAT_MESSAGES.SENDING}
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4 mr-2" />
-              {CHAT_MESSAGES.SEND_BUTTON}
-            </>
-          )}
-        </Button>
+
+          {/* Send button */}
+          <Button
+            onClick={handleSend}
+            disabled={isDisabled || (!value.trim() && !selectedFile)}
+            size="icon"
+            className={cn(
+              'shrink-0 h-10 w-10 rounded-xl transition-all cursor-pointer',
+              'bg-setec-orange hover:bg-setec-orange/90 text-white',
+              'disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed dark:disabled:bg-gray-700'
+            )}
+            aria-label={isLoading ? CHAT_MESSAGES.SENDING : CHAT_MESSAGES.SEND_BUTTON}
+          >
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
       </div>
     </div>
   )

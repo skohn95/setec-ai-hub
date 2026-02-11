@@ -5,8 +5,27 @@ import { Sidebar } from './Sidebar'
 
 // Mock Next.js navigation
 const mockUsePathname = vi.fn()
+const mockUseRouter = vi.fn()
 vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
+  useRouter: () => mockUseRouter(),
+}))
+
+// Mock AuthProvider
+vi.mock('@/lib/providers/AuthProvider', () => ({
+  useAuth: () => ({
+    user: { email: 'test@example.com' },
+    loading: false,
+  }),
+}))
+
+// Mock Supabase client
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      signOut: vi.fn().mockResolvedValue({}),
+    },
+  }),
 }))
 
 // Mock the ConversationList component to avoid needing providers
@@ -31,6 +50,10 @@ describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUsePathname.mockReturnValue('/')
+    mockUseRouter.mockReturnValue({
+      push: vi.fn(),
+      refresh: vi.fn(),
+    })
   })
 
   describe('Rendering', () => {
@@ -79,12 +102,12 @@ describe('Sidebar', () => {
       render(<Sidebar />)
       const link = screen.getByText('Plantillas').closest('a')
       expect(link).not.toHaveAttribute('aria-current')
-      expect(link?.className).toMatch(/setec-charcoal/)
+      expect(link?.className).toMatch(/sidebar-foreground/)
     })
 
     it('renders privacy link at bottom', () => {
       render(<Sidebar />)
-      expect(screen.getByText('Privacidad')).toBeInTheDocument()
+      expect(screen.getByText('Políticas de Privacidad')).toBeInTheDocument()
     })
 
     it('renders ConversationList component', () => {
@@ -97,19 +120,37 @@ describe('Sidebar', () => {
       const list = screen.getByTestId('conversation-list')
       expect(list).toHaveAttribute('data-selected', 'test-id-123')
     })
+
+    it('renders logo image', () => {
+      render(<Sidebar />)
+      const logo = screen.getByAltText('Setec AI Hub')
+      expect(logo).toBeInTheDocument()
+      expect(logo).toHaveAttribute('src', expect.stringContaining('setec-logo.png'))
+    })
+
+    it('renders sign out button', () => {
+      render(<Sidebar />)
+      expect(screen.getByText('Cerrar sesión')).toBeInTheDocument()
+    })
   })
 
   describe('Styling', () => {
-    it('has correct width and background color', () => {
+    it('has correct width and dark sidebar background', () => {
       render(<Sidebar />)
       const sidebar = screen.getByTestId('sidebar')
-      expect(sidebar).toHaveClass('w-[280px]', 'bg-[#F5F5F5]')
+      expect(sidebar).toHaveClass('w-[280px]', 'bg-sidebar')
     })
 
     it('has border on the right', () => {
       render(<Sidebar />)
       const sidebar = screen.getByTestId('sidebar')
       expect(sidebar).toHaveClass('border-r')
+    })
+
+    it('has full screen height', () => {
+      render(<Sidebar />)
+      const sidebar = screen.getByTestId('sidebar')
+      expect(sidebar).toHaveClass('h-screen')
     })
   })
 

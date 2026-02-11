@@ -86,25 +86,77 @@ export async function fetchMessagesWithFiles(
 
   const supabase = client ?? createClient()
 
-  const { data, error } = await supabase
-    .from('messages')
-    .select(`
-      *,
-      files(*)
-    `)
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
+  // Fetch messages and files separately, then merge
+  const [messagesResult, filesResult] = await Promise.all([
+    supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('files')
+      .select('*')
+      .eq('conversation_id', conversationId)
+  ])
 
-  if (error) {
-    logSupabaseError(error, 'fetchMessagesWithFiles', 'messages')
-    return { data: null, error: new Error(error.message) }
+  if (messagesResult.error) {
+    logSupabaseError(messagesResult.error, 'fetchMessagesWithFiles', 'messages')
+    return { data: null, error: new Error(messagesResult.error.message) }
   }
 
-  // Map the response to ensure files is always an array
-  const messagesWithFiles: MessageRowWithFiles[] = (data || []).map((msg) => ({
-    ...msg,
-    files: Array.isArray(msg.files) ? msg.files : [],
-  }))
+  if (filesResult.error) {
+    logSupabaseError(filesResult.error, 'fetchMessagesWithFiles', 'files')
+    return { data: null, error: new Error(filesResult.error.message) }
+  }
+
+  const messages = messagesResult.data || []
+  const files = filesResult.data || []
+
+  // Debug logging
+  console.log('[fetchMessagesWithFiles] Messages count:', messages.length)
+  console.log('[fetchMessagesWithFiles] Files count:', files.length)
+  files.forEach(f => console.log('[fetchMessagesWithFiles] File:', f.id, 'message_id:', f.message_id, 'name:', f.original_name))
+
+  // Create a map of files by ID for quick lookup
+  const filesById = new Map<string, MessageFile>()
+  for (const file of files) {
+    filesById.set(file.id, file as MessageFile)
+  }
+
+  // Group files by message_id (if set) OR by message metadata.fileId
+  const filesByMessageId = new Map<string, MessageFile[]>()
+
+  // First, group by message_id
+  for (const file of files) {
+    if (file.message_id) {
+      const existing = filesByMessageId.get(file.message_id) || []
+      existing.push(file as MessageFile)
+      filesByMessageId.set(file.message_id, existing)
+    }
+  }
+
+  // Merge files into messages - check both message_id link and metadata.fileId
+  const messagesWithFiles: MessageRowWithFiles[] = messages.map((msg) => {
+    // First check if files are linked via message_id
+    let msgFiles = filesByMessageId.get(msg.id) || []
+
+    // Also check if message has fileId in metadata (fallback, only for user messages)
+    if (msg.role === 'user') {
+      const metadata = msg.metadata as Record<string, unknown> | null
+      const fileIdFromMetadata = metadata?.fileId as string | undefined
+      if (fileIdFromMetadata && msgFiles.length === 0) {
+        const fileFromMetadata = filesById.get(fileIdFromMetadata)
+        if (fileFromMetadata) {
+          msgFiles = [fileFromMetadata]
+        }
+      }
+    }
+
+    return {
+      ...msg,
+      files: msgFiles,
+    }
+  })
 
   return { data: messagesWithFiles, error: null }
 }
@@ -159,10 +211,16 @@ export async function createMessage(
 
   // If fileId provided, link the file to this message
   if (fileId && data) {
-    await supabase
+    const { error: linkError } = await supabase
       .from('files')
       .update({ message_id: data.id })
       .eq('id', fileId)
+
+    if (linkError) {
+      console.error('[createMessage] Failed to link file to message:', linkError)
+    } else {
+      console.log('[createMessage] Successfully linked file', fileId, 'to message', data.id)
+    }
   }
 
   return { data, error: null }

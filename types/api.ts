@@ -119,6 +119,23 @@ export interface ChartDataItem {
   data: unknown[]
 }
 
+// Static chart data item (server-rendered PNG images)
+export interface StaticChartDataItem {
+  type: string
+  image: string  // base64 data URL
+}
+
+// Chart type names for display
+export const CHART_TYPE_LABELS: Record<string, string> = {
+  variationBreakdown: 'Desglose de Variación',
+  operatorComparison: 'Comparación de Operadores',
+  rChartByOperator: 'Gráfico R por Operador',
+  xBarChartByOperator: 'Gráfico X̄ por Operador',
+  measurementsByPart: 'Mediciones por Parte',
+  measurementsByOperator: 'Mediciones por Operador',
+  interactionPlot: 'Gráfico de Interacción',
+}
+
 // Specific chart data types for better type safety (Story 5.2)
 export interface VariationBreakdownDataItem {
   source: string
@@ -151,6 +168,15 @@ export interface SSEToolResultEvent {
 // Union type for all SSE events
 export type SSEEvent = StreamChunk | SSEToolCallEvent | SSEToolResultEvent
 
+// Bias/specification information
+export interface BiasInfo {
+  specification: number
+  grand_mean: number
+  bias: number
+  bias_percent: number
+  rep_means?: number[]
+}
+
 // MSA Analysis Results type (Story 5.1)
 // Used for displaying analysis results in chat messages
 export interface MSAResults {
@@ -160,7 +186,105 @@ export interface MSAResults {
   part_to_part_percent: number
   ndc: number
   classification: 'aceptable' | 'marginal' | 'inaceptable'
+  // Enhanced fields
+  anova_table?: ANOVARow[]
+  study_info?: StudyInfo
+  variance_contributions?: VarianceContribution[]
+  operator_stats?: OperatorStats[]
+  variance_operator?: number
+  variance_interaction?: number
+  bias_info?: BiasInfo
+}
+
+// ANOVA table row
+export interface ANOVARow {
+  source: string
+  df: number
+  ss: number
+  ms: number | null
+  f_value: number | null
+  p_value: number | null
+}
+
+// Study design information
+export interface StudyInfo {
+  n_operators: number
+  n_parts: number
+  n_trials: number
+  n_total: number
+}
+
+// Variance contribution breakdown
+export interface VarianceContribution {
+  source: string
+  variance: number
+  pct_contribution: number
+  pct_study_variation: number
+  std_dev: number
+}
+
+// Operator statistics with ranking
+export interface OperatorStats {
+  operator: string
+  mean: number
+  std_dev: number
+  range_avg: number
+  consistency_score: number
+  rank: number
 }
 
 // Dominant variation source from MSA analysis
 export type DominantVariation = 'repeatability' | 'reproducibility' | 'part_to_part'
+
+// Chart data types for new MSA charts
+export interface RChartPoint {
+  operator: string
+  part: string
+  range: number
+}
+
+export interface RChartData {
+  points: RChartPoint[]
+  rBar: number
+  uclR: number
+  lclR: number
+}
+
+export interface XBarChartPoint {
+  operator: string
+  part: string
+  mean: number
+}
+
+export interface XBarChartData {
+  points: XBarChartPoint[]
+  xDoubleBar: number
+  uclXBar: number
+  lclXBar: number
+}
+
+export interface MeasurementsByPartItem {
+  part: string
+  measurements: number[]
+  mean: number
+  min: number
+  max: number
+}
+
+export interface MeasurementsByOperatorItem {
+  operator: string
+  measurements: number[]
+  mean: number
+  min: number
+  max: number
+}
+
+export interface OperatorPartMeans {
+  operator: string
+  partMeans: Record<string, number>
+}
+
+export interface InteractionPlotData {
+  operators: OperatorPartMeans[]
+  parts: string[]
+}

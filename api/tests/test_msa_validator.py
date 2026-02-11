@@ -161,7 +161,7 @@ class TestValidateColumnStructure:
         assert mapping is None
         assert error is not None
         assert error['code'] == 'MISSING_COLUMNS'
-        assert 'Part' in error['missing'] or 'Parte' in error['missing']
+        assert 'Pieza' in error['missing']
 
     def test_missing_operator_column_returns_error(self, df_missing_operator):
         """Test that missing Operator column returns appropriate error."""
@@ -170,7 +170,7 @@ class TestValidateColumnStructure:
         assert mapping is None
         assert error is not None
         assert error['code'] == 'MISSING_COLUMNS'
-        assert 'Operator' in error['missing'] or 'Operador' in error['missing']
+        assert 'Operador' in error['missing']
 
     def test_missing_measurements_returns_error(self, df_missing_measurements):
         """Test that insufficient measurement columns returns error."""
@@ -362,7 +362,7 @@ class TestValidateDataRequirements:
                    'measurements': ['Measurement1', 'Measurement2']}
         error = validate_data_requirements(df_insufficient_parts, columns)
         assert error is not None
-        assert 'parts' in error['message'].lower() or 'partes' in error['message'].lower()
+        assert 'piezas' in error['message'].lower()
 
     def test_insufficient_operators_returns_error(self, df_insufficient_operators):
         """Test that 1 unique operator returns error."""

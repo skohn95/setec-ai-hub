@@ -19,7 +19,7 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
   function: {
     name: 'analyze',
     description:
-      'Realiza análisis estadístico MSA (Gauge R&R) en archivos Excel subidos. Solo invocar cuando el usuario ha subido un archivo y desea analizarlo.',
+      'Realiza análisis estadístico MSA (Gauge R&R) en archivos Excel subidos. Solo invocar cuando el usuario ha subido un archivo Y ha proporcionado la especificación de la pieza.',
     parameters: {
       type: 'object',
       properties: {
@@ -31,6 +31,10 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
         file_id: {
           type: 'string',
           description: 'UUID del archivo subido a analizar',
+        },
+        specification: {
+          type: 'number',
+          description: 'Especificación o valor objetivo (target) de la pieza. Usado para calcular el sesgo (bias) del sistema de medición.',
         },
       },
       required: ['analysis_type', 'file_id'],

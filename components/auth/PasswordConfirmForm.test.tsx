@@ -11,12 +11,29 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
+// Mock window.location.search and history.replaceState
+const mockReplaceState = vi.fn()
+beforeEach(() => {
+  Object.defineProperty(window, 'location', {
+    writable: true,
+    value: { search: '', origin: 'http://localhost:3000' },
+  })
+  Object.defineProperty(window, 'history', {
+    writable: true,
+    value: { replaceState: mockReplaceState },
+  })
+})
+
 // Mock Supabase client
+const mockGetSession = vi.fn()
 const mockUpdateUser = vi.fn()
+const mockSignOut = vi.fn()
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
+      getSession: mockGetSession,
       updateUser: mockUpdateUser,
+      signOut: mockSignOut,
     },
   }),
 }))
@@ -24,56 +41,97 @@ vi.mock('@/lib/supabase/client', () => ({
 describe('PasswordConfirmForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    // Default: session exists
+    mockGetSession.mockResolvedValue({ data: { session: { user: {} } } })
+    mockSignOut.mockResolvedValue({})
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
+  describe('Initialization', () => {
+    it('shows loading state while initializing', () => {
+      mockGetSession.mockImplementation(
+        () => new Promise(() => {}) // Never resolves
+      )
+      render(<PasswordConfirmForm />)
+
+      expect(screen.getByText('Verificando enlace...')).toBeInTheDocument()
+    })
+
+    it('shows error when no session found', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null } })
+      render(<PasswordConfirmForm />)
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/No se encontró una sesión válida/i)
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('shows error when URL has error parameter', async () => {
+      window.location.search = '?error=access_denied&error_description=Link+expired'
+      render(<PasswordConfirmForm />)
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/El enlace ha expirado o es inválido/i)
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('shows request new link button on init error', async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null } })
+      render(<PasswordConfirmForm />)
+
+      await waitFor(() => {
+        expect(screen.getByText('Solicitar Nuevo Enlace')).toBeInTheDocument()
+      })
+    })
   })
 
   describe('Rendering', () => {
-    it('renders the password confirm form with all required elements', () => {
+    it('renders the password confirm form with all required elements', async () => {
       render(<PasswordConfirmForm />)
 
-      // Check for password input
-      expect(screen.getByLabelText('Nueva contraseña')).toBeInTheDocument()
+      await waitFor(() => {
+        // Check for password input
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
 
-      // Check for confirm password input
-      expect(screen.getByLabelText('Confirmar contraseña')).toBeInTheDocument()
+        // Check for confirm password input
+        expect(screen.getByLabelText('Confirmar Contraseña')).toBeInTheDocument()
 
-      // Check for submit button
-      expect(
-        screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      ).toBeInTheDocument()
+        // Check for submit button
+        expect(
+          screen.getByRole('button', { name: 'Restablecer Contraseña' })
+        ).toBeInTheDocument()
+      })
     })
 
-    it('renders password fields with correct placeholders', () => {
+    it('renders submit button with Setec orange styling', async () => {
       render(<PasswordConfirmForm />)
 
-      const passwordPlaceholders = screen.getAllByPlaceholderText('••••••••')
-      expect(passwordPlaceholders).toHaveLength(2)
-    })
-
-    it('renders submit button with Setec orange styling', () => {
-      render(<PasswordConfirmForm />)
-
-      const button = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      expect(button).toHaveClass('bg-setec-orange')
+      await waitFor(() => {
+        const button = screen.getByRole('button', { name: 'Restablecer Contraseña' })
+        expect(button).toHaveClass('bg-setec-orange')
+      })
     })
   })
 
   describe('Form Validation', () => {
     it('shows error when password is too short', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, '12345')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, '12345')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -84,16 +142,20 @@ describe('PasswordConfirmForm', () => {
     })
 
     it('shows error when passwords do not match', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'password123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'password456')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -104,27 +166,35 @@ describe('PasswordConfirmForm', () => {
     })
 
     it('shows error when confirm password is empty', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'password123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(
-          screen.getByText('Por favor confirma tu contraseña.')
+          screen.getByText('Debes confirmar la contraseña.')
         ).toBeInTheDocument()
       })
     })
 
     it('does not call API when validation fails', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -134,41 +204,23 @@ describe('PasswordConfirmForm', () => {
   })
 
   describe('Success Flow', () => {
-    it('shows success message after updating password', async () => {
-      mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null })
+    it('calls Supabase updateUser with correct password', async () => {
+      mockUpdateUser.mockResolvedValue({ error: null })
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
-
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
-      await user.type(passwordInput, 'newpassword123')
-
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
-      await user.type(confirmInput, 'newpassword123')
-
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      await user.click(submitButton)
 
       await waitFor(() => {
-        expect(
-          screen.getByText('Tu contraseña ha sido actualizada.')
-        ).toBeInTheDocument()
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
       })
-    })
 
-    it('calls Supabase updateUser with correct password', async () => {
-      mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null })
-
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      render(<PasswordConfirmForm />)
-
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -178,51 +230,28 @@ describe('PasswordConfirmForm', () => {
       })
     })
 
-    it('redirects to login page after 2 seconds on success', async () => {
-      mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null })
+    it('signs out user and redirects to login on success', async () => {
+      mockUpdateUser.mockResolvedValue({ error: null })
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText('Tu contraseña ha sido actualizada.')).toBeInTheDocument()
-      })
-
-      // Advance time by 2 seconds
-      vi.advanceTimersByTime(2000)
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login')
-      })
-    })
-
-    it('shows link to login after success', async () => {
-      mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null })
-
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      render(<PasswordConfirmForm />)
-
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
-      await user.type(passwordInput, 'newpassword123')
-
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
-      await user.type(confirmInput, 'newpassword123')
-
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        const loginLink = screen.getByText('Ir a iniciar sesión')
-        expect(loginLink).toHaveAttribute('href', '/login')
+        expect(mockSignOut).toHaveBeenCalled()
+        expect(mockPush).toHaveBeenCalledWith('/login?message=password-reset-success')
       })
     })
   })
@@ -230,45 +259,79 @@ describe('PasswordConfirmForm', () => {
   describe('Error Handling', () => {
     it('shows error message when update fails', async () => {
       mockUpdateUser.mockResolvedValue({
-        data: null,
         error: { message: 'Invalid session' },
       })
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
         expect(
-          screen.getByText('Este enlace ha expirado o no es válido. Solicita uno nuevo.')
+          screen.getByText('El enlace de restablecimiento ha expirado o es inválido')
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('shows specific error when new password matches old password', async () => {
+      mockUpdateUser.mockResolvedValue({
+        error: { message: 'New password should be different from the old password' },
+      })
+
+      const user = userEvent.setup()
+      render(<PasswordConfirmForm />)
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
+      await user.type(passwordInput, 'samepassword')
+
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
+      await user.type(confirmInput, 'samepassword')
+
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('La nueva contraseña debe ser diferente a la contraseña actual.')
         ).toBeInTheDocument()
       })
     })
 
     it('displays error alert with proper role for screen readers', async () => {
       mockUpdateUser.mockResolvedValue({
-        data: null,
         error: { message: 'Invalid session' },
       })
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -281,42 +344,50 @@ describe('PasswordConfirmForm', () => {
   describe('Loading State', () => {
     it('shows loading state during submission', async () => {
       mockUpdateUser.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: { user: {} }, error: null }), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({ error: null }), 100))
       )
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       // Button should show loading state
       await waitFor(() => {
-        expect(screen.getByText('Guardando...')).toBeInTheDocument()
+        expect(screen.getByText('Restableciendo...')).toBeInTheDocument()
       })
     })
 
     it('disables form inputs during submission', async () => {
       mockUpdateUser.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ data: { user: {} }, error: null }), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({ error: null }), 100))
       )
 
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+      })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
       await user.type(passwordInput, 'newpassword123')
 
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
+      const confirmInput = screen.getByLabelText('Confirmar Contraseña')
       await user.type(confirmInput, 'newpassword123')
 
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
+      const submitButton = screen.getByRole('button', { name: 'Restablecer Contraseña' })
       await user.click(submitButton)
 
       await waitFor(() => {
@@ -328,69 +399,50 @@ describe('PasswordConfirmForm', () => {
   })
 
   describe('Accessibility', () => {
-    it('has proper label associations via htmlFor', () => {
+    it('has proper label associations via htmlFor', async () => {
       render(<PasswordConfirmForm />)
-
-      expect(screen.getByLabelText('Nueva contraseña')).toBeInTheDocument()
-      expect(screen.getByLabelText('Confirmar contraseña')).toBeInTheDocument()
-    })
-
-    it('sets aria-invalid on inputs when errors exist', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      render(<PasswordConfirmForm />)
-
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
-      await user.type(passwordInput, '12345')
-
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      await user.click(submitButton)
 
       await waitFor(() => {
-        expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
+        expect(screen.getByLabelText('Confirmar Contraseña')).toBeInTheDocument()
       })
     })
 
-    it('has proper form structure with noValidate', () => {
+    it('has proper form structure with noValidate', async () => {
       render(<PasswordConfirmForm />)
-
-      const form = screen.getByRole('button', { name: 'Guardar nueva contraseña' }).closest('form')
-      expect(form).toHaveAttribute('noValidate')
-    })
-
-    it('links error messages to inputs via aria-describedby', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      render(<PasswordConfirmForm />)
-
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
-      await user.type(passwordInput, '12345')
-
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      await user.click(submitButton)
 
       await waitFor(() => {
-        expect(passwordInput).toHaveAttribute('aria-describedby', 'password-error')
+        const form = screen.getByRole('button', { name: 'Restablecer Contraseña' }).closest('form')
+        expect(form).toHaveAttribute('noValidate')
+      })
+    })
+  })
+
+  describe('Password Visibility Toggle', () => {
+    it('renders password fields with toggle buttons', async () => {
+      render(<PasswordConfirmForm />)
+
+      await waitFor(() => {
+        const toggleButtons = screen.getAllByRole('button', { name: 'Mostrar contraseña' })
+        expect(toggleButtons).toHaveLength(2)
       })
     })
 
-    it('success message has proper role for screen readers', async () => {
-      mockUpdateUser.mockResolvedValue({ data: { user: {} }, error: null })
-
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    it('toggles password visibility when toggle is clicked', async () => {
+      const user = userEvent.setup()
       render(<PasswordConfirmForm />)
 
-      const passwordInput = screen.getByLabelText('Nueva contraseña')
-      await user.type(passwordInput, 'newpassword123')
-
-      const confirmInput = screen.getByLabelText('Confirmar contraseña')
-      await user.type(confirmInput, 'newpassword123')
-
-      const submitButton = screen.getByRole('button', { name: 'Guardar nueva contraseña' })
-      await user.click(submitButton)
-
       await waitFor(() => {
-        const successMessage = screen.getByRole('status')
-        expect(successMessage).toBeInTheDocument()
+        expect(screen.getByLabelText('Nueva Contraseña')).toBeInTheDocument()
       })
+
+      const passwordInput = screen.getByLabelText('Nueva Contraseña')
+      expect(passwordInput).toHaveAttribute('type', 'password')
+
+      const toggleButtons = screen.getAllByRole('button', { name: 'Mostrar contraseña' })
+      await user.click(toggleButtons[0])
+
+      expect(passwordInput).toHaveAttribute('type', 'text')
     })
   })
 })

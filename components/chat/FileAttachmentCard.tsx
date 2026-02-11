@@ -3,8 +3,6 @@
 import { FileSpreadsheet, Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatFileSize } from '@/lib/utils/file-validation'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
 import type { MessageFile } from '@/types/chat'
 
 interface FileAttachmentCardProps {
@@ -29,11 +27,6 @@ export default function FileAttachmentCard({
     }
   }
 
-  // Format the upload timestamp
-  const uploadTime = formatDistanceToNow(new Date(file.created_at), {
-    addSuffix: true,
-    locale: es,
-  })
 
   return (
     <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border max-w-sm">
@@ -51,18 +44,18 @@ export default function FileAttachmentCard({
           {file.original_name}
         </p>
         <p className="text-xs text-muted-foreground">
-          {formatFileSize(file.size_bytes)} · {uploadTime}
+          {formatFileSize(file.size_bytes)}
         </p>
       </div>
 
       {/* Download button */}
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="icon"
         onClick={handleDownload}
         disabled={isDownloading}
-        className="flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-orange-100 dark:hover:bg-orange-900/30"
+        className="flex-shrink-0 cursor-pointer bg-setec-orange/10 border-setec-orange/30 text-setec-orange hover:bg-setec-orange hover:text-white hover:border-setec-orange transition-colors"
         aria-label={isDownloading ? 'Descargando...' : `Descargar ${file.original_name}`}
       >
         {isDownloading ? (

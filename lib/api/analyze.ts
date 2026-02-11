@@ -110,14 +110,16 @@ function getApiBaseUrl(): string {
  * @param analysisType - Type of analysis to perform (e.g., 'msa')
  * @param fileId - UUID of the file to analyze
  * @param messageId - Optional UUID of the assistant message for result storage
+ * @param specification - Optional target/nominal value for bias calculation
  * @returns Promise with analysis results or error
  */
 export async function invokeAnalysisTool(
   analysisType: string,
   fileId: string,
-  messageId?: string
+  messageId?: string,
+  specification?: number
 ): Promise<AnalysisResponse> {
-  const body: Record<string, string> = {
+  const body: Record<string, string | number> = {
     analysis_type: analysisType,
     file_id: fileId,
   }
@@ -125,6 +127,11 @@ export async function invokeAnalysisTool(
   // Only include message_id if provided
   if (messageId) {
     body.message_id = messageId
+  }
+
+  // Only include specification if provided
+  if (specification !== undefined) {
+    body.specification = specification
   }
 
   // Build absolute URL for Edge runtime compatibility

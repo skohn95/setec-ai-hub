@@ -112,8 +112,8 @@ export async function GET(
       )
     }
 
-    // 5. Generate signed download URL
-    const downloadUrl = await getFileDownloadUrl(file.storage_path)
+    // 5. Generate signed download URL (pass authenticated client)
+    const downloadUrl = await getFileDownloadUrl(file.storage_path, supabase)
 
     if (!downloadUrl) {
       return NextResponse.json(
