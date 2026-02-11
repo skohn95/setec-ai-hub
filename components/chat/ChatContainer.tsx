@@ -269,9 +269,9 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
                   downloadingFileIds={downloadingFileIds}
                 />
               ))}
-              {/* Show streaming message while receiving response */}
-              {streamingContent && (
-                <StreamingMessage content={streamingContent} />
+              {/* Show streaming message while receiving response or thinking */}
+              {isStreaming && (
+                <StreamingMessage content={streamingContent} isThinking={!streamingContent} />
               )}
             </>
           )}

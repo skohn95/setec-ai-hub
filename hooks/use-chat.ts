@@ -318,11 +318,20 @@ export function useStreamingChat(conversationId: string, userId?: string) {
         }
       } catch {
         setError(STREAMING_MESSAGES.CONNECTION_ERROR)
-      } finally {
         setIsStreaming(false)
-        // Clear streaming content immediately - ChatMessage takes over from refetch
         setStreamingContent('')
-        // Always invalidate conversations to update timestamps
+      } finally {
+        // Refetch messages and wait for it to complete before hiding streaming
+        // This prevents the "flash" when StreamingMessage disappears before ChatMessage appears
+        await queryClient.refetchQueries({
+          queryKey: queryKeys.messages.list(conversationId),
+        })
+
+        // Now that messages are refreshed, hide streaming UI
+        setIsStreaming(false)
+        setStreamingContent('')
+
+        // Update conversation timestamps in background
         queryClient.invalidateQueries({
           queryKey: queryKeys.conversations.all,
         })
