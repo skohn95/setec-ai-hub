@@ -23,9 +23,6 @@ import pandas as pd
 import numpy as np
 from typing import TypedDict, Any
 import math
-from scipy import stats
-
-from api.utils.chart_generator import generate_all_charts
 
 
 # =============================================================================
@@ -285,19 +282,11 @@ def calculate_anova_components(
     f_operators = ms_operators / ms_equipment if ms_equipment > 1e-10 else None
     f_interaction = ms_interaction / ms_equipment if ms_equipment > 1e-10 else None
 
-    # Calculate P-values using scipy F-distribution
+    # P-values not calculated (would require scipy which exceeds Vercel size limits)
+    # F-statistics are still available for analysis
     p_parts = None
     p_operators = None
     p_interaction = None
-
-    if f_parts is not None and df_parts > 0 and df_equipment > 0:
-        p_parts = 1 - stats.f.cdf(f_parts, df_parts, df_equipment)
-
-    if f_operators is not None and df_operators > 0 and df_equipment > 0:
-        p_operators = 1 - stats.f.cdf(f_operators, df_operators, df_equipment)
-
-    if f_interaction is not None and df_interaction > 0 and df_equipment > 0:
-        p_interaction = 1 - stats.f.cdf(f_interaction, df_interaction, df_equipment)
 
     # Build ANOVA table
     anova_table: list[ANOVARow] = [
@@ -1579,8 +1568,8 @@ def analyze_msa(
             results, df, operator_col, part_col, measurement_cols, long_df
         )
 
-        # Generate static chart images from JSON data
-        chart_data = generate_all_charts(chart_data_json)
+        # Return chart data as JSON for frontend rendering
+        chart_data = chart_data_json
 
         # Generate instructions and get dominant variation
         instructions, dominant_variation = generate_instructions(results, bias_info)
