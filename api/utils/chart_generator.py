@@ -1,16 +1,19 @@
 """
 Static Chart Generator for MSA Analysis.
 
-Generates PNG images of MSA charts using Plotly for server-side rendering.
+Generates PNG images of MSA charts using matplotlib for server-side rendering.
 Returns base64-encoded images that can be embedded directly in HTML.
 """
 import base64
 import io
 from typing import Any
+from collections import defaultdict
 
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import numpy as np
 
 
 # =============================================================================
@@ -30,30 +33,38 @@ COLORS = {
     'grid': '#E5E7EB',         # Light gray
 }
 
+# High contrast colors for interaction plot
+CONTRAST_COLORS = [
+    '#E63946',  # Red
+    '#1D3557',  # Dark Blue
+    '#2A9D8F',  # Teal
+    '#F4A261',  # Orange
+    '#9B5DE5',  # Purple
+    '#00B4D8',  # Cyan
+]
+
 # Chart dimensions
-CHART_WIDTH = 600
-CHART_HEIGHT = 300
-CHART_HEIGHT_SMALL = 250
+CHART_WIDTH = 8
+CHART_HEIGHT = 4
+DPI = 150
 
-# Common layout settings (without margin - set per chart)
-BASE_LAYOUT = {
-    'paper_bgcolor': COLORS['background'],
-    'plot_bgcolor': COLORS['background'],
-    'font': {'family': 'Inter, system-ui, sans-serif', 'size': 12, 'color': COLORS['text']},
-}
-
-# Default margin
-DEFAULT_MARGIN = {'l': 60, 'r': 30, 't': 50, 'b': 50}
+# Set default font
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.size'] = 10
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
 
-def fig_to_base64(fig: go.Figure, width: int = CHART_WIDTH, height: int = CHART_HEIGHT) -> str:
-    """Convert a Plotly figure to a base64-encoded PNG string."""
-    img_bytes = fig.to_image(format='png', width=width, height=height, scale=2)
-    b64 = base64.b64encode(img_bytes).decode('utf-8')
+def fig_to_base64(fig: plt.Figure) -> str:
+    """Convert a matplotlib figure to a base64-encoded PNG string."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=DPI, bbox_inches='tight',
+                facecolor='white', edgecolor='none')
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
     return f'data:image/png;base64,{b64}'
 
 
@@ -74,383 +85,276 @@ def get_grr_color(grr_percent: float) -> str:
 def generate_variation_breakdown_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate horizontal bar chart showing variation breakdown.
-
-    Args:
-        data: List of dicts with 'source', 'percentage', 'color' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
-    # Filter out GRR Total for the bars (we'll show it separately)
+    # Filter out GRR Total for the bars
     bar_data = [d for d in data if d['source'] != 'GRR Total']
-    grr_total = next((d for d in data if d['source'] == 'GRR Total'), None)
 
     sources = [d['source'] for d in bar_data]
     percentages = [d['percentage'] for d in bar_data]
     colors = [d['color'] for d in bar_data]
 
-    fig = go.Figure()
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    # Add horizontal bars
-    fig.add_trace(go.Bar(
-        y=sources,
-        x=percentages,
-        orientation='h',
-        marker_color=colors,
-        text=[f'{p:.1f}%' for p in percentages],
-        textposition='outside',
-        textfont={'size': 11},
-    ))
+    y_pos = np.arange(len(sources))
+    bars = ax.barh(y_pos, percentages, color=colors, height=0.6)
+
+    # Add value labels
+    for i, (bar, pct) in enumerate(zip(bars, percentages)):
+        ax.text(bar.get_width() + 1, bar.get_y() + bar.get_height()/2,
+                f'{pct:.1f}%', va='center', fontsize=9, color=COLORS['text'])
 
     # Add reference lines at 10% and 30%
-    fig.add_vline(x=10, line_dash='dash', line_color=COLORS['success'], line_width=2)
-    fig.add_vline(x=30, line_dash='dash', line_color=COLORS['danger'], line_width=2)
+    ax.axvline(x=10, color=COLORS['success'], linestyle='--', linewidth=2, label='10%')
+    ax.axvline(x=30, color=COLORS['danger'], linestyle='--', linewidth=2, label='30%')
 
-    # Add annotations for thresholds (offset to the right to avoid overlapping with lines)
-    fig.add_annotation(x=10, y=1.08, yref='paper', text='10%', showarrow=False,
-                       font={'size': 10, 'color': COLORS['success']}, xshift=12)
-    fig.add_annotation(x=30, y=1.08, yref='paper', text='30%', showarrow=False,
-                       font={'size': 10, 'color': COLORS['danger']}, xshift=12)
+    # Add threshold labels
+    ax.text(10, len(sources) - 0.3, '10%', color=COLORS['success'], fontsize=9, ha='center')
+    ax.text(30, len(sources) - 0.3, '30%', color=COLORS['danger'], fontsize=9, ha='center')
 
-    # Update layout
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Desglose de Variación', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': '% de Variación Total', 'range': [0, max(100, max(percentages) * 1.2)],
-               'gridcolor': COLORS['grid'], 'showgrid': True},
-        yaxis={'title': '', 'categoryorder': 'total ascending'},
-        showlegend=False,
-        bargap=0.3,
-        margin={'l': 100, 'r': 50, 't': 50, 'b': 60},
-    )
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(sources)
+    ax.set_xlabel('% de Variación Total')
+    ax.set_xlim(0, max(100, max(percentages) * 1.3))
+    ax.set_title('Desglose de Variación', fontsize=12, fontweight='bold')
+    ax.grid(axis='x', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
 
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_operator_comparison_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate bar chart comparing operator means with error bars.
-
-    Args:
-        data: List of dicts with 'operator', 'mean', 'stdDev' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
-    operators = [d['operator'] for d in data]
+    operators = [str(d['operator']) for d in data]
     means = [d['mean'] for d in data]
     std_devs = [d['stdDev'] for d in data]
 
-    # Calculate y-axis range to fit error bars
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
+
+    x_pos = np.arange(len(operators))
+    bars = ax.bar(x_pos, means, color=COLORS['primary'], width=0.6,
+                  yerr=std_devs, capsize=5, error_kw={'color': COLORS['danger'], 'linewidth': 2})
+
+    # Add value labels inside bars
+    for bar, mean in zip(bars, means):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() - (bar.get_height() * 0.1),
+                f'{mean:.3f}', ha='center', va='top', fontsize=9, color='white', fontweight='bold')
+
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(operators)
+    ax.set_xlabel('Operador')
+    ax.set_ylabel('Media')
+    ax.set_title('Comparación de Operadores', fontsize=12, fontweight='bold')
+
+    # Add subtitle for error bars
+    ax.text(0.5, 1.02, 'Barras de error: ±1 Desv. Est.', transform=ax.transAxes,
+            ha='center', fontsize=9, color=COLORS['muted'])
+
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
+
+    # Adjust y-axis to fit error bars
     max_val = max(m + s for m, s in zip(means, std_devs))
     min_val = min(m - s for m, s in zip(means, std_devs))
-    y_padding = (max_val - min_val) * 0.2
-    y_range = [min_val - y_padding, max_val + y_padding]
+    padding = (max_val - min_val) * 0.2
+    ax.set_ylim(min_val - padding, max_val + padding)
 
-    fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=operators,
-        y=means,
-        marker_color=COLORS['primary'],
-        error_y={
-            'type': 'data',
-            'array': std_devs,
-            'visible': True,
-            'color': COLORS['danger'],
-            'thickness': 2,
-            'width': 8,
-        },
-        text=[f'{m:.3f}' for m in means],
-        textposition='inside',
-        textfont={'size': 10, 'color': 'white'},
-    ))
-
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Comparación de Operadores', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Operador', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Media', 'gridcolor': COLORS['grid'], 'showgrid': True, 'range': y_range},
-        showlegend=False,
-        bargap=0.4,
-        margin={'l': 60, 'r': 30, 't': 60, 'b': 50},
-    )
-
-    # Add legend for error bars below title
-    fig.add_annotation(
-        x=0.5, y=1.08, xref='paper', yref='paper',
-        text='Barras de error: ±1 Desv. Est.',
-        showarrow=False,
-        font={'size': 10, 'color': COLORS['muted']},
-        xanchor='center',
-    )
-
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_r_chart(data: dict[str, Any]) -> str:
     """
     Generate R chart (average range per operator) with control limits.
-
-    Args:
-        data: Dict with 'points', 'rBar', 'uclR', 'lclR' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
     points = data['points']
     r_bar = data['rBar']
     ucl_r = data['uclR']
     lcl_r = data['lclR']
 
-    # Aggregate ranges by operator (average range per operator)
-    from collections import defaultdict
+    # Aggregate ranges by operator
     operator_ranges = defaultdict(list)
     for p in points:
-        operator_ranges[p['operator']].append(p['range'])
+        operator_ranges[str(p['operator'])].append(p['range'])
 
-    # Calculate average range per operator (convert keys to strings for consistency)
-    operators = [str(k) for k in operator_ranges.keys()]
+    operators = list(operator_ranges.keys())
     avg_ranges = [sum(ranges) / len(ranges) for ranges in operator_ranges.values()]
 
-    fig = go.Figure()
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    # Add data line FIRST (so control limits draw on top for visibility)
-    fig.add_trace(go.Scatter(
-        x=operators,
-        y=avg_ranges,
-        mode='markers+lines+text',
-        name='Rango Promedio',
-        marker={'color': COLORS['primary'], 'size': 12},
-        line={'color': COLORS['primary'], 'width': 2},
-        text=[f'{v:.4f}' for v in avg_ranges],
-        textposition='top center',
-        textfont={'size': 10, 'color': COLORS['text']},
-        showlegend=True,
-    ))
+    x_pos = np.arange(len(operators))
 
-    # Add control limits as horizontal lines
-    fig.add_hline(y=ucl_r, line_dash='dash', line_color=COLORS['danger'], line_width=1.5)
-    fig.add_hline(y=r_bar, line_dash='solid', line_color=COLORS['success'], line_width=1.5)
+    # Plot control limits
+    ax.axhline(y=ucl_r, color=COLORS['danger'], linestyle='--', linewidth=1.5)
+    ax.axhline(y=r_bar, color=COLORS['success'], linestyle='-', linewidth=1.5)
     if lcl_r > 0:
-        fig.add_hline(y=lcl_r, line_dash='dash', line_color=COLORS['danger'], line_width=1.5)
+        ax.axhline(y=lcl_r, color=COLORS['danger'], linestyle='--', linewidth=1.5)
 
-    # Calculate y-range to fit labels and control limits
-    max_y = max(max(avg_ranges), ucl_r) * 1.35
+    # Plot data line
+    ax.plot(x_pos, avg_ranges, 'o-', color=COLORS['primary'], linewidth=2,
+            markersize=10, markerfacecolor=COLORS['primary'])
 
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Gráfico R por Operador', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Operador', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Rango Promedio', 'gridcolor': COLORS['grid'], 'showgrid': True,
-               'range': [0, max_y]},
-        showlegend=False,
-        margin={'l': 60, 'r': 100, 't': 60, 'b': 50},
-    )
+    # Add data point labels
+    for i, (x, val) in enumerate(zip(x_pos, avg_ranges)):
+        ax.annotate(f'{val:.4f}', (x, val), textcoords="offset points",
+                    xytext=(0, 12), ha='center', fontsize=9, color=COLORS['text'],
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=COLORS['grid']))
 
-    # Add control limit labels on the lines at the right edge of the plot
-    fig.add_annotation(
-        x=0.99, y=ucl_r, xref='paper', yref='y',
-        text=f'UCL: {ucl_r:.4f}', showarrow=False,
-        font={'size': 9, 'color': COLORS['danger']},
-        xanchor='left', yanchor='middle',
-        bgcolor='white', borderpad=2,
-    )
-    fig.add_annotation(
-        x=0.99, y=r_bar, xref='paper', yref='y',
-        text=f'R\u0305: {r_bar:.4f}', showarrow=False,
-        font={'size': 9, 'color': COLORS['success']},
-        xanchor='left', yanchor='middle',
-        bgcolor='white', borderpad=2,
-    )
+    # Add control limit labels on the right
+    ax.text(len(operators) - 0.5, ucl_r, f'UCL: {ucl_r:.4f}', va='center', fontsize=9,
+            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
+    ax.text(len(operators) - 0.5, r_bar, f'R̄: {r_bar:.4f}', va='center', fontsize=9,
+            color=COLORS['success'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
     if lcl_r > 0:
-        fig.add_annotation(
-            x=0.99, y=lcl_r, xref='paper', yref='y',
-            text=f'LCL: {lcl_r:.4f}', showarrow=False,
-            font={'size': 9, 'color': COLORS['danger']},
-            xanchor='left', yanchor='middle',
-            bgcolor='white', borderpad=2,
-        )
+        ax.text(len(operators) - 0.5, lcl_r, f'LCL: {lcl_r:.4f}', va='center', fontsize=9,
+                color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
 
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(operators)
+    ax.set_xlabel('Operador')
+    ax.set_ylabel('Rango Promedio')
+    ax.set_title('Gráfico R por Operador', fontsize=12, fontweight='bold')
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
+
+    # Set y-axis range
+    max_y = max(max(avg_ranges), ucl_r) * 1.25
+    ax.set_ylim(0, max_y)
+    ax.set_xlim(-0.5, len(operators) + 0.5)
+
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_xbar_chart(data: dict[str, Any]) -> str:
     """
     Generate X-bar chart (mean per operator) with control limits.
-
-    Args:
-        data: Dict with 'points', 'xDoubleBar', 'uclXBar', 'lclXBar' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
     points = data['points']
     x_double_bar = data['xDoubleBar']
     ucl = data['uclXBar']
     lcl = data['lclXBar']
 
-    # Aggregate means by operator (average of means per operator)
-    from collections import defaultdict
+    # Aggregate means by operator
     operator_means = defaultdict(list)
     for p in points:
-        operator_means[p['operator']].append(p['mean'])
+        operator_means[str(p['operator'])].append(p['mean'])
 
-    # Calculate average mean per operator (convert keys to strings for consistency)
-    operators = [str(k) for k in operator_means.keys()]
+    operators = list(operator_means.keys())
     avg_means = [sum(means) / len(means) for means in operator_means.values()]
 
-    fig = go.Figure()
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    # Add data line FIRST (so control limits draw on top for visibility)
-    fig.add_trace(go.Scatter(
-        x=operators,
-        y=avg_means,
-        mode='markers+lines+text',
-        name='Media',
-        marker={'color': COLORS['primary'], 'size': 12},
-        line={'color': COLORS['primary'], 'width': 2},
-        text=[f'{v:.4f}' for v in avg_means],
-        textposition='top center',
-        textfont={'size': 10, 'color': COLORS['text']},
-        showlegend=True,
-    ))
+    x_pos = np.arange(len(operators))
 
-    # Add control limits as horizontal lines
-    fig.add_hline(y=ucl, line_dash='dash', line_color=COLORS['danger'], line_width=1.5)
-    fig.add_hline(y=x_double_bar, line_dash='solid', line_color=COLORS['success'], line_width=1.5)
-    fig.add_hline(y=lcl, line_dash='dash', line_color=COLORS['danger'], line_width=1.5)
+    # Plot control limits
+    ax.axhline(y=ucl, color=COLORS['danger'], linestyle='--', linewidth=1.5)
+    ax.axhline(y=x_double_bar, color=COLORS['success'], linestyle='-', linewidth=1.5)
+    ax.axhline(y=lcl, color=COLORS['danger'], linestyle='--', linewidth=1.5)
 
-    # Calculate y-range to fit labels and control limits
+    # Plot data line
+    ax.plot(x_pos, avg_means, 'o-', color=COLORS['primary'], linewidth=2,
+            markersize=10, markerfacecolor=COLORS['primary'])
+
+    # Add data point labels
+    for i, (x, val) in enumerate(zip(x_pos, avg_means)):
+        ax.annotate(f'{val:.4f}', (x, val), textcoords="offset points",
+                    xytext=(0, 12), ha='center', fontsize=9, color=COLORS['text'],
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=COLORS['grid']))
+
+    # Add control limit labels on the right
+    ax.text(len(operators) - 0.5, ucl, f'UCL: {ucl:.4f}', va='center', fontsize=9,
+            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
+    ax.text(len(operators) - 0.5, x_double_bar, f'X̄: {x_double_bar:.4f}', va='center', fontsize=9,
+            color=COLORS['success'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
+    ax.text(len(operators) - 0.5, lcl, f'LCL: {lcl:.4f}', va='center', fontsize=9,
+            color=COLORS['danger'], bbox=dict(facecolor='white', edgecolor='none', pad=1))
+
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(operators)
+    ax.set_xlabel('Operador')
+    ax.set_ylabel('Media')
+    ax.set_title('Gráfico X̄ por Operador', fontsize=12, fontweight='bold')
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
+
+    # Set y-axis range
     y_min = min(min(avg_means), lcl)
     y_max = max(max(avg_means), ucl)
-    y_padding = (y_max - y_min) * 0.35
-    y_range = [y_min - y_padding, y_max + y_padding]
+    padding = (y_max - y_min) * 0.25
+    ax.set_ylim(y_min - padding, y_max + padding)
+    ax.set_xlim(-0.5, len(operators) + 0.5)
 
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': u'Gráfico X\u0305 por Operador', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Operador', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Media', 'gridcolor': COLORS['grid'], 'showgrid': True,
-               'range': y_range},
-        showlegend=False,
-        margin={'l': 60, 'r': 100, 't': 60, 'b': 50},
-    )
-
-    # Add control limit labels on the lines at the right edge of the plot
-    fig.add_annotation(
-        x=0.99, y=ucl, xref='paper', yref='y',
-        text=f'UCL: {ucl:.4f}', showarrow=False,
-        font={'size': 9, 'color': COLORS['danger']},
-        xanchor='left', yanchor='middle',
-        bgcolor='white', borderpad=2,
-    )
-    fig.add_annotation(
-        x=0.99, y=x_double_bar, xref='paper', yref='y',
-        text=f'X\u0305: {x_double_bar:.4f}', showarrow=False,
-        font={'size': 9, 'color': COLORS['success']},
-        xanchor='left', yanchor='middle',
-        bgcolor='white', borderpad=2,
-    )
-    fig.add_annotation(
-        x=0.99, y=lcl, xref='paper', yref='y',
-        text=f'LCL: {lcl:.4f}', showarrow=False,
-        font={'size': 9, 'color': COLORS['danger']},
-        xanchor='left', yanchor='middle',
-        bgcolor='white', borderpad=2,
-    )
-
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_measurements_by_part_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate box plot of measurements grouped by part.
-
-    Args:
-        data: List of dicts with 'part', 'measurements', 'mean', 'min', 'max' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
-    fig = go.Figure()
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    for i, part_data in enumerate(data):
-        fig.add_trace(go.Box(
-            y=part_data['measurements'],
-            name=str(part_data['part']),
-            marker_color=px.colors.qualitative.Set2[i % len(px.colors.qualitative.Set2)],
-            boxmean=True,
-        ))
+    parts = [str(d['part']) for d in data]
+    measurements = [d['measurements'] for d in data]
 
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Mediciones por Parte', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Parte', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Medición', 'gridcolor': COLORS['grid'], 'showgrid': True},
-        showlegend=False,
-        margin=DEFAULT_MARGIN,
-    )
+    bp = ax.boxplot(measurements, labels=parts, patch_artist=True, showmeans=True,
+                    meanprops=dict(marker='D', markerfacecolor='white', markeredgecolor='black', markersize=6))
 
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    # Color the boxes
+    colors_list = plt.cm.Set2(np.linspace(0, 1, len(parts)))
+    for patch, color in zip(bp['boxes'], colors_list):
+        patch.set_facecolor(color)
+
+    ax.set_xlabel('Parte')
+    ax.set_ylabel('Medición')
+    ax.set_title('Mediciones por Parte', fontsize=12, fontweight='bold')
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
+
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_measurements_by_operator_chart(data: list[dict[str, Any]]) -> str:
     """
     Generate box plot of measurements grouped by operator.
-
-    Args:
-        data: List of dicts with 'operator', 'measurements', 'mean', 'min', 'max' keys
-
-    Returns:
-        Base64-encoded PNG image
     """
-    fig = go.Figure()
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    for i, op_data in enumerate(data):
-        fig.add_trace(go.Box(
-            y=op_data['measurements'],
-            name=str(op_data['operator']),
-            marker_color=px.colors.qualitative.Set2[i % len(px.colors.qualitative.Set2)],
-            boxmean=True,
-        ))
+    operators = [str(d['operator']) for d in data]
+    measurements = [d['measurements'] for d in data]
 
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Mediciones por Operador', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Operador', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Medición', 'gridcolor': COLORS['grid'], 'showgrid': True},
-        showlegend=False,
-        margin=DEFAULT_MARGIN,
-    )
+    bp = ax.boxplot(measurements, labels=operators, patch_artist=True, showmeans=True,
+                    meanprops=dict(marker='D', markerfacecolor='white', markeredgecolor='black', markersize=6))
 
-    return fig_to_base64(fig, height=CHART_HEIGHT)
+    # Color the boxes
+    colors_list = plt.cm.Set2(np.linspace(0, 1, len(operators)))
+    for patch, color in zip(bp['boxes'], colors_list):
+        patch.set_facecolor(color)
+
+    ax.set_xlabel('Operador')
+    ax.set_ylabel('Medición')
+    ax.set_title('Mediciones por Operador', fontsize=12, fontweight='bold')
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
+
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 def generate_interaction_plot(data: dict[str, Any]) -> str:
     """
     Generate interaction plot (Operator × Part).
-
-    Args:
-        data: Dict with 'operators' (list of {operator, partMeans}) and 'parts' (list of part names)
-
-    Returns:
-        Base64-encoded PNG image
     """
     operators_data = data['operators']
-    parts = data['parts']
+    parts = [str(p) for p in data['parts']]
 
-    # High contrast colors for operators
-    CONTRAST_COLORS = [
-        '#E63946',  # Red
-        '#1D3557',  # Dark Blue
-        '#2A9D8F',  # Teal
-        '#F4A261',  # Orange
-        '#9B5DE5',  # Purple
-        '#00F5D4',  # Cyan
-    ]
+    fig, ax = plt.subplots(figsize=(CHART_WIDTH, CHART_HEIGHT))
 
-    fig = go.Figure()
+    x_pos = np.arange(len(parts))
 
     for i, op_data in enumerate(operators_data):
         operator = op_data['operator']
@@ -460,26 +364,21 @@ def generate_interaction_plot(data: dict[str, Any]) -> str:
         # Get means in order of parts
         y_values = [part_means.get(str(p), None) for p in parts]
 
-        fig.add_trace(go.Scatter(
-            x=parts,
-            y=y_values,
-            mode='markers+lines',
-            name=operator,
-            marker={'size': 10, 'color': color},
-            line={'width': 3, 'color': color},
-        ))
+        ax.plot(x_pos, y_values, 'o-', color=color, linewidth=2.5,
+                markersize=8, label=operator, markerfacecolor=color)
 
-    fig.update_layout(
-        **BASE_LAYOUT,
-        title={'text': 'Gráfico de Interacción (Operador × Parte)', 'x': 0.5, 'xanchor': 'center'},
-        xaxis={'title': 'Parte', 'gridcolor': COLORS['grid']},
-        yaxis={'title': 'Media', 'gridcolor': COLORS['grid'], 'showgrid': True},
-        legend={'title': 'Operador', 'orientation': 'h', 'yanchor': 'top',
-                'y': -0.25, 'xanchor': 'center', 'x': 0.5},
-        margin={'l': 60, 'r': 30, 't': 50, 'b': 100},
-    )
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(parts)
+    ax.set_xlabel('Parte')
+    ax.set_ylabel('Media')
+    ax.set_title('Gráfico de Interacción (Operador × Parte)', fontsize=12, fontweight='bold')
+    ax.legend(title='Operador', loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              ncol=len(operators_data), fontsize=9)
+    ax.grid(axis='y', linestyle='-', alpha=0.3, color=COLORS['grid'])
+    ax.set_axisbelow(True)
 
-    return fig_to_base64(fig, height=350)
+    plt.tight_layout()
+    return fig_to_base64(fig)
 
 
 # =============================================================================
