@@ -84,37 +84,74 @@ function getComputedColor(element: Element, property: string): string {
 }
 
 /**
+ * Convert a color value to RGB, handling modern CSS color functions
+ */
+function convertToRgb(colorValue: string): string {
+  if (!colorValue || colorValue === 'none' || colorValue === 'transparent') {
+    return colorValue
+  }
+
+  // Check if it's a modern color function that needs conversion
+  if (colorValue.includes('lab(') || colorValue.includes('oklch(') || colorValue.includes('color(') || colorValue.includes('var(')) {
+    const temp = document.createElement('div')
+    temp.style.color = colorValue
+    document.body.appendChild(temp)
+    const resolved = getComputedStyle(temp).color
+    document.body.removeChild(temp)
+    return resolved
+  }
+
+  return colorValue
+}
+
+/**
  * Convert SVG element to a data URL with inlined styles
  */
 function svgToDataUrl(svgElement: SVGSVGElement): string {
-  // Clone the SVG to avoid modifying the original
-  const clone = svgElement.cloneNode(true) as SVGSVGElement
+  // Get all original elements and their computed styles BEFORE cloning
+  const originalElements = svgElement.querySelectorAll('*')
+  const stylesMap = new Map<number, Record<string, string>>()
 
-  // Inline computed styles for all elements
-  const allElements = clone.querySelectorAll('*')
-  allElements.forEach((el) => {
-    const computed = getComputedStyle(el as Element)
-    const styles: string[] = []
+  const props = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'font-size', 'font-family', 'font-weight', 'opacity', 'color']
 
-    // Copy important style properties
-    const props = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'font-size', 'font-family', 'font-weight', 'opacity']
+  originalElements.forEach((el, index) => {
+    const computed = getComputedStyle(el)
+    const styles: Record<string, string> = {}
+
     props.forEach((prop) => {
-      let value = computed.getPropertyValue(prop)
+      const value = computed.getPropertyValue(prop)
       if (value && value !== 'none' && value !== '') {
-        // Convert any lab() or modern color functions to rgb
-        if (value.includes('lab(') || value.includes('oklch(') || value.includes('color(')) {
-          const temp = document.createElement('div')
-          temp.style.color = value
-          document.body.appendChild(temp)
-          value = getComputedStyle(temp).color
-          document.body.removeChild(temp)
-        }
-        styles.push(`${prop}:${value}`)
+        styles[prop] = convertToRgb(value)
       }
     })
 
-    if (styles.length > 0) {
-      ;(el as SVGElement).setAttribute('style', styles.join(';'))
+    // Also get fill and stroke from attributes if not in computed
+    const fillAttr = el.getAttribute('fill')
+    const strokeAttr = el.getAttribute('stroke')
+    if (fillAttr && !styles['fill']) {
+      styles['fill'] = convertToRgb(fillAttr)
+    }
+    if (strokeAttr && !styles['stroke']) {
+      styles['stroke'] = convertToRgb(strokeAttr)
+    }
+
+    stylesMap.set(index, styles)
+  })
+
+  // Clone the SVG
+  const clone = svgElement.cloneNode(true) as SVGSVGElement
+
+  // Apply stored styles to cloned elements
+  const clonedElements = clone.querySelectorAll('*')
+  clonedElements.forEach((el, index) => {
+    const styles = stylesMap.get(index)
+    if (styles) {
+      const styleString = Object.entries(styles)
+        .map(([prop, value]) => `${prop}:${value}`)
+        .join(';')
+      if (styleString) {
+        ;(el as SVGElement).setAttribute('style', styleString)
+      }
     }
   })
 
@@ -122,6 +159,11 @@ function svgToDataUrl(svgElement: SVGSVGElement): string {
   const bbox = svgElement.getBoundingClientRect()
   clone.setAttribute('width', String(bbox.width))
   clone.setAttribute('height', String(bbox.height))
+
+  // Add xmlns if missing
+  if (!clone.getAttribute('xmlns')) {
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  }
 
   // Serialize to string
   const serializer = new XMLSerializer()
