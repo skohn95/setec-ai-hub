@@ -107,12 +107,14 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
               dataKey="operator"
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
+              label={{ value: 'Operador', position: 'insideBottom', offset: -5, fontSize: 11 }}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[0, Math.max(data.uclR * 1.2, Math.max(...chartData.map((d) => d.avgRange)) * 1.2)]}
               tickFormatter={(value: number) => value.toFixed(2)}
+              label={{ value: 'Rango', angle: -90, position: 'insideLeft', fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{
@@ -137,7 +139,7 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
               y={data.rBar}
               stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `R̄: ${data.rBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
+              label={{ value: `Rbar: ${data.rBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             {data.lclR > 0 && (
               <ReferenceLine
@@ -166,7 +168,7 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#10B981]" />
-            <span>R̄ (Media)</span>
+            <span>Rbar (Media)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />

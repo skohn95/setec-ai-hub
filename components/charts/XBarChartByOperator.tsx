@@ -102,7 +102,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
         </Button>
       </div>
       <div ref={chartRef} data-testid="xbar-chart-by-operator" className="mb-4 bg-card rounded-lg border p-4">
-        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico X̄ (Media) por Operador</h4>
+        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico Xbar (Media) por Operador</h4>
         <p className="text-xs text-muted-foreground mb-2">
           Media promedio por operador. Valores fuera de límites indican diferencias significativas.
         </p>
@@ -113,12 +113,14 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
               dataKey="operator"
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
+              label={{ value: 'Operador', position: 'insideBottom', offset: -5, fontSize: 11 }}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
               tickFormatter={(value: number) => value.toFixed(2)}
+              label={{ value: 'Media', angle: -90, position: 'insideLeft', fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{
@@ -143,7 +145,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
               y={data.xDoubleBar}
               stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `X̄: ${data.xDoubleBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
+              label={{ value: `Xbar: ${data.xDoubleBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             <ReferenceLine
               y={data.lclXBar}
@@ -170,7 +172,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#10B981]" />
-            <span>X̄ (Gran Media)</span>
+            <span>Xbar (Gran Media)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />
