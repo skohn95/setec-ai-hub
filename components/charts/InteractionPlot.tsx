@@ -106,25 +106,25 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
         </Button>
       </div>
       <div ref={chartRef} data-testid="interaction-plot" className="mb-4 bg-card rounded-lg border p-4">
-        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico de Interacción (Operador×Pieza)</h4>
+        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico de Interacción (Operador×Parte)</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Líneas paralelas = sin interacción. Líneas que se cruzan = interacción significativa entre operador y pieza.
+          Líneas paralelas = sin interacción. Líneas que se cruzan = interacción significativa entre operador y parte.
         </p>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="part"
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
-              label={{ value: 'Pieza', position: 'insideBottom', offset: -5, fontSize: 11 }}
+              label={{ value: 'Parte', position: 'insideBottom', offset: -20, fontSize: 11 }}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
               tickFormatter={(value: number) => value.toFixed(3)}
-              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 15, fontSize: 11 }}
+              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{
@@ -138,7 +138,7 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
                 const val = typeof value === 'number' ? value.toFixed(4) : String(value)
                 return [val, String(name)]
               }}
-              labelFormatter={(label) => `Pieza: ${label}`}
+              labelFormatter={(label) => `Parte: ${label}`}
             />
             <Legend
               verticalAlign="bottom"

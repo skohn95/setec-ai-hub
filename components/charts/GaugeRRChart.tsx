@@ -152,19 +152,21 @@ function OperatorComparisonChart({ data }: { data: OperatorComparisonDataItem[] 
   return (
     <div data-testid="operator-comparison-chart" className="mb-4">
       <h4 className="text-sm font-medium mb-3 text-foreground">Comparación de Operadores</h4>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={chartData} margin={{ top: 10, right: 20, left: 20, bottom: 30 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
           <XAxis
             dataKey="operator"
             tick={{ fontSize: 12 }}
             className="fill-muted-foreground"
+            label={{ value: 'Operador', position: 'insideBottom', offset: -20, fontSize: 11 }}
           />
           <YAxis
             tick={{ fontSize: 12 }}
             className="fill-muted-foreground"
             domain={['dataMin - 0.5', 'dataMax + 0.5']}
             tickFormatter={(value: number) => value.toFixed(2)}
+            label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
           />
           <Tooltip
             contentStyle={{

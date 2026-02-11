@@ -2,15 +2,14 @@
 
 import { useRef, useState } from 'react'
 import {
-  ComposedChart,
-  Scatter,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
-  ZAxis,
+  Cell,
 } from 'recharts'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -46,22 +45,24 @@ function calculateQuartiles(values: number[]) {
   }
 }
 
-// Custom shape that draws the entire box plot
+// Custom bar shape that renders a box plot
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const BoxPlotShape = (props: any) => {
-  const { cx, payload, yAxisMap } = props
-  if (!cx || !yAxisMap || !yAxisMap['0'] || !payload) return null
+const BoxPlotBar = (props: any) => {
+  const { x, width, payload, yScale } = props
+  if (!payload || !yScale) return null
 
-  const scale = yAxisMap['0'].scale
-  const minY = scale(payload.min)
-  const maxY = scale(payload.max)
-  const q1Y = scale(payload.q1)
-  const q3Y = scale(payload.q3)
-  const medianY = scale(payload.median)
+  const { min, q1, median, q3, max } = payload
 
-  const boxWidth = 24
+  const minY = yScale(min)
+  const q1Y = yScale(q1)
+  const medianY = yScale(median)
+  const q3Y = yScale(q3)
+  const maxY = yScale(max)
+
+  const cx = x + width / 2
+  const boxWidth = Math.min(width * 0.6, 30)
   const halfWidth = boxWidth / 2
-  const whiskerWidth = 8
+  const whiskerWidth = boxWidth * 0.4
 
   return (
     <g>
@@ -70,7 +71,7 @@ const BoxPlotShape = (props: any) => {
         x={cx - halfWidth}
         y={q3Y}
         width={boxWidth}
-        height={q1Y - q3Y}
+        height={Math.max(q1Y - q3Y, 1)}
         fill="#8B5CF6"
         stroke="#7C3AED"
         strokeWidth={1}
@@ -112,8 +113,8 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
     const quartiles = calculateQuartiles(item.measurements)
     return {
       operator: String(item.operator),
-      // Use median as the y value for positioning the scatter point
-      y: quartiles.median,
+      // Use max as the bar value to ensure full height rendering
+      value: quartiles.max,
       // Quartile values for the custom shape
       min: quartiles.min,
       q1: quartiles.q1,
@@ -122,9 +123,6 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
       max: quartiles.max,
     }
   })
-
-  // Calculate overall mean for reference line
-  const overallMean = data.reduce((sum, item) => sum + item.mean, 0) / data.length
 
   // Calculate Y-axis domain based on actual data
   const allMins = chartData.map((d) => d.min)
@@ -150,6 +148,9 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
     }
   }
 
+  // Get yScale from the chart for custom rendering
+  const yDomain = [yMin - yPadding, yMax + yPadding]
+
   return (
     <div className="relative">
       <div className="absolute top-2 right-2 z-10">
@@ -173,21 +174,21 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           Diagrama de caja: caja = IQR (Q1-Q3), línea roja = mediana, bigotes = min/max.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 5 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
               tick={{ fontSize: 11 }}
               className="fill-muted-foreground"
+              label={{ value: 'Operador', position: 'insideBottom', offset: -20, fontSize: 11 }}
             />
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
-              domain={[yMin - yPadding, yMax + yPadding]}
+              domain={yDomain}
               tickFormatter={(value: number) => value.toFixed(2)}
-              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
+              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
             />
-            <ZAxis range={[0, 0]} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'hsl(var(--popover))',
@@ -196,34 +197,43 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
                 fontSize: '12px',
                 padding: '8px 12px',
               }}
-              formatter={(value, name) => {
-                const val = typeof value === 'number' ? value.toFixed(4) : String(value)
-                const labels: Record<string, string> = {
-                  y: 'Mediana',
-                  median: 'Mediana',
-                  min: 'Mínimo',
-                  max: 'Máximo',
-                  q1: 'Q1 (25%)',
-                  q3: 'Q3 (75%)',
-                }
-                return [val, labels[String(name)] || String(name)]
+              formatter={(value, name, props) => {
+                const { payload } = props
+                if (!payload) return [value, name]
+                return [
+                  <div key="tooltip" className="space-y-1">
+                    <div>Máx: {payload.max?.toFixed(4)}</div>
+                    <div>Q3: {payload.q3?.toFixed(4)}</div>
+                    <div>Mediana: {payload.median?.toFixed(4)}</div>
+                    <div>Q1: {payload.q1?.toFixed(4)}</div>
+                    <div>Mín: {payload.min?.toFixed(4)}</div>
+                  </div>,
+                  ''
+                ]
               }}
               labelFormatter={(label) => `Operador: ${label}`}
             />
-            {/* Overall mean reference line */}
-            <ReferenceLine
-              y={overallMean}
-              stroke="#10B981"
-              strokeDasharray="5 5"
-              label={{ value: `Media=${overallMean.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
-            />
-            {/* Box plot using custom shape */}
-            <Scatter
-              dataKey="y"
-              fill="transparent"
-              shape={(props) => <BoxPlotShape {...props} />}
-            />
-          </ComposedChart>
+            <Bar
+              dataKey="value"
+              shape={(props) => {
+                // Create a linear scale for Y values
+                const { background } = props
+                if (!background || background.height == null || background.y == null) return null
+                const chartHeight = background.height
+                const chartY = background.y
+                const [domainMin, domainMax] = yDomain
+                const yScale = (val: number) => {
+                  const ratio = (val - domainMin) / (domainMax - domainMin)
+                  return (chartY as number) + chartHeight * (1 - ratio)
+                }
+                return <BoxPlotBar {...props} yScale={yScale} />
+              }}
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill="transparent" />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
@@ -238,10 +248,6 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#64748B]" />
             <span>Min/Max</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-[#10B981]" style={{ borderTop: '2px dashed #10B981' }} />
-            <span>Media General</span>
           </div>
         </div>
       </div>
