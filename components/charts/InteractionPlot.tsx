@@ -119,7 +119,7 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
           Líneas paralelas = sin interacción. Líneas que se cruzan = interacción significativa entre operador y parte.
         </p>
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 40 }}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 35, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="part"
@@ -132,7 +132,7 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
               tickFormatter={formatNumber}
-              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
+              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{

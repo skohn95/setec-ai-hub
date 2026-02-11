@@ -182,7 +182,7 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
           Diagrama de caja: caja = IQR (Q1-Q3), línea roja = mediana, bigotes = min/max.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 30 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="part"
@@ -195,7 +195,7 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
               className="fill-muted-foreground"
               domain={yDomain}
               tickFormatter={formatNumber}
-              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
+              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
               content={({ active, payload, label }) => {
@@ -209,7 +209,7 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
                     fontSize: '12px',
                     padding: '8px 12px',
                   }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Parte: {label}</div>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Parte: {Number.isInteger(Number(label)) ? Math.round(Number(label)) : label}</div>
                     <div>Máx: {formatNumber(data.max)}</div>
                     <div>Q3: {formatNumber(data.q3)}</div>
                     <div>Mediana: {formatNumber(data.median)}</div>

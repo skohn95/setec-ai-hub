@@ -115,7 +115,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
           Media promedio por operador. Valores fuera de límites indican diferencias significativas.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 20, bottom: 30 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
@@ -128,7 +128,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
               tickFormatter={formatNumber}
-              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
+              label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{

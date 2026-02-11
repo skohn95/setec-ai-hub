@@ -91,6 +91,9 @@ export async function exportChartToPng(
       backgroundColor,
       scale,
       logging: false,
+      useCORS: true,
+      allowTaint: true,
+      foreignObjectRendering: false,
     })
 
     const blob = await new Promise<Blob>((resolve, reject) => {

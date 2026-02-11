@@ -182,7 +182,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           Diagrama de caja: caja = IQR (Q1-Q3), línea roja = mediana, bigotes = min/max.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 30 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
@@ -195,7 +195,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
               className="fill-muted-foreground"
               domain={yDomain}
               tickFormatter={formatNumber}
-              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
+              label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
               content={({ active, payload, label }) => {

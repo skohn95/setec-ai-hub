@@ -109,7 +109,7 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
           Rango promedio por operador. Valores fuera de UCL indican variación excesiva.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 20, bottom: 30 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
@@ -122,7 +122,7 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
               className="fill-muted-foreground"
               domain={[0, Math.max(data.uclR * 1.2, Math.max(...chartData.map((d) => d.avgRange)) * 1.2)]}
               tickFormatter={formatNumber}
-              label={{ value: 'Rango', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
+              label={{ value: 'Rango', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
               contentStyle={{
