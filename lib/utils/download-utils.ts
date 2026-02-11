@@ -1,19 +1,14 @@
+import html2canvas from 'html2canvas'
+
 /**
  * Utility function to trigger file downloads from static paths
- * Creates an invisible anchor element, triggers click, and cleans up
- *
- * Note: If the file doesn't exist, the browser will show its 404 page.
- * For static files in /public/, ensure the file exists before calling.
  */
 export function downloadFile(path: string, filename?: string): void {
   try {
     const link = document.createElement('a')
     link.href = path
-
-    // Extract filename from path if not provided
     const extractedFilename = path.split('/').pop()
     link.download = filename || extractedFilename || 'download'
-
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -34,8 +29,6 @@ export class ChartExportError extends Error {
 
 /**
  * Generate a timestamped filename for chart export
- * @param analysisType - Type of analysis (e.g., 'msa', 'gauge-rr', 'variation')
- * @returns Filename in format: {analysisType}-results-{YYYY-MM-DD}.png
  */
 export function generateExportFilename(analysisType: string): string {
   const date = new Date().toISOString().split('T')[0]
@@ -44,8 +37,6 @@ export function generateExportFilename(analysisType: string): string {
 
 /**
  * Trigger browser download for a blob
- * @param blob - The blob to download
- * @param filename - The filename for the download
  */
 export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
@@ -56,129 +47,82 @@ export function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-/**
- * Options for chart export
- */
 export interface ChartExportOptions {
-  /** Background color for the exported image (default: '#ffffff') */
   backgroundColor?: string
-  /** Scale factor for higher resolution (default: 2) */
   scale?: number
 }
 
 /**
- * Get computed color value, converting CSS variables to actual colors
+ * Convert modern CSS color functions (lab, oklch, etc.) to RGB
  */
-function getComputedColor(element: Element, property: string): string {
-  const computed = getComputedStyle(element).getPropertyValue(property)
-  if (computed.includes('var(')) {
-    // For CSS variables, try to resolve them
+function resolveColor(color: string): string {
+  if (!color || color === 'none' || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+    return color
+  }
+
+  // Check if needs conversion
+  if (color.includes('lab(') || color.includes('oklch(') || color.includes('color(') || color.includes('var(')) {
     const temp = document.createElement('div')
-    temp.style.color = computed
+    temp.style.cssText = `color: ${color} !important;`
     document.body.appendChild(temp)
     const resolved = getComputedStyle(temp).color
     document.body.removeChild(temp)
-    return resolved
+    return resolved || color
   }
-  return computed
+
+  return color
 }
 
 /**
- * Convert a color value to RGB, handling modern CSS color functions
+ * Inline all computed styles on an element and its descendants,
+ * converting modern CSS colors to RGB for html2canvas compatibility
  */
-function convertToRgb(colorValue: string): string {
-  if (!colorValue || colorValue === 'none' || colorValue === 'transparent') {
-    return colorValue
-  }
-
-  // Check if it's a modern color function that needs conversion
-  if (colorValue.includes('lab(') || colorValue.includes('oklch(') || colorValue.includes('color(') || colorValue.includes('var(')) {
-    const temp = document.createElement('div')
-    temp.style.color = colorValue
-    document.body.appendChild(temp)
-    const resolved = getComputedStyle(temp).color
-    document.body.removeChild(temp)
-    return resolved
-  }
-
-  return colorValue
-}
-
-/**
- * Convert SVG element to a data URL with inlined styles
- */
-function svgToDataUrl(svgElement: SVGSVGElement): string {
-  // Get all original elements and their computed styles BEFORE cloning
-  const originalElements = svgElement.querySelectorAll('*')
-  const stylesMap = new Map<number, Record<string, string>>()
-
-  const props = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'font-size', 'font-family', 'font-weight', 'opacity', 'color']
-
-  originalElements.forEach((el, index) => {
+function inlineStyles(element: HTMLElement): void {
+  const processElement = (el: Element) => {
     const computed = getComputedStyle(el)
-    const styles: Record<string, string> = {}
+    const htmlEl = el as HTMLElement
 
-    props.forEach((prop) => {
-      const value = computed.getPropertyValue(prop)
-      if (value && value !== 'none' && value !== '') {
-        styles[prop] = convertToRgb(value)
+    // Properties that might contain lab() colors
+    const colorProps = [
+      'color', 'backgroundColor', 'borderColor', 'borderTopColor',
+      'borderRightColor', 'borderBottomColor', 'borderLeftColor',
+      'outlineColor', 'fill', 'stroke'
+    ]
+
+    colorProps.forEach(prop => {
+      const value = computed.getPropertyValue(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()))
+      if (value && value !== 'none' && value !== 'transparent') {
+        const resolved = resolveColor(value)
+        if (resolved !== value) {
+          htmlEl.style.setProperty(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), resolved, 'important')
+        }
       }
     })
 
-    // Also get fill and stroke from attributes if not in computed
-    const fillAttr = el.getAttribute('fill')
-    const strokeAttr = el.getAttribute('stroke')
-    if (fillAttr && !styles['fill']) {
-      styles['fill'] = convertToRgb(fillAttr)
-    }
-    if (strokeAttr && !styles['stroke']) {
-      styles['stroke'] = convertToRgb(strokeAttr)
-    }
+    // For SVG elements, also handle fill and stroke attributes
+    if (el instanceof SVGElement) {
+      const fill = computed.fill || el.getAttribute('fill')
+      const stroke = computed.stroke || el.getAttribute('stroke')
 
-    stylesMap.set(index, styles)
-  })
-
-  // Clone the SVG
-  const clone = svgElement.cloneNode(true) as SVGSVGElement
-
-  // Apply stored styles to cloned elements
-  const clonedElements = clone.querySelectorAll('*')
-  clonedElements.forEach((el, index) => {
-    const styles = stylesMap.get(index)
-    if (styles) {
-      const styleString = Object.entries(styles)
-        .map(([prop, value]) => `${prop}:${value}`)
-        .join(';')
-      if (styleString) {
-        ;(el as SVGElement).setAttribute('style', styleString)
+      if (fill) {
+        const resolvedFill = resolveColor(fill)
+        htmlEl.style.setProperty('fill', resolvedFill, 'important')
+      }
+      if (stroke) {
+        const resolvedStroke = resolveColor(stroke)
+        htmlEl.style.setProperty('stroke', resolvedStroke, 'important')
       }
     }
-  })
-
-  // Set explicit dimensions
-  const bbox = svgElement.getBoundingClientRect()
-  clone.setAttribute('width', String(bbox.width))
-  clone.setAttribute('height', String(bbox.height))
-
-  // Add xmlns if missing
-  if (!clone.getAttribute('xmlns')) {
-    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
   }
 
-  // Serialize to string
-  const serializer = new XMLSerializer()
-  const svgString = serializer.serializeToString(clone)
-
-  // Create data URL
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString)
+  // Process the element and all descendants
+  processElement(element)
+  element.querySelectorAll('*').forEach(processElement)
 }
 
 /**
- * Export a chart element to PNG by capturing the SVG and rendering to canvas
- * @param chartRef - React ref to the chart container element
- * @param filename - The filename for the downloaded PNG
- * @param options - Optional export configuration
- * @throws {ChartExportError} When export fails
+ * Export a chart element to PNG using html2canvas
+ * Preprocesses the element to convert modern CSS colors to RGB
  */
 export async function exportChartToPng(
   chartRef: { current: HTMLDivElement | null },
@@ -190,121 +134,44 @@ export async function exportChartToPng(
   }
 
   const { backgroundColor = '#ffffff', scale = 2 } = options
-  const container = chartRef.current
+  const original = chartRef.current
 
   try {
-    // Get container dimensions
-    const rect = container.getBoundingClientRect()
-    const width = rect.width * scale
-    const height = rect.height * scale
+    // Clone the element to avoid modifying the original
+    const clone = original.cloneNode(true) as HTMLElement
 
-    // Create canvas
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
+    // Position the clone off-screen but still in the document for style computation
+    clone.style.position = 'absolute'
+    clone.style.left = '-9999px'
+    clone.style.top = '0'
+    clone.style.width = `${original.offsetWidth}px`
+    clone.style.height = `${original.offsetHeight}px`
+    document.body.appendChild(clone)
 
-    if (!ctx) {
-      throw new Error('Could not get canvas context')
-    }
+    // Inline all styles, converting lab() colors to RGB
+    inlineStyles(clone)
 
-    // Fill background
-    ctx.fillStyle = backgroundColor
-    ctx.fillRect(0, 0, width, height)
-
-    // Find all text elements (titles, labels) and SVG
-    const svg = container.querySelector('svg')
-
-    if (svg) {
-      // Convert SVG to image
-      const svgDataUrl = svgToDataUrl(svg as SVGSVGElement)
-      const svgImg = new Image()
-
-      await new Promise<void>((resolve, reject) => {
-        svgImg.onload = () => resolve()
-        svgImg.onerror = () => reject(new Error('Failed to load SVG image'))
-        svgImg.src = svgDataUrl
-      })
-
-      // Calculate SVG position relative to container
-      const svgRect = svg.getBoundingClientRect()
-      const offsetX = (svgRect.left - rect.left) * scale
-      const offsetY = (svgRect.top - rect.top) * scale
-
-      // Draw SVG
-      ctx.drawImage(svgImg, offsetX, offsetY, svgRect.width * scale, svgRect.height * scale)
-    }
-
-    // Draw text elements (titles, descriptions, legends)
-    const textElements = container.querySelectorAll('h4, p, span')
-    ctx.textBaseline = 'top'
-
-    textElements.forEach((el) => {
-      const textEl = el as HTMLElement
-      const textRect = textEl.getBoundingClientRect()
-      const computed = getComputedStyle(textEl)
-
-      // Skip if outside container or empty
-      if (!textEl.textContent?.trim()) return
-
-      const offsetX = (textRect.left - rect.left) * scale
-      const offsetY = (textRect.top - rect.top) * scale
-
-      // Get font properties
-      const fontSize = parseFloat(computed.fontSize) * scale
-      const fontWeight = computed.fontWeight
-      const fontFamily = computed.fontFamily || 'sans-serif'
-
-      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`
-
-      // Get color - resolve CSS variables
-      let color = computed.color
-      if (color.includes('lab(') || color.includes('oklch(')) {
-        color = '#374151' // fallback to gray
-      }
-      ctx.fillStyle = color
-
-      ctx.fillText(textEl.textContent || '', offsetX, offsetY)
+    // Use html2canvas on the preprocessed clone
+    const canvas = await html2canvas(clone, {
+      backgroundColor,
+      scale,
+      logging: false,
+      useCORS: true,
     })
 
-    // Draw legend colored boxes/lines
-    const legendItems = container.querySelectorAll('.flex.items-center.gap-1 > div:first-child')
-    legendItems.forEach((el) => {
-      const divEl = el as HTMLElement
-      const divRect = divEl.getBoundingClientRect()
-      const computed = getComputedStyle(divEl)
-
-      const offsetX = (divRect.left - rect.left) * scale
-      const offsetY = (divRect.top - rect.top) * scale
-      const w = divRect.width * scale
-      const h = divRect.height * scale
-
-      let bgColor = computed.backgroundColor
-      if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
-        // Check for inline style background
-        bgColor = divEl.style.backgroundColor || '#cccccc'
-      }
-
-      ctx.fillStyle = bgColor
-      ctx.fillRect(offsetX, offsetY, w, h)
-    })
+    // Clean up
+    document.body.removeChild(clone)
 
     // Convert to blob and download
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob)
-        } else {
-          reject(new Error('Failed to create image blob'))
-        }
+        if (blob) resolve(blob)
+        else reject(new Error('Failed to create image blob'))
       }, 'image/png')
     })
 
     triggerDownload(blob, filename)
   } catch (error) {
-    throw new ChartExportError(
-      'Failed to export chart as image',
-      error
-    )
+    throw new ChartExportError('Failed to export chart as image', error)
   }
 }
