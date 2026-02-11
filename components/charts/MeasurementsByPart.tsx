@@ -28,6 +28,14 @@ interface MeasurementsByPartProps {
   data: MeasurementsByPartItem[]
 }
 
+// Format number: 2 decimals if >= 1, 2 significant figures if < 1
+function formatNumber(value: number): string {
+  if (Math.abs(value) >= 1) {
+    return value.toFixed(2)
+  }
+  return value.toPrecision(2)
+}
+
 // Calculate quartiles for box plot
 function calculateQuartiles(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b)
@@ -186,32 +194,30 @@ export default function MeasurementsByPart({ data }: MeasurementsByPartProps) {
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={yDomain}
-              tickFormatter={(value: number) => value.toFixed(2)}
+              tickFormatter={formatNumber}
               label={{ value: 'Medición', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                fontSize: '12px',
-                padding: '8px 12px',
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload[0]) return null
+                const data = payload[0].payload
+                return (
+                  <div style={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    padding: '8px 12px',
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Parte: {label}</div>
+                    <div>Máx: {formatNumber(data.max)}</div>
+                    <div>Q3: {formatNumber(data.q3)}</div>
+                    <div>Mediana: {formatNumber(data.median)}</div>
+                    <div>Q1: {formatNumber(data.q1)}</div>
+                    <div>Mín: {formatNumber(data.min)}</div>
+                  </div>
+                )
               }}
-              formatter={(value, name, props) => {
-                const { payload } = props
-                if (!payload) return [value, name]
-                return [
-                  <div key="tooltip" className="space-y-1">
-                    <div>Máx: {payload.max?.toFixed(4)}</div>
-                    <div>Q3: {payload.q3?.toFixed(4)}</div>
-                    <div>Mediana: {payload.median?.toFixed(4)}</div>
-                    <div>Q1: {payload.q1?.toFixed(4)}</div>
-                    <div>Mín: {payload.min?.toFixed(4)}</div>
-                  </div>,
-                  ''
-                ]
-              }}
-              labelFormatter={(label) => `Parte: ${label}`}
             />
             <Bar
               dataKey="value"

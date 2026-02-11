@@ -33,6 +33,14 @@ interface RChartByOperatorProps {
   data: RChartData
 }
 
+// Format number: 2 decimals if >= 1, 2 significant figures if < 1
+function formatNumber(value: number): string {
+  if (Math.abs(value) >= 1) {
+    return value.toFixed(2)
+  }
+  return value.toPrecision(2)
+}
+
 /**
  * RChartByOperator component displays Range chart by operator
  * Shows AVERAGE range per operator (not individual measurements)
@@ -113,7 +121,7 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[0, Math.max(data.uclR * 1.2, Math.max(...chartData.map((d) => d.avgRange)) * 1.2)]}
-              tickFormatter={(value: number) => value.toFixed(2)}
+              tickFormatter={formatNumber}
               label={{ value: 'Rango', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
             />
             <Tooltip

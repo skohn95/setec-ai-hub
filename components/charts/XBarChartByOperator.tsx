@@ -33,6 +33,14 @@ interface XBarChartByOperatorProps {
   data: XBarChartData
 }
 
+// Format number: 2 decimals if >= 1, 2 significant figures if < 1
+function formatNumber(value: number): string {
+  if (Math.abs(value) >= 1) {
+    return value.toFixed(2)
+  }
+  return value.toPrecision(2)
+}
+
 /**
  * XBarChartByOperator component displays X-bar (mean) chart by operator
  * Shows AVERAGE mean per operator (not individual measurements)
@@ -119,7 +127,7 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
-              tickFormatter={(value: number) => value.toFixed(2)}
+              tickFormatter={formatNumber}
               label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
             />
             <Tooltip

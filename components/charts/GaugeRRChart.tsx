@@ -169,19 +169,22 @@ function OperatorComparisonChart({ data }: { data: OperatorComparisonDataItem[] 
             label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 5, fontSize: 11 }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--popover))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '6px',
-              fontSize: '12px',
-              padding: '8px 12px',
-            }}
-            labelStyle={{ fontWeight: 600, marginBottom: '4px', color: 'hsl(var(--foreground))' }}
-            formatter={(value, name) => {
-              const displayValue = typeof value === 'number' ? value.toFixed(3) : '0.000'
-              const displayName = name ?? ''
-              if (displayName === 'mean') return [<span key="mean" style={{ color: '#1E40AF', fontWeight: 600 }}>{displayValue}</span>, 'Media']
-              return [displayValue, displayName]
+            content={({ active, payload, label }) => {
+              if (!active || !payload || !payload[0]) return null
+              const data = payload[0].payload
+              return (
+                <div style={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  padding: '8px 12px',
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>Operador: {label}</div>
+                  <div>Media: {typeof data.mean === 'number' ? data.mean.toFixed(4) : '0.0000'}</div>
+                  <div>Desv. Std: {typeof data.stdDev === 'number' ? data.stdDev.toFixed(4) : '0.0000'}</div>
+                </div>
+              )
             }}
           />
           <Bar dataKey="mean" fill="#3B82F6" radius={[4, 4, 0, 0]}>

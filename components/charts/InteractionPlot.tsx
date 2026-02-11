@@ -30,6 +30,14 @@ interface InteractionPlotProps {
   data: InteractionPlotData
 }
 
+// Format number: 2 decimals if >= 1, 2 significant figures if < 1
+function formatNumber(value: number): string {
+  if (Math.abs(value) >= 1) {
+    return value.toFixed(2)
+  }
+  return value.toPrecision(2)
+}
+
 // Define colors for different operators
 const OPERATOR_COLORS = [
   '#3B82F6', // blue
@@ -110,8 +118,8 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
         <p className="text-xs text-muted-foreground mb-2">
           Líneas paralelas = sin interacción. Líneas que se cruzan = interacción significativa entre operador y parte.
         </p>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 30 }}>
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 25, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="part"
@@ -123,7 +131,7 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               domain={[yMin - yPadding, yMax + yPadding]}
-              tickFormatter={(value: number) => value.toFixed(3)}
+              tickFormatter={formatNumber}
               label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
             />
             <Tooltip
@@ -142,9 +150,9 @@ export default function InteractionPlot({ data }: InteractionPlotProps) {
             />
             <Legend
               verticalAlign="bottom"
-              height={50}
+              height={60}
               iconType="line"
-              wrapperStyle={{ fontSize: '11px', paddingTop: '15px' }}
+              wrapperStyle={{ fontSize: '11px', paddingTop: '25px' }}
             />
             {/* One line per operator */}
             {data.operators.map((op, index) => (
