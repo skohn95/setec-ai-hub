@@ -42,7 +42,7 @@ export interface CreateConversationResult {
 }
 
 /**
- * Fetch all conversations for a user, sorted by updated_at descending
+ * Fetch all conversations for a user, sorted by created_at descending
  * RLS policies ensure users only see their own conversations
  */
 export async function getConversations(userId: string): Promise<ConversationsResult> {
@@ -57,7 +57,7 @@ export async function getConversations(userId: string): Promise<ConversationsRes
     .from('conversations')
     .select('*')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     logSupabaseError(error, 'getConversations', 'conversations')
