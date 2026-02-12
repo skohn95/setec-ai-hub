@@ -6,7 +6,6 @@ ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analysis_results ENABLE ROW LEVEL SECURITY;
-ALTER TABLE token_usage ENABLE ROW LEVEL SECURITY;
 
 -- Conversations policies
 DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
@@ -62,9 +61,3 @@ CREATE POLICY "Users can view own analysis results"
     )
   );
 
--- Token usage policies
-DROP POLICY IF EXISTS "Users can view own token usage" ON token_usage;
-CREATE POLICY "Users can view own token usage"
-  ON token_usage FOR SELECT USING (
-    conversation_id IN (SELECT id FROM conversations WHERE user_id = auth.uid())
-  );

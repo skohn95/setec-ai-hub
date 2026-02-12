@@ -49,14 +49,3 @@ CREATE TABLE IF NOT EXISTS analysis_results (
   computed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS token_usage (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
-  model TEXT NOT NULL,
-  prompt_tokens INTEGER NOT NULL,
-  completion_tokens INTEGER NOT NULL,
-  total_tokens INTEGER NOT NULL,
-  estimated_cost_usd DECIMAL(10,6),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);

@@ -144,42 +144,6 @@ export interface Database {
         }
         Relationships: []
       }
-      token_usage: {
-        Row: {
-          id: string
-          conversation_id: string
-          message_id: string | null
-          model: string
-          prompt_tokens: number
-          completion_tokens: number
-          total_tokens: number
-          estimated_cost_usd: number | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          conversation_id: string
-          message_id?: string | null
-          model: string
-          prompt_tokens: number
-          completion_tokens: number
-          total_tokens: number
-          estimated_cost_usd?: number | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          conversation_id?: string
-          message_id?: string | null
-          model?: string
-          prompt_tokens?: number
-          completion_tokens?: number
-          total_tokens?: number
-          estimated_cost_usd?: number | null
-          created_at?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
