@@ -600,8 +600,10 @@ def calculate_operator_stats(
         else:
             consistency_score = std_dev * 100  # Just use std if mean is near zero
 
+        # Convert float operators to int for display (1.0 -> "1")
+        op_id = str(int(operator)) if isinstance(operator, float) and operator.is_integer() else str(operator)
         operator_stats.append({
-            'operator': str(operator),
+            'operator': op_id,
             'mean': round(mean, 6),
             'std_dev': round(std_dev, 6),
             'range_avg': round(range_avg, 6),
@@ -859,8 +861,10 @@ def format_chart_data(
 
         if measurements:
             std_dev = np.std(measurements, ddof=1) if len(measurements) > 1 else 0.0
+            # Convert float operators to int for display (1.0 -> "1")
+            op_id = str(int(operator)) if isinstance(operator, float) and operator.is_integer() else str(operator)
             operator_stats.append({
-                'operator': str(operator),
+                'operator': op_id,
                 'mean': round(np.mean(measurements), 4),
                 'stdDev': round(std_dev, 4) if not np.isnan(std_dev) else 0.0,
             })
