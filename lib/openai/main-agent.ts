@@ -211,7 +211,8 @@ export async function* streamMainAgentWithTools(
   // DEBUG LOGGING
   console.log('\n[CHAT-DEBUG] ========== MAIN AGENT INPUT ==========')
   console.log('[CHAT-DEBUG] User message:', userMessage)
-  console.log('[CHAT-DEBUG] File context:', fileContext || '(none)')
+  console.log('[CHAT-DEBUG] File context length:', fileContext?.length || 0)
+  console.log('[CHAT-DEBUG] File context value:', JSON.stringify(fileContext) || '(none)')
   console.log('[CHAT-DEBUG] Conversation history count:', conversationHistory.length)
   console.log('[CHAT-DEBUG] Context messages sent to OpenAI:', contextMessages.length)
   console.log('[CHAT-DEBUG] Full messages array:')

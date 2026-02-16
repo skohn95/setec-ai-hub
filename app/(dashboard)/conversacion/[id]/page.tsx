@@ -95,13 +95,15 @@ export default function ConversationDetailPage() {
 
   // Success - show chat interface
   return (
-    <div className="flex flex-col h-full min-h-0" data-testid="conversation-detail">
+    <div className="flex-1 flex flex-col min-h-0" data-testid="conversation-detail">
       <ChatHeader
         conversation={conversation}
         onTitleUpdate={(title) => updateTitleMutation.mutate({ id: conversationId, title })}
         isUpdating={updateTitleMutation.isPending}
       />
-      <ChatContainer conversationId={conversationId} />
+      <div className="flex-1 min-h-0">
+        <ChatContainer conversationId={conversationId} />
+      </div>
     </div>
   )
 }

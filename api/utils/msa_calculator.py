@@ -17,12 +17,132 @@ Key outputs:
 - ndc: Number of Distinct Categories the system can reliably distinguish
 - Classification: Aceptable (<10%), Marginal (10-30%), Inaceptable (>30%)
 - ANOVA table with F-statistics and P-values
-- Operator ranking (best/worst by consistency)
+- Operator statistics (mean, std dev, range)
 """
 import pandas as pd
 import numpy as np
 from typing import TypedDict, Any
 import math
+
+
+# =============================================================================
+# P-Value Calculation (Pure Python - No scipy dependency)
+# =============================================================================
+
+def _log_beta(a: float, b: float) -> float:
+    """
+    Compute log of the beta function B(a,b) = Gamma(a)*Gamma(b)/Gamma(a+b).
+    Uses math.lgamma from stdlib.
+    """
+    return math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+
+
+def _betacf(a: float, b: float, x: float, max_iter: int = 200, eps: float = 3e-12) -> float:
+    """
+    Evaluates continued fraction for incomplete beta function.
+    Based on Numerical Recipes betacf function.
+    """
+    qab = a + b
+    qap = a + 1.0
+    qam = a - 1.0
+    c = 1.0
+    d = 1.0 - qab * x / qap
+    if abs(d) < 1e-30:
+        d = 1e-30
+    d = 1.0 / d
+    h = d
+
+    for m in range(1, max_iter + 1):
+        m2 = 2 * m
+        # Even step
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1.0 + aa * d
+        if abs(d) < 1e-30:
+            d = 1e-30
+        c = 1.0 + aa / c
+        if abs(c) < 1e-30:
+            c = 1e-30
+        d = 1.0 / d
+        h *= d * c
+
+        # Odd step
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1.0 + aa * d
+        if abs(d) < 1e-30:
+            d = 1e-30
+        c = 1.0 + aa / c
+        if abs(c) < 1e-30:
+            c = 1e-30
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+
+        if abs(delta - 1.0) < eps:
+            break
+
+    return h
+
+
+def _betainc(a: float, b: float, x: float) -> float:
+    """
+    Compute regularized incomplete beta function I_x(a,b).
+    Based on Numerical Recipes betai function.
+
+    Args:
+        a, b: Shape parameters (positive)
+        x: Upper limit of integration (0 <= x <= 1)
+
+    Returns:
+        I_x(a,b) = B(x;a,b) / B(a,b)
+    """
+    if x < 0.0 or x > 1.0:
+        raise ValueError("x must be between 0 and 1")
+
+    if x == 0.0 or x == 1.0:
+        bt = 0.0
+    else:
+        # Compute the prefactor x^a * (1-x)^b / B(a,b)
+        bt = math.exp(
+            math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+            + a * math.log(x) + b * math.log(1.0 - x)
+        )
+
+    # Use symmetry relation for numerical stability
+    if x < (a + 1.0) / (a + b + 2.0):
+        return bt * _betacf(a, b, x) / a
+    else:
+        return 1.0 - bt * _betacf(b, a, 1.0 - x) / b
+
+
+def f_distribution_sf(f_value: float, df1: int, df2: int) -> float:
+    """
+    Compute the survival function (1 - CDF) of the F-distribution.
+    This gives the p-value for a one-tailed F-test.
+
+    The F-distribution CDF is related to the incomplete beta function by:
+    F_CDF(x; d1, d2) = I_{d1*x/(d1*x + d2)}(d1/2, d2/2)
+
+    Args:
+        f_value: The F-statistic value
+        df1: Degrees of freedom for numerator (between-group)
+        df2: Degrees of freedom for denominator (within-group)
+
+    Returns:
+        P(F > f_value) - the p-value for the F-test
+    """
+    if f_value <= 0:
+        return 1.0
+    if df1 <= 0 or df2 <= 0:
+        return None
+
+    # Transform to beta function argument
+    x = df1 * f_value / (df1 * f_value + df2)
+
+    # CDF = I_x(df1/2, df2/2)
+    cdf = _betainc(df1 / 2, df2 / 2, x)
+
+    # Survival function = 1 - CDF = p-value
+    return 1.0 - cdf
 
 
 # =============================================================================
@@ -282,11 +402,10 @@ def calculate_anova_components(
     f_operators = ms_operators / ms_equipment if ms_equipment > 1e-10 else None
     f_interaction = ms_interaction / ms_equipment if ms_equipment > 1e-10 else None
 
-    # P-values not calculated (would require scipy which exceeds Vercel size limits)
-    # F-statistics are still available for analysis
-    p_parts = None
-    p_operators = None
-    p_interaction = None
+    # Calculate P-values using pure Python F-distribution (no scipy needed)
+    p_parts = f_distribution_sf(f_parts, df_parts, df_equipment) if f_parts is not None else None
+    p_operators = f_distribution_sf(f_operators, df_operators, df_equipment) if f_operators is not None else None
+    p_interaction = f_distribution_sf(f_interaction, df_interaction, df_equipment) if f_interaction is not None else None
 
     # Build ANOVA table
     anova_table: list[ANOVARow] = [
@@ -982,10 +1101,8 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
     # Variance contributions (optional)
     variance_contributions = results.get('variance_contributions', [])
 
-    # Operator stats (sorted by rank - best first)
+    # Operator stats
     operator_stats = results.get('operator_stats', [])
-    best_operator = operator_stats[0] if operator_stats else None
-    worst_operator = operator_stats[-1] if len(operator_stats) > 1 else None
 
     dominant = determine_dominant_variation(ev, av, pv)
 
@@ -1021,13 +1138,12 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
     for vc in variance_contributions:
         vc_markdown += f"| {vc['source']} | {vc['variance']:.6f} | {vc['pct_contribution']:.1f}% | {vc['pct_study_variation']:.1f}% | {vc['std_dev']:.6f} |\n"
 
-    # Build operator ranking table
-    op_ranking_markdown = """| Rank | Operador | Media | DesvEst | Rango Prom | Score |
-|------|----------|-------|---------|------------|-------|
+    # Build operator statistics table (without ranking - all operators contribute differently)
+    op_stats_markdown = """| Operador | Media | DesvEst | Rango Prom |
+|----------|-------|---------|------------|
 """
     for op in operator_stats:
-        rank_emoji = "🥇" if op['rank'] == 1 else ("🥈" if op['rank'] == 2 else ("🥉" if op['rank'] == 3 else ""))
-        op_ranking_markdown += f"| {rank_emoji} {op['rank']} | {op['operator']} | {op['mean']:.4f} | {op['std_dev']:.4f} | {op['range_avg']:.4f} | {op['consistency_score']:.2f} |\n"
+        op_stats_markdown += f"| {op['operator']} | {op['mean']:.4f} | {op['std_dev']:.4f} | {op['range_avg']:.4f} |\n"
 
     # Generate recommendations and root cause based on dominant variation
     if dominant == 'repeatability':
@@ -1108,22 +1224,19 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
                         # All operators except the best are considered "inaccurate" for calibration
                         inaccurate_operators = [ob for ob in operator_biases if ob['operator'] != best_bias_op['operator']]
 
-            if is_calibration_issue and accurate_operator:
+            if is_calibration_issue:
                 root_cause = "**Calibración/Puesta a Cero:** Diferencia de criterio por calibración del instrumento."
                 root_cause_details = [
                     "No es falta de entrenamiento manual (la repetibilidad no es tan mala)",
                     "Es probable falta de **calibración del cero** o **estándar operativo**",
-                    f"El operador **{accurate_operator['operator']}** está midiendo correctamente (promedio {accurate_operator['mean']:.2f}, cerca del nominal)",
+                    "Se observan diferencias sistemáticas entre operadores que sugieren distintos puntos de referencia",
                 ]
-                if inaccurate_operators:
-                    inaccurate_names = ", ".join([op['operator'] for op in inaccurate_operators[:3]])
-                    root_cause_details.append(f"Los operadores {inaccurate_names} probablemente no han realizado la puesta a cero ('zeroing') del instrumento")
 
                 recommendations = [
-                    f"Usar al operador **{accurate_operator['operator']}** como referencia para calibrar",
                     "Verificar que todos los operadores realicen la puesta a cero antes de medir",
                     "Establecer un estándar de calibración/verificación diario",
                     "Documentar el procedimiento de 'zeroing' del instrumento",
+                    "Revisar la técnica de medición con todos los operadores",
                 ]
             else:
                 root_cause = "**Operador:** Diferencias en técnica o criterio entre operadores."
@@ -1132,19 +1245,18 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
                     "Diferencias en técnica de medición",
                     "Criterios de posicionamiento inconsistentes",
                 ]
-                # Find operator with highest bias (worst accuracy), not just highest variation
+                # Note differences in operator measurements without ranking
                 if bias_info and operator_stats:
                     spec_val = bias_info['specification']
-                    worst_bias_op = max(operator_stats, key=lambda x: abs(x['mean'] - spec_val))
-                    root_cause_details.append(f"El operador **{worst_bias_op['operator']}** presenta mayor sesgo (promedio {worst_bias_op['mean']:.2f} vs especificación {spec_val})")
-                elif worst_operator:
-                    root_cause_details.append(f"El operador **{worst_operator['operator']}** presenta mayor variabilidad")
+                    # Find operator with highest deviation from spec for context
+                    high_bias_op = max(operator_stats, key=lambda x: abs(x['mean'] - spec_val))
+                    root_cause_details.append(f"Se observan diferencias entre operadores (ej: {high_bias_op['operator']} con promedio {high_bias_op['mean']:.2f} vs especificación {spec_val})")
 
                 recommendations = [
                     "Estandarizar el procedimiento de medición",
-                    f"El operador **{best_operator['operator']}** puede servir como referente para entrenar a otros" if best_operator else "Identificar al operador más consistente como referente",
                     "Crear instrucciones visuales paso a paso",
                     "Implementar re-certificación periódica de operadores",
+                    "Revisar criterios de medición con todos los operadores",
                 ]
     else:
         dominant_display = 'PARTE A PARTE'
@@ -1184,13 +1296,29 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
             f"viene del sistema de medición. Es difícil tomar decisiones de calidad con estos datos."
         )
 
-    # Operator trust statement
-    if best_operator:
-        operator_trust = f"El operador más confiable es **{best_operator['operator']}** (menor variabilidad)."
-        if worst_operator and worst_operator['operator'] != best_operator['operator']:
-            operator_trust += f" El operador **{worst_operator['operator']}** presenta mayor variación y podría beneficiarse de entrenamiento adicional."
+    # Operator observation - neutral, with correction priority guidance
+    if operator_stats and len(operator_stats) > 1:
+        # Calculate spread in operator means and std devs
+        means = [op['mean'] for op in operator_stats]
+        std_devs = [op['std_dev'] for op in operator_stats]
+        mean_spread = max(means) - min(means)
+        std_spread = max(std_devs) - min(std_devs)
+
+        if std_spread > 0.01 or mean_spread > 0.5:
+            # Find operators with lowest variability (most consistent)
+            sorted_by_std = sorted(operator_stats, key=lambda x: x['std_dev'])
+            low_var_operators = [op['operator'] for op in sorted_by_std[:2]]  # Top 2 most consistent
+            high_var_operators = [op['operator'] for op in sorted_by_std[-2:]]  # Top 2 most variable
+
+            operator_trust = f"""Se observan diferencias entre operadores.
+
+**Priorización para correcciones:**
+- **{', '.join(low_var_operators)}** (menor variabilidad): Corregir primero con **calibración** si están lejos de la especificación.
+- **{', '.join(high_var_operators)}** (mayor variabilidad): Requieren **reentrenamiento** para mejorar precisión."""
+        else:
+            operator_trust = "Los operadores muestran comportamiento similar en sus mediciones."
     else:
-        operator_trust = "No se pudo determinar la consistencia de los operadores."
+        operator_trust = ""
 
     # Build the complete instructions
     # Agent-only header is wrapped in HTML comments for easy stripping by frontend
@@ -1233,21 +1361,9 @@ Usa los datos a continuación para responder preguntas de seguimiento.
 
 **Nota:** %VarEstudio se calcula usando 6 desviaciones estándar (método AIAG).
 
-## Número de Categorías Distintas (ndc)
+## Estadísticas por Operador
 
-**ndc = {ndc}** {ndc_status}
-
-| ndc | Capacidad |
-|-----|-----------|
-| ≥ 5 | Control de proceso completo |
-| 2-4 | Solo decisiones pasa/no pasa |
-| < 2 | Sistema no discrimina |
-
-## Ranking de Operadores
-
-{op_ranking_markdown}
-
-**Score:** Coeficiente de variación - menor es mejor (más consistente).
+{op_stats_markdown}
 
 ## Estudios de Atributos del Sistema
 
@@ -1319,15 +1435,15 @@ Sesgo por operador respecto a la especificación ({spec_val}):
         bias_values = [b[2] for b in operator_biases]
         max_bias_diff = max(bias_values) - min(bias_values)
 
-        # Find best and worst operators for bias
-        best_bias_op = min(operator_biases, key=lambda x: abs(x[2]))
-        worst_bias_op = max(operator_biases, key=lambda x: abs(x[2]))
+        # Find operators with min and max bias for reference (not ranking)
+        min_bias_op = min(operator_biases, key=lambda x: abs(x[2]))
+        max_bias_op = max(operator_biases, key=lambda x: abs(x[2]))
 
         if max_bias_diff > 1:  # More than 1 unit difference between operators
             instructions += f"""
-**⚠️ Sesgo masivo entre operadores:** Diferencia máxima de {max_bias_diff:.2f} entre operadores.
-- Operador más exacto: **{best_bias_op[0]}** (sesgo {best_bias_op[2]:+.2f})
-- Operador con mayor sesgo: **{worst_bias_op[0]}** (sesgo {worst_bias_op[2]:+.2f})
+**⚠️ Diferencias significativas de sesgo entre operadores:** Rango de {max_bias_diff:.2f} unidades.
+- Ejemplo: **{min_bias_op[0]}** (sesgo {min_bias_op[2]:+.2f}) vs **{max_bias_op[0]}** (sesgo {max_bias_op[2]:+.2f})
+- Esto sugiere diferencias en técnica de medición o criterio que requieren estandarización.
 """
         else:
             instructions += f"""
@@ -1368,21 +1484,28 @@ Sesgo por operador respecto a la especificación ({spec_val}):
 
     resolution_status = "✅ Adecuado" if ndc >= 5 else ("⚠️ Limitado" if ndc >= 2 else "❌ Insuficiente")
     instructions += f"""
-### Apreciación / Resolución
+### Número de Categorías Distintas (ndc) y Resolución
 
-| Parámetro | Valor | Interpretación |
-|-----------|-------|----------------|
+El **ndc (Number of Distinct Categories)** indica cuántos "grupos" o "categorías" diferentes de piezas puede distinguir confiablemente tu sistema de medición. Es una medida directa de la capacidad de discriminación del sistema.
+
+**Fórmula:** ndc = 1.41 × (Variación de Piezas / Variación del Sistema)
+
+**¿Qué significa en la práctica?**
+- Un ndc alto significa que el sistema puede detectar diferencias pequeñas entre piezas
+- Un ndc bajo significa que el "ruido" del sistema enmascara las diferencias reales
+
 | ndc | **{ndc}** | {resolution_status} |
+|-----|-----------|---------------------|
 
 {signal_to_noise_text}
 
-| ndc | Capacidad del Sistema |
-|-----|----------------------|
-| ≥ 5 | ✅ Control de proceso y análisis |
-| 2-4 | ⚠️ Solo decisiones pasa/no pasa |
-| < 2 | ❌ Sistema no discrimina entre piezas |
+| ndc | Capacidad del Sistema | Uso Recomendado |
+|-----|----------------------|-----------------|
+| ≥ 5 | ✅ Excelente discriminación | Control de proceso, análisis de capacidad, mejora continua |
+| 2-4 | ⚠️ Discriminación limitada | Solo decisiones pasa/no pasa, inspección básica |
+| < 2 | ❌ No discrimina | **No usar** - el sistema no distingue entre piezas diferentes |
 
-{"✅ El instrumento tiene resolución suficiente para discriminar entre piezas." if ndc >= 5 else "❌ **Resolución inadecuada:** El 'ruido' del sistema de medición opaca la 'señal' de las diferencias reales entre piezas."}
+{"✅ **El sistema tiene resolución adecuada.** Puede detectar diferencias significativas entre piezas y es apto para control de proceso." if ndc >= 5 else "❌ **Resolución inadecuada.** El 'ruido' del sistema de medición opaca la 'señal' de las diferencias reales entre piezas. Considera mejorar el instrumento o el método de medición."}
 
 ---
 
@@ -1418,7 +1541,7 @@ Sesgo por operador respecto a la especificación ({spec_val}):
 
 {plain_explanation}
 
-## ¿Quién mide mejor y quién genera ruido?
+## Observaciones sobre Operadores
 
 {operator_trust}
 
@@ -1432,13 +1555,6 @@ Sesgo por operador respecto a la especificación ({spec_val}):
 
     for i, rec in enumerate(recommendations, 1):
         instructions += f"{i}. {rec}\n"
-
-    if best_operator:
-        instructions += f"""
-## Operador Referente
-
-Para futuras calibraciones o entrenamientos, se recomienda usar a **{best_operator['operator']}** como referencia, ya que presenta la mayor consistencia en las mediciones.
-"""
 
     # Add bias info to down-to-earth section if available
     if bias_info:

@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,9 +42,12 @@ function formatNumber(value: number): string {
   return value.toPrecision(2)
 }
 
+// Colors for alternating operator backgrounds
+const OPERATOR_COLORS = ['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']
+
 /**
  * RChartByOperator component displays Range chart by operator
- * Shows AVERAGE range per operator (not individual measurements)
+ * Shows ALL individual range measurements sequentially within each operator section
  * Includes UCL and center line (R-bar)
  */
 export default function RChartByOperator({ data }: RChartByOperatorProps) {
@@ -54,20 +58,47 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
     return null
   }
 
-  // Aggregate ranges by operator - calculate average range per operator
-  const operatorRanges: Record<string, number[]> = {}
-  data.points.forEach((point) => {
-    if (!operatorRanges[point.operator]) {
-      operatorRanges[point.operator] = []
-    }
-    operatorRanges[point.operator].push(point.range)
+  // Get unique operators in order
+  const operators = [...new Set(data.points.map((p) => p.operator))]
+
+  // Group points by operator while maintaining order
+  const pointsByOperator: Record<string, RChartPoint[]> = {}
+  operators.forEach((op) => {
+    pointsByOperator[op] = data.points.filter((p) => p.operator === op)
   })
 
-  // Calculate average range per operator
-  const chartData = Object.entries(operatorRanges).map(([operator, ranges]) => ({
-    operator,
-    avgRange: ranges.reduce((sum, r) => sum + r, 0) / ranges.length,
-  }))
+  // Create sequential chart data with measurement index as x-axis
+  // Each point gets a unique sequential index
+  let globalIndex = 0
+  const chartData: Array<{
+    index: number
+    range: number
+    operator: string
+    part: string
+    measurementNum: number
+  }> = []
+
+  // Track operator boundaries for reference areas
+  const operatorBoundaries: Array<{ operator: string; start: number; end: number }> = []
+
+  operators.forEach((operator) => {
+    const startIndex = globalIndex
+    pointsByOperator[operator].forEach((point, localIndex) => {
+      chartData.push({
+        index: globalIndex,
+        range: point.range,
+        operator: point.operator,
+        part: point.part,
+        measurementNum: localIndex + 1,
+      })
+      globalIndex++
+    })
+    operatorBoundaries.push({
+      operator,
+      start: startIndex,
+      end: globalIndex - 1,
+    })
+  })
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -85,6 +116,16 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
       setIsExporting(false)
     }
   }
+
+  // Calculate Y-axis domain
+  const allRanges = chartData.map((d) => d.range)
+  const yMax = Math.max(data.uclR * 1.2, Math.max(...allRanges) * 1.2)
+
+  // Calculate tick positions for operator labels (center of each operator section)
+  const operatorTicks = operatorBoundaries.map((b) => ({
+    position: (b.start + b.end) / 2,
+    label: b.operator,
+  }))
 
   return (
     <div className="relative">
@@ -106,13 +147,30 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
       <div ref={chartRef} data-testid="r-chart-by-operator" className="mb-4 bg-card rounded-lg border p-4">
         <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico R por Operador</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Rango promedio por operador. Valores fuera de UCL indican variación excesiva.
+          Todas las mediciones de rango por operador. Valores fuera de UCL indican variación excesiva.
         </p>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            {/* Alternating background colors for operator sections */}
+            {operatorBoundaries.map((boundary, idx) => (
+              <ReferenceArea
+                key={boundary.operator}
+                x1={boundary.start - 0.5}
+                x2={boundary.end + 0.5}
+                fill={OPERATOR_COLORS[idx % 2]}
+                fillOpacity={1}
+              />
+            ))}
             <XAxis
-              dataKey="operator"
+              dataKey="index"
+              type="number"
+              domain={[-0.5, chartData.length - 0.5]}
+              ticks={operatorTicks.map((t) => t.position)}
+              tickFormatter={(value) => {
+                const tick = operatorTicks.find((t) => Math.abs(t.position - value) < 0.5)
+                return tick?.label || ''
+              }}
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               label={{ value: 'Operador', position: 'insideBottom', offset: -20, fontSize: 11 }}
@@ -120,51 +178,60 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
             <YAxis
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
-              domain={[0, Math.max(data.uclR * 1.2, Math.max(...chartData.map((d) => d.avgRange)) * 1.2)]}
+              domain={[0, yMax]}
               tickFormatter={formatNumber}
               label={{ value: 'Rango', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                fontSize: '12px',
-                padding: '8px 12px',
+              content={({ active, payload }) => {
+                if (!active || !payload || !payload[0]) return null
+                const point = payload[0].payload
+                return (
+                  <div style={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    padding: '8px 12px',
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Operador: {point.operator}</div>
+                    <div>Parte: {point.part}</div>
+                    <div>Medición #{point.measurementNum}</div>
+                    <div>Rango: {formatNumber(point.range)}</div>
+                  </div>
+                )
               }}
-              labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
-              formatter={(value) => [typeof value === 'number' ? value.toFixed(4) : String(value), 'Rango Promedio']}
-              labelFormatter={(label) => `Operador: ${label}`}
             />
             {/* Reference lines for control limits */}
             <ReferenceLine
               y={data.uclR}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `UCL: ${data.uclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `UCL: ${formatNumber(data.uclR)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
             <ReferenceLine
               y={data.rBar}
               stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `Rbar: ${data.rBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
+              label={{ value: `R̄: ${formatNumber(data.rBar)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             {data.lclR > 0 && (
               <ReferenceLine
                 y={data.lclR}
                 stroke="#EF4444"
                 strokeDasharray="5 5"
-                label={{ value: `LCL: ${data.lclR.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+                label={{ value: `LCL: ${formatNumber(data.lclR)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
               />
             )}
-            {/* Line chart for average range per operator */}
+            {/* Line chart connecting all measurements */}
             <Line
-              type="monotone"
-              dataKey="avgRange"
+              type="linear"
+              dataKey="range"
               stroke="#3B82F6"
-              strokeWidth={2}
-              dot={{ r: 6, fill: '#3B82F6' }}
-              activeDot={{ r: 8 }}
+              strokeWidth={1.5}
+              dot={{ r: 4, fill: '#3B82F6' }}
+              activeDot={{ r: 6 }}
+              isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -172,11 +239,11 @@ export default function RChartByOperator({ data }: RChartByOperatorProps) {
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
-            <span>Rango Promedio</span>
+            <span>Rango (por parte)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#10B981]" />
-            <span>Rbar (Media)</span>
+            <span>R̄ (Media)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />

@@ -3,7 +3,23 @@
 import { useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import type { Components } from 'react-markdown'
+
+/**
+ * Convert LaTeX delimiters to remark-math compatible format
+ * \[...\] -> $$...$$ (display math)
+ * \(...\) -> $...$ (inline math)
+ */
+function convertLatexDelimiters(content: string): string {
+  return content
+    // Display math: \[...\] -> $$...$$
+    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
+    // Inline math: \(...\) -> $...$
+    .replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$')
+}
 
 interface StreamingMessageProps {
   content: string
@@ -43,10 +59,10 @@ export default function StreamingMessage({ content, isThinking = false }: Stream
   // Show thinking indicator when waiting for first content
   const showThinking = isThinking && (!content || !content.trim())
 
-  // Append sentinel to content for cursor injection
+  // Append sentinel to content for cursor injection, converting LaTeX delimiters
   const contentWithSentinel = useMemo(() => {
     if (!content) return ''
-    return content + CURSOR_SENTINEL
+    return convertLatexDelimiters(content) + CURSOR_SENTINEL
   }, [content])
 
   // Custom components to inject cursor at the sentinel position
@@ -113,7 +129,11 @@ export default function StreamingMessage({ content, isThinking = false }: Stream
             <ThinkingIndicator />
           ) : (
             <div className="markdown-content break-words prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-2 prose-li:my-0">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={components}
+              >
                 {contentWithSentinel}
               </ReactMarkdown>
             </div>

@@ -1,6 +1,5 @@
 // Chart components barrel export
 export { default as GaugeRRChart } from './GaugeRRChart'
-export { default as VariationChart } from './VariationChart'
 export { default as ExportableChart } from './ExportableChart'
 export { default as RChartByOperator } from './RChartByOperator'
 export { default as XBarChartByOperator } from './XBarChartByOperator'

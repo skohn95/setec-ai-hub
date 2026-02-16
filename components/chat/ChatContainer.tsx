@@ -25,6 +25,7 @@ interface ChatContainerProps {
  * Supports drag and drop file upload
  */
 export default function ChatContainer({ conversationId }: ChatContainerProps) {
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [inputValue, setInputValue] = useState('')
   const [isDragging, setIsDragging] = useState(false)
@@ -60,11 +61,20 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
 
   /**
    * Scroll to bottom of messages list
+   * Uses direct scrollTop manipulation to avoid scrolling parent containers
    */
   const scrollToBottom = useCallback((instant = false) => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: instant ? 'instant' : 'smooth'
-    })
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    if (instant) {
+      container.scrollTop = container.scrollHeight
+    } else {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
   }, [])
 
   // Scroll to bottom when new content arrives, but not during stream->complete transition
@@ -232,7 +242,7 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
       )}
 
       {/* Messages area - extra bottom padding when file attached */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+      <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div role="list" className="py-4 px-4 md:px-6">
           {isEmpty && !streamingContent ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-8">

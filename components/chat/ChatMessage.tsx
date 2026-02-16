@@ -2,10 +2,12 @@
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { cn } from '@/lib/utils'
 import {
   GaugeRRChart,
-  VariationChart,
   RChartByOperator,
   XBarChartByOperator,
   MeasurementsByPart,
@@ -18,7 +20,6 @@ import type { MessageRowWithFiles } from '@/lib/supabase/messages'
 import type {
   ChartDataItem,
   StaticChartDataItem,
-  VariationChartDataItem,
   RChartData,
   XBarChartData,
   MeasurementsByPartItem,
@@ -42,6 +43,19 @@ function formatTime(dateString: string): string {
     minute: '2-digit',
     hour12: false,
   })
+}
+
+/**
+ * Convert LaTeX delimiters to remark-math compatible format
+ * \[...\] -> $$...$$ (display math)
+ * \(...\) -> $...$ (inline math)
+ */
+function convertLatexDelimiters(content: string): string {
+  return content
+    // Display math: \[...\] -> $$...$$
+    .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$')
+    // Inline math: \(...\) -> $...$
+    .replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$')
 }
 
 
@@ -72,20 +86,6 @@ export default function ChatMessage({
   const isStaticCharts = rawChartData && rawChartData.length > 0 && 'image' in rawChartData[0]
   const staticChartData = isStaticCharts ? (rawChartData as StaticChartDataItem[]) : null
   const chartData = !isStaticCharts ? (rawChartData as ChartDataItem[] | null) : null
-
-  // Extract operator comparison data and transform to variation data for VariationChart
-  const variationData: VariationChartDataItem[] | null = (() => {
-    if (!chartData) return null
-    const operatorChart = chartData.find((d) => d.type === 'operatorComparison')
-    if (!operatorChart) return null
-    // Transform operatorComparison data to variation data (stdDev becomes variation)
-    return (operatorChart.data as { operator: string; mean: number; stdDev: number }[]).map(
-      (item) => ({
-        operator: item.operator,
-        variation: item.stdDev,
-      })
-    )
-  })()
 
   // Extract new chart data types
   const rChartData: RChartData | null = (() => {
@@ -161,8 +161,11 @@ export default function ChatMessage({
               <p className="whitespace-pre-wrap break-words">{message.content}</p>
             ) : (
               <div className="markdown-content break-words prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-2 prose-li:my-0">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {message.content}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {convertLatexDelimiters(message.content)}
                 </ReactMarkdown>
               </div>
             )}

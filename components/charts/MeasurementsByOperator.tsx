@@ -2,8 +2,9 @@
 
 import { useRef, useState } from 'react'
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -53,19 +54,20 @@ function calculateQuartiles(values: number[]) {
   }
 }
 
-// Custom bar shape that renders a box plot
+// Custom bar shape that renders a box plot with mean indicator
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BoxPlotBar = (props: any) => {
   const { x, width, payload, yScale } = props
   if (!payload || !yScale) return null
 
-  const { min, q1, median, q3, max } = payload
+  const { min, q1, median, q3, max, mean } = payload
 
   const minY = yScale(min)
   const q1Y = yScale(q1)
   const medianY = yScale(median)
   const q3Y = yScale(q3)
   const maxY = yScale(max)
+  const meanY = mean !== undefined ? yScale(mean) : null
 
   const cx = x + width / 2
   const boxWidth = Math.min(width * 0.6, 30)
@@ -94,6 +96,15 @@ const BoxPlotBar = (props: any) => {
         stroke="#EF4444"
         strokeWidth={2}
       />
+      {/* Mean indicator (diamond) */}
+      {meanY !== null && (
+        <polygon
+          points={`${cx},${meanY - 5} ${cx + 5},${meanY} ${cx},${meanY + 5} ${cx - 5},${meanY}`}
+          fill="#10B981"
+          stroke="#059669"
+          strokeWidth={1}
+        />
+      )}
       {/* Lower whisker: Q1 to min */}
       <line x1={cx} y1={q1Y} x2={cx} y2={minY} stroke="#64748B" strokeWidth={2} />
       <line x1={cx - whiskerWidth} y1={minY} x2={cx + whiskerWidth} y2={minY} stroke="#64748B" strokeWidth={2} />
@@ -119,6 +130,8 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
   // Transform data for box plot visualization
   const chartData = data.map((item) => {
     const quartiles = calculateQuartiles(item.measurements)
+    // Calculate mean from measurements
+    const mean = item.measurements.reduce((sum, m) => sum + m, 0) / item.measurements.length
     return {
       operator: String(item.operator),
       // Use max as the bar value to ensure full height rendering
@@ -129,6 +142,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
       median: quartiles.median,
       q3: quartiles.q3,
       max: quartiles.max,
+      mean,
     }
   })
 
@@ -182,7 +196,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           Diagrama de caja: caja = IQR (Q1-Q3), línea roja = mediana, bigotes = min/max.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData} margin={{ top: 20, right: 20, left: 30, bottom: 30 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="operator"
@@ -213,6 +227,7 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
                     <div>Máx: {formatNumber(data.max)}</div>
                     <div>Q3: {formatNumber(data.q3)}</div>
                     <div>Mediana: {formatNumber(data.median)}</div>
+                    <div style={{ color: '#10B981' }}>Media: {formatNumber(data.mean)}</div>
                     <div>Q1: {formatNumber(data.q1)}</div>
                     <div>Mín: {formatNumber(data.min)}</div>
                   </div>
@@ -239,7 +254,16 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
                 <Cell key={`cell-${index}`} fill="transparent" />
               ))}
             </Bar>
-          </BarChart>
+            <Line
+              type="linear"
+              dataKey="mean"
+              stroke="#10B981"
+              strokeWidth={2}
+              dot={false}
+              activeDot={false}
+              legendType="none"
+            />
+          </ComposedChart>
         </ResponsiveContainer>
         {/* Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
@@ -250,6 +274,13 @@ export default function MeasurementsByOperator({ data }: MeasurementsByOperatorP
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#EF4444]" />
             <span>Mediana</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <svg width="24" height="12" viewBox="0 0 24 12">
+              <line x1="0" y1="6" x2="24" y2="6" stroke="#10B981" strokeWidth="2" />
+              <polygon points="12,1 17,6 12,11 7,6" fill="#10B981" stroke="#059669" strokeWidth="1" />
+            </svg>
+            <span>Media</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#64748B]" />

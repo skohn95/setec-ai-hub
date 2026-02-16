@@ -32,7 +32,7 @@ export function DeleteConversationDialog({
             Esta acción no se puede deshacer. Se eliminarán todos los mensajes.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-3">
           <Button
             variant="outline"
             onClick={onCancel}

@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,9 +42,12 @@ function formatNumber(value: number): string {
   return value.toPrecision(2)
 }
 
+// Colors for alternating operator backgrounds
+const OPERATOR_COLORS = ['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']
+
 /**
  * XBarChartByOperator component displays X-bar (mean) chart by operator
- * Shows AVERAGE mean per operator (not individual measurements)
+ * Shows ALL individual mean measurements sequentially within each operator section
  * Includes UCL, LCL, and center line (X-double-bar)
  */
 export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) {
@@ -54,26 +58,58 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
     return null
   }
 
-  // Aggregate means by operator - calculate average mean per operator
-  const operatorMeans: Record<string, number[]> = {}
-  data.points.forEach((point) => {
-    if (!operatorMeans[point.operator]) {
-      operatorMeans[point.operator] = []
-    }
-    operatorMeans[point.operator].push(point.mean)
+  // Get unique operators in order
+  const operators = [...new Set(data.points.map((p) => p.operator))]
+
+  // Group points by operator while maintaining order
+  const pointsByOperator: Record<string, XBarChartPoint[]> = {}
+  operators.forEach((op) => {
+    pointsByOperator[op] = data.points.filter((p) => p.operator === op)
   })
 
-  // Calculate average mean per operator
-  const chartData = Object.entries(operatorMeans).map(([operator, means]) => ({
-    operator,
-    avgMean: means.reduce((sum, m) => sum + m, 0) / means.length,
-  }))
+  // Create sequential chart data with measurement index as x-axis
+  let globalIndex = 0
+  const chartData: Array<{
+    index: number
+    mean: number
+    operator: string
+    part: string
+    measurementNum: number
+  }> = []
+
+  // Track operator boundaries for reference areas
+  const operatorBoundaries: Array<{ operator: string; start: number; end: number }> = []
+
+  operators.forEach((operator) => {
+    const startIndex = globalIndex
+    pointsByOperator[operator].forEach((point, localIndex) => {
+      chartData.push({
+        index: globalIndex,
+        mean: point.mean,
+        operator: point.operator,
+        part: point.part,
+        measurementNum: localIndex + 1,
+      })
+      globalIndex++
+    })
+    operatorBoundaries.push({
+      operator,
+      start: startIndex,
+      end: globalIndex - 1,
+    })
+  })
 
   // Calculate Y-axis domain with some padding
-  const allValues = [...chartData.map((d) => d.avgMean), data.uclXBar, data.lclXBar]
+  const allValues = [...chartData.map((d) => d.mean), data.uclXBar, data.lclXBar]
   const yMin = Math.min(...allValues)
   const yMax = Math.max(...allValues)
   const yPadding = (yMax - yMin) * 0.15
+
+  // Calculate tick positions for operator labels (center of each operator section)
+  const operatorTicks = operatorBoundaries.map((b) => ({
+    position: (b.start + b.end) / 2,
+    label: b.operator,
+  }))
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -110,15 +146,32 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
         </Button>
       </div>
       <div ref={chartRef} data-testid="xbar-chart-by-operator" className="mb-4 bg-card rounded-lg border p-4">
-        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico X barra (Media) por Operador</h4>
+        <h4 className="text-sm font-medium mb-3 text-foreground">Gráfico X̄ (Media) por Operador</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Media promedio por operador. Valores fuera de límites indican diferencias significativas.
+          Todas las mediciones de media por operador. Valores fuera de límites indican diferencias significativas.
         </p>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={chartData} margin={{ top: 20, right: 80, left: 30, bottom: 30 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            {/* Alternating background colors for operator sections */}
+            {operatorBoundaries.map((boundary, idx) => (
+              <ReferenceArea
+                key={boundary.operator}
+                x1={boundary.start - 0.5}
+                x2={boundary.end + 0.5}
+                fill={OPERATOR_COLORS[idx % 2]}
+                fillOpacity={1}
+              />
+            ))}
             <XAxis
-              dataKey="operator"
+              dataKey="index"
+              type="number"
+              domain={[-0.5, chartData.length - 0.5]}
+              ticks={operatorTicks.map((t) => t.position)}
+              tickFormatter={(value) => {
+                const tick = operatorTicks.find((t) => Math.abs(t.position - value) < 0.5)
+                return tick?.label || ''
+              }}
               tick={{ fontSize: 12 }}
               className="fill-muted-foreground"
               label={{ value: 'Operador', position: 'insideBottom', offset: -20, fontSize: 11 }}
@@ -131,44 +184,53 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
               label={{ value: 'Media', angle: -90, position: 'insideLeft', offset: -5, fontSize: 11 }}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-                fontSize: '12px',
-                padding: '8px 12px',
+              content={({ active, payload }) => {
+                if (!active || !payload || !payload[0]) return null
+                const point = payload[0].payload
+                return (
+                  <div style={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    padding: '8px 12px',
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Operador: {point.operator}</div>
+                    <div>Parte: {point.part}</div>
+                    <div>Medición #{point.measurementNum}</div>
+                    <div>Media: {formatNumber(point.mean)}</div>
+                  </div>
+                )
               }}
-              labelStyle={{ fontWeight: 600, marginBottom: '4px' }}
-              formatter={(value) => [typeof value === 'number' ? value.toFixed(4) : String(value), 'Media Promedio']}
-              labelFormatter={(label) => `Operador: ${label}`}
             />
             {/* Reference lines for control limits */}
             <ReferenceLine
               y={data.uclXBar}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `UCL: ${data.uclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `UCL: ${formatNumber(data.uclXBar)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
             <ReferenceLine
               y={data.xDoubleBar}
               stroke="#10B981"
               strokeWidth={2}
-              label={{ value: `Xbar: ${data.xDoubleBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
+              label={{ value: `X̄: ${formatNumber(data.xDoubleBar)}`, position: 'right', fontSize: 10, fill: '#10B981' }}
             />
             <ReferenceLine
               y={data.lclXBar}
               stroke="#EF4444"
               strokeDasharray="5 5"
-              label={{ value: `LCL: ${data.lclXBar.toFixed(4)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
+              label={{ value: `LCL: ${formatNumber(data.lclXBar)}`, position: 'right', fontSize: 10, fill: '#EF4444' }}
             />
-            {/* Line chart for average mean per operator */}
+            {/* Line chart connecting all measurements */}
             <Line
-              type="monotone"
-              dataKey="avgMean"
+              type="linear"
+              dataKey="mean"
               stroke="#3B82F6"
-              strokeWidth={2}
-              dot={{ r: 6, fill: '#3B82F6' }}
-              activeDot={{ r: 8 }}
+              strokeWidth={1.5}
+              dot={{ r: 4, fill: '#3B82F6' }}
+              activeDot={{ r: 6 }}
+              isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -176,11 +238,11 @@ export default function XBarChartByOperator({ data }: XBarChartByOperatorProps) 
         <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mt-2">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
-            <span>Media Promedio</span>
+            <span>Media (por parte)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#10B981]" />
-            <span>Xbar (Gran Media)</span>
+            <span>X̄ (Gran Media)</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-4 h-0.5 bg-[#EF4444]" style={{ borderTop: '2px dashed #EF4444' }} />

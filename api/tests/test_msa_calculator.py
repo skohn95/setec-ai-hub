@@ -510,6 +510,76 @@ class TestANOVACalculations:
         assert components['variance_part'] >= 0
 
 
+class TestPValueCalculation:
+    """Tests for p-value calculation (pure Python, no scipy dependency)."""
+
+    def test_f_distribution_sf_returns_float(self):
+        """Test that f_distribution_sf returns a float."""
+        from utils.msa_calculator import f_distribution_sf
+
+        p = f_distribution_sf(3.5, 2, 10)
+        assert isinstance(p, float)
+
+    def test_f_distribution_sf_accuracy(self):
+        """Test p-value accuracy against scipy reference values."""
+        from utils.msa_calculator import f_distribution_sf
+
+        # Reference values computed with scipy.stats.f.sf()
+        test_cases = [
+            (3.5, 2, 10, 0.070430),
+            (5.0, 3, 20, 0.009510),
+            (2.0, 5, 30, 0.107335),
+        ]
+
+        for f_val, df1, df2, expected in test_cases:
+            got = f_distribution_sf(f_val, df1, df2)
+            error = abs(got - expected) / expected
+            assert error < 0.01, f"F({f_val}, {df1}, {df2}): got {got}, expected {expected}, error {error:.2%}"
+
+    def test_f_distribution_sf_zero_f_value(self):
+        """Test that F=0 returns p-value of 1.0."""
+        from utils.msa_calculator import f_distribution_sf
+
+        p = f_distribution_sf(0, 2, 10)
+        assert p == 1.0
+
+    def test_f_distribution_sf_large_f_value(self):
+        """Test that large F-values give p-values near 0."""
+        from utils.msa_calculator import f_distribution_sf
+
+        p = f_distribution_sf(100.0, 5, 50)
+        assert p < 0.0001
+
+    def test_anova_table_has_p_values(self):
+        """Test that ANOVA table includes calculated p-values."""
+        from utils.msa_calculator import analyze_msa
+
+        df = create_reference_dataset()
+        validated_cols = {'part': 'Part', 'operator': 'Operator', 'measurements': ['M1', 'M2', 'M3']}
+        output, _ = analyze_msa(df, validated_cols)
+
+        anova_table = output['results']['anova_table']
+
+        # Check that Parte, Operador, and Operador×Parte have p-values
+        for row in anova_table[:3]:  # First 3 rows should have p-values
+            assert row['p_value'] is not None, f"{row['source']} should have p-value"
+            assert 0 <= row['p_value'] <= 1, f"{row['source']} p-value should be between 0 and 1"
+
+    def test_p_values_match_significance(self):
+        """Test that p-values correctly indicate statistical significance."""
+        from utils.msa_calculator import analyze_msa
+
+        df = create_reference_dataset()
+        validated_cols = {'part': 'Part', 'operator': 'Operator', 'measurements': ['M1', 'M2', 'M3']}
+        output, _ = analyze_msa(df, validated_cols)
+
+        anova_table = output['results']['anova_table']
+
+        # With the reference dataset, Part variation should be highly significant
+        parte_row = next(r for r in anova_table if r['source'] == 'Parte')
+        assert parte_row['p_value'] < 0.05, "Part variation should be significant"
+
+
 class TestNDCCalculation:
     """Tests for Number of Distinct Categories calculation."""
 

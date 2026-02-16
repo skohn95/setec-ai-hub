@@ -104,11 +104,12 @@ def generate_variation_breakdown_chart(data: list[dict[str, Any]]) -> str:
 
 def generate_operator_comparison_chart(data: list[dict[str, Any]]) -> str:
     """
-    Generate bar chart comparing operator means with error bars.
+    Generate line chart comparing operator means with error indication.
     """
-    chart = pygal.Bar(
+    chart = pygal.Line(
         style=custom_style,
-        show_legend=False,
+        show_legend=True,
+        legend_at_bottom=True,
         title='Comparación de Operadores',
         x_title='Operador',
         y_title='Media',
@@ -116,33 +117,34 @@ def generate_operator_comparison_chart(data: list[dict[str, Any]]) -> str:
         value_formatter=lambda x: f'{x:.3f}',
         height=300,
         width=600,
+        dots_size=6,
     )
 
     chart.x_labels = [str(d['operator']) for d in data]
-    chart.add('Media', [d['mean'] for d in data])
+    chart.add('Media', [d['mean'] for d in data], stroke_style={'width': 2})
 
     return svg_to_base64(chart.render().decode('utf-8'))
 
 
 def generate_r_chart(data: dict[str, Any]) -> str:
     """
-    Generate R chart (average range per operator) with control limits.
+    Generate R chart showing all range measurements per operator with control limits.
     """
     points = data['points']
     r_bar = data['rBar']
     ucl_r = data['uclR']
     lcl_r = data['lclR']
 
-    # Aggregate ranges by operator
-    operator_ranges = defaultdict(list)
+    # Group points by operator
+    operator_points = defaultdict(list)
     for p in points:
-        operator_ranges[str(p['operator'])].append(p['range'])
+        operator_points[str(p['operator'])].append(p['range'])
 
-    operators = list(operator_ranges.keys())
-    avg_ranges = [sum(ranges) / len(ranges) for ranges in operator_ranges.values()]
+    operators = list(operator_points.keys())
+    all_ranges = [r for ranges in operator_points.values() for r in ranges]
 
     # Calculate y range
-    max_y = max(max(avg_ranges), ucl_r) * 1.2
+    max_y = max(max(all_ranges), ucl_r) * 1.2
     min_y = 0
 
     chart = pygal.Line(
@@ -151,9 +153,8 @@ def generate_r_chart(data: dict[str, Any]) -> str:
         legend_at_bottom=True,
         title='Gráfico R por Operador',
         x_title='Operador',
-        y_title='Rango Promedio',
-        print_values=True,
-        value_formatter=lambda x: f'{x:.4f}' if x else '',
+        y_title='Rango',
+        print_values=False,
         range=(min_y, max_y),
         height=350,
         width=600,
@@ -162,10 +163,19 @@ def generate_r_chart(data: dict[str, Any]) -> str:
 
     chart.x_labels = operators
 
-    # Add data series
-    chart.add('Rango', avg_ranges, stroke_style={'width': 2})
+    # Add all measurements as individual series per operator
+    for operator in operators:
+        ranges = operator_points[operator]
+        # Create a series with None for other operators
+        series_data = []
+        for op in operators:
+            if op == operator:
+                series_data.extend(ranges)
+            else:
+                series_data.extend([None] * len(operator_points[op]))
+        chart.add(f'{operator}', operator_points[operator], stroke=False)
 
-    # Add control limits as horizontal lines (using constant values)
+    # Add control limits as horizontal lines
     chart.add(f'UCL ({ucl_r:.4f})', [ucl_r] * len(operators),
               stroke_style={'width': 1, 'dasharray': '5,5'},
               show_dots=False, fill=False)
@@ -181,24 +191,24 @@ def generate_r_chart(data: dict[str, Any]) -> str:
 
 def generate_xbar_chart(data: dict[str, Any]) -> str:
     """
-    Generate X-bar chart (mean per operator) with control limits.
+    Generate X-bar chart showing all mean measurements per operator with control limits.
     """
     points = data['points']
     x_double_bar = data['xDoubleBar']
     ucl = data['uclXBar']
     lcl = data['lclXBar']
 
-    # Aggregate means by operator
-    operator_means = defaultdict(list)
+    # Group points by operator
+    operator_points = defaultdict(list)
     for p in points:
-        operator_means[str(p['operator'])].append(p['mean'])
+        operator_points[str(p['operator'])].append(p['mean'])
 
-    operators = list(operator_means.keys())
-    avg_means = [sum(means) / len(means) for means in operator_means.values()]
+    operators = list(operator_points.keys())
+    all_means = [m for means in operator_points.values() for m in means]
 
     # Calculate y range
-    y_min = min(min(avg_means), lcl)
-    y_max = max(max(avg_means), ucl)
+    y_min = min(min(all_means), lcl)
+    y_max = max(max(all_means), ucl)
     padding = (y_max - y_min) * 0.2
 
     chart = pygal.Line(
@@ -208,8 +218,7 @@ def generate_xbar_chart(data: dict[str, Any]) -> str:
         title='Gráfico X̄ por Operador',
         x_title='Operador',
         y_title='Media',
-        print_values=True,
-        value_formatter=lambda x: f'{x:.4f}' if x else '',
+        print_values=False,
         range=(y_min - padding, y_max + padding),
         height=350,
         width=600,
@@ -218,8 +227,9 @@ def generate_xbar_chart(data: dict[str, Any]) -> str:
 
     chart.x_labels = operators
 
-    # Add data series
-    chart.add('Media', avg_means, stroke_style={'width': 2})
+    # Add all measurements as individual series per operator
+    for operator in operators:
+        chart.add(f'{operator}', operator_points[operator], stroke=False)
 
     # Add control limits
     chart.add(f'UCL ({ucl:.4f})', [ucl] * len(operators),

@@ -20,9 +20,9 @@ describe('StreamingMessage', () => {
     expect(messageEl).toBeInTheDocument()
   })
 
-  it('renders cursor even with empty content', () => {
-    render(<StreamingMessage content="" />)
-    expect(screen.getByTestId('typing-cursor')).toBeInTheDocument()
+  it('shows thinking indicator with empty content when thinking', () => {
+    render(<StreamingMessage content="" isThinking={true} />)
+    expect(screen.getByText('Pensando...')).toBeInTheDocument()
   })
 
   it('preserves whitespace in content', () => {
@@ -32,6 +32,6 @@ describe('StreamingMessage', () => {
 
   it('shows streaming indicator', () => {
     render(<StreamingMessage content="Loading..." />)
-    expect(screen.getByText('Analizando...')).toBeInTheDocument()
+    expect(screen.getByText('Escribiendo...')).toBeInTheDocument()
   })
 })

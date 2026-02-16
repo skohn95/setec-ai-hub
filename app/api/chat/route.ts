@@ -258,7 +258,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
     const conversationHistory = existingMessages
 
     // Build file context for the agent (pass authenticated client for Edge runtime)
-    const fileContext = await buildFileContext(conversationId, supabase)
+    // Also pass fileId from current request to ensure just-uploaded file is detected
+    const fileContext = await buildFileContext(conversationId, supabase, fileId || undefined)
 
     // DEBUG LOGGING - File context
     console.log('\n[CHAT-DEBUG] ========== FILE CONTEXT ==========')
@@ -267,6 +268,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
       console.log(`[CHAT-DEBUG]   File ${i + 1}: ID=${f.id}, Name=${f.name}, Status=${f.status}`)
     })
     console.log('[CHAT-DEBUG] Context string length:', fileContext.contextString.length)
+    console.log('[CHAT-DEBUG] Context string value:', JSON.stringify(fileContext.contextString))
     console.log('[CHAT-DEBUG] ================================================\n')
 
     const encoder = new TextEncoder()
