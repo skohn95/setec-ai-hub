@@ -47,7 +47,6 @@ export const PRIVACY_PAGE = {
         'Archivos Excel originales',
         'Datos crudos de mediciones',
         'Valores individuales de tu proceso',
-        'Información identificable de tu empresa o productos',
       ],
     },
     DOES_SEE: {
