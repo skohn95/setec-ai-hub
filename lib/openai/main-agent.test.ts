@@ -85,7 +85,7 @@ describe('main-agent', () => {
   })
 
   describe('streamMainAgentResponse', () => {
-    it('calls OpenAI with gpt-4o model', async () => {
+    it('calls OpenAI with gpt-5 model', async () => {
       const mockCreate = vi.fn().mockReturnValue({
         [Symbol.asyncIterator]: async function* () {
           yield { choices: [{ delta: { content: 'Test' } }] }
@@ -109,7 +109,7 @@ describe('main-agent', () => {
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o',
+          model: 'gpt-5',
           stream: true,
         })
       )
@@ -258,7 +258,7 @@ describe('main-agent', () => {
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o',
+          model: 'gpt-5',
           stream: true,
           tools: AVAILABLE_TOOLS,
         })

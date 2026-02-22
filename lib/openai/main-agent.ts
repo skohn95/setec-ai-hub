@@ -1,6 +1,6 @@
 /**
  * Main Agent service for generating streaming responses
- * Uses gpt-4o model for quality conversational responses
+ * Uses gpt-5 model for quality conversational responses
  *
  * Story 4.4: Added tool calling support for MSA analysis
  * Story 5.4: Enhanced for follow-up question handling
@@ -146,7 +146,7 @@ export function hasRecentAnalysisInContext(messages: MessageRow[]): boolean {
 }
 
 /**
- * Stream response from the Main Agent (gpt-4o)
+ * Stream response from the Main Agent (gpt-5)
  * Yields text chunks as they arrive from OpenAI
  *
  * @param conversationHistory - Previous messages in the conversation
@@ -170,7 +170,7 @@ export async function* streamMainAgentResponse(
 
   // Create streaming completion
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-5',
     messages,
     stream: true,
   })
@@ -227,7 +227,7 @@ export async function* streamMainAgentWithTools(
 
   // Create streaming completion with tools
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-5',
     messages,
     stream: true,
     tools: AVAILABLE_TOOLS,

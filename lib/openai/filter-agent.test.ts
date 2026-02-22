@@ -29,7 +29,7 @@ describe('filterMessage', () => {
       expect(result.allowed).toBe(true)
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-nano',
         })
       )
     })
@@ -119,7 +119,7 @@ describe('filterMessage', () => {
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-nano',
           response_format: expect.objectContaining({
             type: 'json_schema',
           }),

@@ -35,7 +35,7 @@ export interface FilterContext {
 }
 
 /**
- * Filter a user message using the Filter Agent (gpt-4o-mini)
+ * Filter a user message using the Filter Agent (gpt-5-nano)
  * Uses structured output to guarantee JSON response format
  *
  * @param content - The user's message content to filter
@@ -84,7 +84,7 @@ En caso de DUDA, PERMITE el mensaje (allowed: true).`
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-nano',
       messages,
       response_format: {
         type: 'json_schema',
