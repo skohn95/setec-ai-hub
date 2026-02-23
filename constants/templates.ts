@@ -24,7 +24,7 @@ export const TEMPLATES: TemplateDefinition[] = [
   },
   {
     id: 'capacidad_proceso',
-    title: 'Análisis de Capacidad de Proceso',
+    title: 'Control Estadístico de Proceso',
     description:
       'Evalúa si tu proceso cumple con las especificaciones del cliente. Incluye datos de ejemplo para calcular índices de capacidad.',
     filename: 'plantilla-capacidad-proceso.xlsx',

@@ -21,7 +21,7 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
   function: {
     name: 'analyze',
     description:
-      'Realiza análisis estadístico en archivos Excel subidos. Soporta MSA (Gauge R&R) y Capacidad de Proceso (Cp, Cpk, Pp, Ppk). Para MSA, incluir specification (target). Para Capacidad de Proceso, incluir spec_limits (LEI/LES).',
+      'Realiza análisis estadístico en archivos Excel subidos. Soporta MSA (Gauge R&R) y Control Estadístico de Proceso (Cp, Cpk, Pp, Ppk). Para MSA, incluir specification (target). Para Control Estadístico de Proceso, incluir spec_limits (LEI/LES).',
     parameters: {
       type: 'object',
       properties: {
@@ -45,7 +45,7 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
             les: { type: 'number', description: 'Límite de Especificación Superior' },
           },
           required: ['lei', 'les'],
-          description: 'Límites de especificación para Capacidad de Proceso. Requerido para calcular Cp, Cpk, Pp, Ppk.',
+          description: 'Límites de especificación para Control Estadístico de Proceso. Requerido para calcular Cp, Cpk, Pp, Ppk.',
         },
       },
       required: ['analysis_type', 'file_id'],
