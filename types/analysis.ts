@@ -288,11 +288,7 @@ export interface CapacidadProcesoResult {
   warnings: string[]
 }
 
-// Specification limits for capacidad_proceso
-export interface SpecLimits {
-  lei: number  // Lower specification limit (Límite de Especificación Inferior)
-  les: number  // Upper specification limit (Límite de Especificación Superior)
-}
+// Note: SpecLimits is defined in api.ts and re-exported from index.ts
 
 // Chart data for Recharts
 export interface ChartData {
