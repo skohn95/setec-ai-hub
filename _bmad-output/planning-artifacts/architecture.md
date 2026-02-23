@@ -574,7 +574,10 @@ Dependencias en requirements.txt:
 - pandas>=2.0.0
 - numpy>=1.24.0
 - openpyxl>=3.1.0
-- scipy>=1.11.0
+- supabase>=2.0.0
+
+Note: scipy excluded due to Vercel 250MB limit.
+Statistical functions implemented in pure Python.
 """
 
 from http.server import BaseHTTPRequestHandler
@@ -608,8 +611,25 @@ class handler(BaseHTTPRequestHandler):
 pandas>=2.0.0
 numpy>=1.24.0
 openpyxl>=3.1.0
-scipy>=1.11.0
+supabase>=2.0.0
 ```
+
+> **Note:** scipy was intentionally excluded due to Vercel's 250MB unzipped deployment limit. All statistical functions (F-distribution, p-values) are implemented in pure Python. See "Pure Python Statistical Implementation" section below.
+
+### Pure Python Statistical Implementation
+
+Due to Vercel's 250MB unzipped deployment limit, scipy cannot be used in production. All statistical functions required for MSA analysis are implemented in pure Python in `/api/utils/msa_calculator.py`:
+
+| Function | Purpose | Based On |
+|----------|---------|----------|
+| `_log_beta(a, b)` | Log of beta function B(a,b) | `math.lgamma` from stdlib |
+| `_betacf(a, b, x)` | Continued fraction for incomplete beta | Numerical Recipes |
+| `_betainc(a, b, x)` | Regularized incomplete beta function I_x(a,b) | Numerical Recipes |
+| `f_distribution_sf(f, df1, df2)` | F-distribution survival function (p-value) | Beta function relationship |
+
+**Usage:** These functions calculate p-values for ANOVA F-tests without requiring scipy.
+
+**Constraint for Future Development:** Any additional statistical functions (e.g., Anderson-Darling test, distribution fitting, chi-square tests) must also be implemented in pure Python to stay within Vercel's deployment limits.
 
 ### API y Comunicación
 
@@ -904,30 +924,43 @@ export function GaugeRRChart({ data, totalGRR }: GaugeRRChartProps) {
 ```json
 {
   "dependencies": {
-    "next": "^16.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@supabase/supabase-js": "^2.45.0",
-    "@supabase/ssr": "^0.5.0",
-    "openai": "^4.70.0",
-    "@tanstack/react-query": "^5.60.0",
-    "recharts": "^2.13.0",
-    "zod": "^3.23.0",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.5.0",
-    "lucide-react": "^0.460.0"
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@supabase/supabase-js": "^2.94.0",
+    "@supabase/ssr": "^0.8.0",
+    "openai": "^6.17.0",
+    "@tanstack/react-query": "^5.90.20",
+    "recharts": "^3.7.0",
+    "zod": "^3.25.76",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0",
+    "lucide-react": "^0.563.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-label": "^2.1.8",
+    "@tailwindcss/typography": "^0.5.19",
+    "date-fns": "^4.1.0",
+    "next-themes": "^0.4.6",
+    "react-hook-form": "^7.71.1",
+    "react-markdown": "^10.1.0",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "tailwindcss": "^4.0.0",
-    "postcss": "^8.4.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^16.0.0",
-    "vitest": "^2.1.0",
-    "@testing-library/react": "^16.0.0"
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "vitest": "^4.0.18",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^5.1.3",
+    "jsdom": "^28.0.0"
   }
 }
 

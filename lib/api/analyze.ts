@@ -11,7 +11,7 @@
  * - Network errors → network error message
  */
 
-import type { ChartDataItem, ValidationError } from '@/types/api'
+import type { ChartDataItem, ValidationError, SpecLimits } from '@/types/api'
 import { API_ERRORS } from '@/constants/messages'
 import { retryWithBackoff } from '@/lib/utils/retry-utils'
 import { isNetworkError } from '@/lib/utils/error-utils'
@@ -107,19 +107,21 @@ function getApiBaseUrl(): string {
 /**
  * Invoke the Python analysis endpoint
  *
- * @param analysisType - Type of analysis to perform (e.g., 'msa')
+ * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso')
  * @param fileId - UUID of the file to analyze
  * @param messageId - Optional UUID of the assistant message for result storage
- * @param specification - Optional target/nominal value for bias calculation
+ * @param specification - Optional target/nominal value for bias calculation (MSA only)
+ * @param specLimits - Optional specification limits for capacidad_proceso { lei, les }
  * @returns Promise with analysis results or error
  */
 export async function invokeAnalysisTool(
   analysisType: string,
   fileId: string,
   messageId?: string,
-  specification?: number
+  specification?: number,
+  specLimits?: SpecLimits
 ): Promise<AnalysisResponse> {
-  const body: Record<string, string | number> = {
+  const body: Record<string, unknown> = {
     analysis_type: analysisType,
     file_id: fileId,
   }
@@ -129,9 +131,14 @@ export async function invokeAnalysisTool(
     body.message_id = messageId
   }
 
-  // Only include specification if provided
+  // Only include specification if provided (for MSA)
   if (specification !== undefined) {
     body.specification = specification
+  }
+
+  // Only include spec_limits if provided (for capacidad_proceso)
+  if (specLimits) {
+    body.spec_limits = specLimits
   }
 
   // Build absolute URL for Edge runtime compatibility

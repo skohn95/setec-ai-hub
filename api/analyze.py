@@ -1,16 +1,16 @@
 """
-MSA Analysis Endpoint
+Statistical Analysis Endpoint
 
 This Python serverless function handles Excel file analysis for
-Measurement System Analysis (MSA) and other analysis types.
+Measurement System Analysis (MSA) and Process Capability analysis.
 
 Endpoint: POST /api/analyze
 Request Body:
     {
-        "analysis_type": string,  // Required. Analysis type (MVP: "msa")
+        "analysis_type": string,  // Required. Analysis type: "msa" | "capacidad_proceso"
         "file_id": string,        // Required. UUID of file in files table
         "message_id": string,     // Optional. UUID of associated message
-        "specification": number   // Optional. Target/nominal value for bias calculation
+        "specification": number   // Optional. Target/nominal value for bias calculation (MSA only)
     }
 
 Success Response (200):
@@ -58,6 +58,13 @@ from api.utils.supabase_client import (
 from api.utils.file_loader import load_excel_to_dataframe
 from api.utils.msa_validator import validate_msa_file
 from api.utils.msa_calculator import analyze_msa
+from api.utils.capacidad_proceso_validator import validate_capacidad_proceso_file
+from api.utils.capacidad_proceso_calculator import (
+    calculate_basic_statistics,
+    perform_normality_analysis,
+    build_capacidad_proceso_output,
+)
+from api.utils.stability_analysis import perform_stability_analysis
 
 
 def is_valid_uuid(value: str) -> bool:
@@ -70,7 +77,7 @@ def is_valid_uuid(value: str) -> bool:
 
 
 # Supported analysis types
-SUPPORTED_ANALYSIS_TYPES = {'msa'}
+SUPPORTED_ANALYSIS_TYPES = {'msa', 'capacidad_proceso'}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -101,7 +108,7 @@ class handler(BaseHTTPRequestHandler):
         response = {
             'data': {
                 'status': 'ok',
-                'message': 'MSA Analysis endpoint - Ready',
+                'message': 'Statistical Analysis endpoint - Ready',
                 'supported_types': list(SUPPORTED_ANALYSIS_TYPES),
             },
             'error': None,
@@ -138,6 +145,7 @@ class handler(BaseHTTPRequestHandler):
             file_id = body['file_id']
             message_id = body.get('message_id')  # Optional
             specification = body.get('specification')  # Optional - target value for bias calculation
+            spec_limits = body.get('spec_limits')  # Optional - {lei, les} for PPM (capacidad_proceso)
 
             # Validate file_id is a valid UUID format
             if not is_valid_uuid(file_id):
@@ -181,7 +189,10 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json_response(400, response)
                 return
 
-            # Validate file structure and data for MSA analysis
+            # Validate file structure and data based on analysis type
+            validated_data = None
+            validated_columns = None
+
             if analysis_type == 'msa':
                 validated_columns, validation_error = validate_msa_file(df)
                 if validation_error:
@@ -194,9 +205,50 @@ class handler(BaseHTTPRequestHandler):
                 # Update file status to valid
                 update_file_validation(file_id, is_valid=True)
 
+            elif analysis_type == 'capacidad_proceso':
+                validated_data, validation_error = validate_capacidad_proceso_file(df)
+                if validation_error:
+                    # Update file status to invalid with error details
+                    update_file_validation(file_id, is_valid=False, errors=validation_error)
+                    response = validation_error_response(validation_error)
+                    self.send_json_response(400, response)
+                    return
+
+                # Update file status to valid
+                update_file_validation(file_id, is_valid=True)
+
             # Route to appropriate analyzer
+            analysis_output = None
+            analysis_error = None
+
             if analysis_type == 'msa':
                 analysis_output, analysis_error = analyze_msa(df, validated_columns, specification)
+
+            elif analysis_type == 'capacidad_proceso':
+                values = validated_data['values']
+
+                # Calculate basic statistics (Story 7.1)
+                basic_stats = calculate_basic_statistics(values)
+
+                # Perform normality analysis (Story 7.2)
+                # Extract spec limits if provided
+                lei = None
+                les = None
+                if spec_limits is not None:
+                    lei = spec_limits.get('lei')
+                    les = spec_limits.get('les')
+
+                normality_result = perform_normality_analysis(values, lei, les)
+
+                # Perform stability analysis (Story 7.3)
+                stability_result = perform_stability_analysis(values)
+
+                # Build output with normality, stability, and capability results (Story 7.4)
+                analysis_output = build_capacidad_proceso_output(
+                    validated_data, basic_stats, normality_result, stability_result, spec_limits
+                )
+                # No analysis_error for capacidad_proceso - errors handled in validation
+
             else:
                 # This shouldn't happen due to earlier validation, but handle it
                 response = error_response(

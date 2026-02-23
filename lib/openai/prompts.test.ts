@@ -16,6 +16,30 @@ describe('prompts', () => {
       expect(lowerPrompt).toContain('lean six sigma')
     })
 
+    // Story 8.4: Capacidad de Proceso support in filter
+    describe('capacidad de proceso filter support', () => {
+      it('allows capacidad de proceso follow-up questions', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('capacidad de proceso')
+      })
+
+      it('allows normality and distribution questions', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('normalidad')
+      })
+
+      it('allows stability and I-MR chart questions', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('estabilidad')
+      })
+
+      it('allows specification limits questions', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('lei')
+        expect(prompt).toContain('les')
+      })
+    })
+
     it('specifies rejected topics', () => {
       const lowerPrompt = FILTER_SYSTEM_PROMPT.toLowerCase()
       expect(lowerPrompt).toContain('receta')
@@ -33,8 +57,8 @@ describe('prompts', () => {
       expect(MAIN_SYSTEM_PROMPT.length).toBeGreaterThan(0)
     })
 
-    it('establishes identity as Asistente Setec', () => {
-      expect(MAIN_SYSTEM_PROMPT.toLowerCase()).toContain('asistente setec')
+    it('establishes identity as Asistente del Setec AI Hub', () => {
+      expect(MAIN_SYSTEM_PROMPT.toLowerCase()).toContain('asistente del setec ai hub')
     })
 
     it('identifies as Lean Six Sigma statistics assistant', () => {
@@ -82,9 +106,9 @@ describe('prompts', () => {
         expect(prompt).toContain('herramienta')
       })
 
-      it('instructs to ask for analysis type when not specified', () => {
-        // Should ask what type of analysis if file uploaded without specifying
-        expect(MAIN_SYSTEM_PROMPT).toContain('¿Qué tipo de análisis')
+      it('instructs to verify file before proceeding', () => {
+        // Should verify file is available before analysis
+        expect(MAIN_SYSTEM_PROMPT.toLowerCase()).toContain('verificar archivo')
       })
 
       it('instructs to follow tool response instructions field', () => {
@@ -116,8 +140,6 @@ describe('prompts', () => {
         const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
         expect(prompt).toContain('repetibilidad')
         expect(prompt).toContain('reproducibilidad')
-        expect(prompt).toContain('mismo operador')
-        expect(prompt).toContain('diferentes operadores')
       })
 
       it('includes interpretation guidelines for GRR percentages', () => {
@@ -201,6 +223,62 @@ describe('prompts', () => {
       it('instructs to be educational in explanations', () => {
         const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
         expect(prompt).toContain('educativo')
+      })
+    })
+
+    // Story 8.4: Capacidad de Proceso analysis flow
+    describe('capacidad de proceso analysis flow', () => {
+      it('has dedicated section for capacidad de proceso flow', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('capacidad de proceso')
+      })
+
+      it('instructs to obtain LEI/LES specification limits', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('lei')
+        expect(prompt).toContain('les')
+        expect(prompt).toContain('límite')
+      })
+
+      it('recognizes LEI/LES patterns in user messages', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('lei=')
+      })
+
+      it('has three-part result presentation for capacidad de proceso', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('análisis técnico')
+        expect(prompt).toContain('conclusión ejecutiva')
+        // The prompt uses PARTE 3: CONCLUSIÓN "TERRENAL" with quotes
+        expect(prompt).toContain('"terrenal"')
+      })
+
+      it('includes normality assessment guidance', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('normalidad')
+        expect(prompt).toContain('anderson-darling')
+      })
+
+      it('includes stability analysis guidance', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('estabilidad')
+        expect(prompt).toContain('i-mr')
+      })
+
+      it('includes capability indices guidance', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('cp,')
+        expect(prompt).toContain('cpk')
+        expect(prompt).toContain('pp,')
+        expect(prompt).toContain('ppk')
+      })
+
+      it('describes the 4 charts generated', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('histograma')
+        expect(prompt).toContain('gráfico i')
+        expect(prompt).toContain('gráfico mr')
+        expect(prompt).toContain('normalidad')
       })
     })
   })

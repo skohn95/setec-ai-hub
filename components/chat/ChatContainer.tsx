@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState, DragEvent } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo, DragEvent } from 'react'
 import { RefreshCw, MessageCircle, Upload, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/providers/AuthProvider'
@@ -14,6 +14,11 @@ import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import MessageSkeleton from './MessageSkeleton'
 import StreamingMessage from './StreamingMessage'
+import SpecLimitsForm from './SpecLimitsForm'
+
+// Marker pattern for triggering SpecLimitsForm
+// Format: <!-- SHOW_SPEC_LIMITS_FORM count=N file_id=UUID -->
+const SPEC_LIMITS_MARKER_REGEX = /<!--\s*SHOW_SPEC_LIMITS_FORM\s+count=(\d+)\s+file_id=([a-f0-9-]+)\s*-->/i
 
 interface ChatContainerProps {
   conversationId: string
@@ -31,6 +36,9 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [droppedFile, setDroppedFile] = useState<File | null>(null)
   const [downloadingFileIds, setDownloadingFileIds] = useState<string[]>([])
+  // Track which message ID had its form dismissed (to allow showing again for new messages)
+  const [dismissedFormMessageId, setDismissedFormMessageId] = useState<string | null>(null)
+
 
   // Get current user for file uploads
   const { user } = useAuth()
@@ -58,6 +66,58 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
   // Track previous message count to detect new messages
   const prevMessageCountRef = useRef(0)
   const wasStreamingRef = useRef(false)
+
+  /**
+   * Detect if SpecLimitsForm should be shown based on last assistant message
+   * Uses marker pattern: <!-- SHOW_SPEC_LIMITS_FORM count=N file_id=UUID -->
+   */
+  const specLimitsFormData = useMemo(() => {
+    if (isStreaming) return null
+
+    // Find last assistant message
+    const lastAssistantMessage = messages
+      ?.slice()
+      .reverse()
+      .find((m) => m.role === 'assistant')
+
+    if (!lastAssistantMessage) return null
+
+    // Don't show if this message's form was dismissed
+    if (dismissedFormMessageId === lastAssistantMessage.id) return null
+
+    const match = lastAssistantMessage.content.match(SPEC_LIMITS_MARKER_REGEX)
+    if (!match) return null
+
+    return {
+      messageId: lastAssistantMessage.id,
+      count: parseInt(match[1], 10),
+      fileId: match[2],
+    }
+  }, [messages, dismissedFormMessageId, isStreaming])
+
+  /**
+   * Handle SpecLimitsForm submission
+   * Sends LEI/LES values as a chat message
+   */
+  const handleSpecLimitsSubmit = useCallback(
+    (limits: { lei: number; les: number }) => {
+      const message = `LEI=${limits.lei}, LES=${limits.les}`
+      if (specLimitsFormData) {
+        setDismissedFormMessageId(specLimitsFormData.messageId)
+      }
+      sendStreamingMessage(message)
+    },
+    [sendStreamingMessage, specLimitsFormData]
+  )
+
+  /**
+   * Handle SpecLimitsForm cancellation
+   */
+  const handleSpecLimitsCancel = useCallback(() => {
+    if (specLimitsFormData) {
+      setDismissedFormMessageId(specLimitsFormData.messageId)
+    }
+  }, [specLimitsFormData])
 
   /**
    * Scroll to bottom of messages list
@@ -120,6 +180,7 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
     },
     [sendStreamingMessage, clearError]
   )
+
 
   /**
    * Handle file download
@@ -295,6 +356,18 @@ export default function ChatContainer({ conversationId }: ChatContainerProps) {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {/* SpecLimitsForm - shown when agent requests LEI/LES */}
+      {specLimitsFormData && (
+        <div className="px-4 pb-2">
+          <SpecLimitsForm
+            detectedCount={specLimitsFormData.count}
+            onSubmit={handleSpecLimitsSubmit}
+            onCancel={handleSpecLimitsCancel}
+            isSubmitting={isStreaming}
+          />
+        </div>
+      )}
 
       {/* Input area */}
       <ChatInput

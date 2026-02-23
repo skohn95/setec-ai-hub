@@ -14,6 +14,7 @@ import {
   MeasurementsByOperator,
   InteractionPlot,
   StaticChartDisplay,
+  CapacidadProcesoCharts,
 } from '@/components/charts'
 import FileAttachmentCard from './FileAttachmentCard'
 import type { MessageRowWithFiles } from '@/lib/supabase/messages'
@@ -25,6 +26,7 @@ import type {
   MeasurementsByPartItem,
   MeasurementsByOperatorItem,
   InteractionPlotData,
+  CapacidadProcesoChartDataItem,
 } from '@/types/api'
 
 interface ChatMessageProps {
@@ -118,6 +120,15 @@ export default function ChatMessage({
     return chart ? (chart.data as unknown as InteractionPlotData) : null
   })()
 
+  // Extract Capacidad de Proceso chart data (Stories 8.1 + 8.2)
+  const capacidadProcesoChartData: CapacidadProcesoChartDataItem[] | null = (() => {
+    if (!chartData) return null
+    const cpCharts = chartData.filter(
+      (d) => d.type === 'histogram' || d.type === 'i_chart' || d.type === 'mr_chart' || d.type === 'normality_plot'
+    ) as unknown as CapacidadProcesoChartDataItem[]
+    return cpCharts.length > 0 ? cpCharts : null
+  })()
+
   const handleDownload = (fileId: string) => {
     onDownload?.(fileId)
   }
@@ -198,6 +209,10 @@ export default function ChatMessage({
               <MeasurementsByOperator data={measurementsByOperatorData} />
             )}
             {interactionPlotData && <InteractionPlot data={interactionPlotData} />}
+            {/* Story 8.1: Capacidad de Proceso charts (histogram and I-Chart) */}
+            {capacidadProcesoChartData && capacidadProcesoChartData.length > 0 && (
+              <CapacidadProcesoCharts chartData={capacidadProcesoChartData} />
+            )}
           </div>
         )}
       </div>

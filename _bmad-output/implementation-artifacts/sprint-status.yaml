@@ -93,8 +93,28 @@ development_status:
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 6: Privacy Transparency & Production Readiness
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-6: in-progress
+  epic-6: done
   6-1-privacy-page: done
   6-2-error-handling-user-feedback: done
-  6-3-production-deployment-final-polish: in-progress
+  6-3-production-deployment-final-polish: done
   epic-6-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 7: Process Capability Statistical Analysis Engine
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-7: in-progress
+  7-1-file-validation-basic-statistics-calculator: done
+  7-2-normality-testing-distribution-fitting: done
+  7-3-stability-analysis-i-mr-control-charts: done
+  7-4-capability-indices-api-integration: done
+  epic-7-retrospective: optional
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EPIC 8: Capacity Visualization & Agent Integration
+  # ═══════════════════════════════════════════════════════════════════════════
+  epic-8: done
+  8-1-histogram-i-chart-components: done
+  8-2-mr-chart-normality-plot-components: done
+  8-3-spec-limits-form-template-page-update: done
+  8-4-agent-tool-update-chat-flow-integration: done
+  epic-8-retrospective: optional

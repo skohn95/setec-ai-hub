@@ -9,6 +9,17 @@ inputDocuments:
   - prd.md
   - architecture.md
   - ux-design-specification.md
+# Capacidad de Proceso Addition (2026-02-17)
+capacidadProcesoStepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
+capacidadProcesoStatus: complete
+capacidadProcesoCompletedAt: 2026-02-20
+capacidadProcesoInputDocuments:
+  - prd-v2.md
+  - architecture.md
 ---
 
 # Setec AI Hub - LLM - Epic Breakdown
@@ -1330,3 +1341,436 @@ So that **users can reliably access and use the system**.
   - How to deploy
   - How to create additional users (manual process for MVP)
 **And** The MVP user credentials are documented securely
+
+---
+
+# CAPACIDAD DE PROCESO FEATURE (Added 2026-02-17)
+
+## Requirements Inventory — Capacidad de Proceso
+
+### Functional Requirements
+
+FR-CP1: Usuario puede descargar plantilla `plantilla-capacidad-proceso.xlsx` desde /plantillas
+FR-CP2: La plantilla contiene una sola columna: "Valores" (numéricos)
+FR-CP3: El agente intenta extraer LEI y LES del mensaje del usuario
+FR-CP4: Si no hay LEI/LES en mensaje, mostrar formulario interactivo
+FR-CP5: Formulario valida: campos completos, LEI < LES, valores numéricos
+FR-CP6: Usuario puede cancelar formulario y subir otro archivo
+FR-CP7: Validar archivo tiene al menos una columna numérica
+FR-CP8: Detectar y reportar celdas vacías y valores no numéricos
+FR-CP9: Si < 20 valores, mostrar advertencia pero continuar
+FR-CP10: Mensajes de error en español con guía específica
+FR-CP11: Calcular estadísticos básicos (media, mediana, moda, std, min/max/rango)
+FR-CP12: Test de normalidad Anderson-Darling con p-value
+FR-CP13: Si no normal: aplicar Box-Cox/Johnson, o ajustar distribución alternativa
+FR-CP14: Análisis de estabilidad con carta I-MR (límites de control)
+FR-CP15: Evaluar 7 reglas de inestabilidad
+FR-CP16: Reportar cada regla: CUMPLE/NO CUMPLE con detalle
+FR-CP17: Calcular Cp, Cpk, Pp, Ppk
+FR-CP18: Si no normal: ajustar Weibull/Lognormal/Gamma/etc., reportar PPM
+FR-CP19: Clasificar capacidad: Capaz (≥1.33), Marginal (1.00-1.33), No Capaz (<1.00)
+FR-CP20: Generar 4 gráficos: Histograma, I-Chart, MR-Chart, Normality Plot
+FR-CP21: Gráficos interactivos y exportables como PNG
+FR-CP22: Retornar instrucciones en markdown con análisis técnico + conclusión ejecutiva + conclusión "terrenal"
+FR-CP23: Agente puede responder preguntas de seguimiento sin re-ejecutar análisis
+
+### NonFunctional Requirements
+
+NFR-CP1: Anderson-Darling p-values comparables a Minitab (±0.01)
+NFR-CP2: Análisis completo < 30 segundos para hasta 1000 filas
+NFR-CP3: Todos los mensajes de error y resultados en español
+NFR-CP4: Datos crudos nunca se envían a OpenAI (solo resultados agregados)
+
+### Additional Requirements
+
+- Pure Python implementation required (no scipy - Vercel 250MB limit)
+- Follow existing `{ data, error }` API response pattern
+- Use Recharts for charts (consistent with MSA)
+- Follow established naming conventions (snake_case DB, PascalCase components)
+- Tests co-located with components
+- All UI messages in Spanish
+
+### FR-CP Coverage Map
+
+| FR | Epic | Description |
+|----|------|-------------|
+| FR-CP1 | Epic 7 | Template download from /plantillas |
+| FR-CP2 | Epic 7 | Template structure (single "Valores" column) |
+| FR-CP3 | Epic 8 | Agent extracts LEI/LES from message |
+| FR-CP4 | Epic 8 | Form shown if LEI/LES missing |
+| FR-CP5 | Epic 8 | Form validation (LEI < LES, numeric) |
+| FR-CP6 | Epic 8 | Cancel form capability |
+| FR-CP7 | Epic 7 | Validate numeric column exists |
+| FR-CP8 | Epic 7 | Report empty cells and non-numeric values |
+| FR-CP9 | Epic 7 | Warning if < 20 values |
+| FR-CP10 | Epic 7 | Spanish error messages |
+| FR-CP11 | Epic 7 | Basic statistics (mean, median, std, etc.) |
+| FR-CP12 | Epic 7 | Anderson-Darling normality test |
+| FR-CP13 | Epic 7 | Box-Cox/Johnson transformations |
+| FR-CP14 | Epic 7 | I-MR control chart calculations |
+| FR-CP15 | Epic 7 | 7 instability rules evaluation |
+| FR-CP16 | Epic 7 | Rule status reporting |
+| FR-CP17 | Epic 7 | Cp, Cpk, Pp, Ppk indices |
+| FR-CP18 | Epic 7 | Alternative distribution fitting + PPM |
+| FR-CP19 | Epic 7 | Capability classification |
+| FR-CP20 | Epic 8 | 4 charts (Histogram, I, MR, Normality) |
+| FR-CP21 | Epic 8 | Interactive + PNG export |
+| FR-CP22 | Epic 8 | Markdown instructions with 3-part interpretation |
+| FR-CP23 | Epic 8 | Follow-up questions without re-analysis |
+
+## Epic List — Capacidad de Proceso
+
+### Epic 7: Process Capability Statistical Analysis Engine
+
+Users receive accurate process capability analysis from their uploaded data, including normality testing, stability analysis, and capability indices.
+
+**FRs covered:** FR-CP1, FR-CP2, FR-CP7, FR-CP8, FR-CP9, FR-CP10, FR-CP11, FR-CP12, FR-CP13, FR-CP14, FR-CP15, FR-CP16, FR-CP17, FR-CP18, FR-CP19
+
+**NFRs addressed:** NFR-CP1, NFR-CP2, NFR-CP3, NFR-CP4
+
+**Deliverables:**
+- `capacidad_proceso_validator.py` — file validation with Spanish error messages
+- `capacidad_proceso_calculator.py` — all statistical calculations (pure Python, no scipy)
+- API routing in `/api/analyze.py` for `analysis_type='capacidad_proceso'`
+- Plantilla Excel `plantilla-capacidad-proceso.xlsx`
+
+---
+
+### Epic 8: Capacity Visualization & Agent Integration
+
+Users see interactive charts visualizing their process capability results, can provide spec limits via form or message, and receive clear interpretations with follow-up capability.
+
+**FRs covered:** FR-CP3, FR-CP4, FR-CP5, FR-CP6, FR-CP20, FR-CP21, FR-CP22, FR-CP23
+
+**Deliverables:**
+- 4 Recharts components: HistogramChart, IChart, MRChart, NormalityPlot
+- SpecLimitsForm component (interactive LEI/LES input)
+- Template page update with Capacidad de Proceso card
+- Agent tool definition update + smart LEI/LES parsing
+- Chat flow integration for form handling
+
+---
+
+## Epic 7: Process Capability Statistical Analysis Engine
+
+Users receive accurate process capability analysis from their uploaded data, including normality testing, stability analysis, and capability indices.
+
+### Story 7.1: File Validation & Basic Statistics Calculator
+
+As a **user**,
+I want **my uploaded data file validated and basic statistics calculated**,
+So that **I know if my data is ready for analysis and see the foundational metrics**.
+
+**FRs covered:** FR-CP1, FR-CP2, FR-CP7, FR-CP8, FR-CP9, FR-CP10, FR-CP11
+
+**Acceptance Criteria:**
+
+**Given** a user uploads a file for capacidad_proceso analysis
+**When** the file is processed
+**Then** the system validates that at least one numeric column exists
+**And** the system detects and reports empty cells with specific location (e.g., "Celda vacía en fila 15")
+**And** the system detects and reports non-numeric values with specific location
+**And** if < 20 values, a warning is shown: "Se recomienda un mínimo de 20 valores para obtener estimaciones confiables"
+**And** all error messages are in Spanish with actionable guidance
+
+**Given** validation passes
+**When** basic statistics are calculated
+**Then** the system computes: media, mediana, moda, desviación estándar, mínimo, máximo, rango
+**And** results are stored in the analysis output structure
+
+**Given** the template needs to be available
+**When** user visits /plantillas
+**Then** they see a card for "Análisis de Capacidad de Proceso"
+**And** clicking download provides `plantilla-capacidad-proceso.xlsx`
+**And** the template contains a single column "Valores" with sample numeric data
+
+---
+
+### Story 7.2: Normality Testing & Distribution Fitting
+
+As a **user**,
+I want **my data tested for normality and alternative distributions fitted if needed**,
+So that **I know if my data follows a normal distribution or requires special handling**.
+
+**FRs covered:** FR-CP12, FR-CP13, FR-CP18
+
+**NFRs addressed:** NFR-CP1
+
+**Acceptance Criteria:**
+
+**Given** a valid data set is submitted for analysis
+**When** normality testing is performed
+**Then** the system calculates the Anderson-Darling statistic (A²)
+**And** the system calculates p-value using an algorithm compatible with Minitab (±0.01 accuracy)
+**And** the system compares p-value against α = 0.05
+**And** the system concludes "Normal" or "No Normal"
+
+**Given** data is NOT normal (p-value < 0.05)
+**When** transformation is attempted
+**Then** the system applies Box-Cox transformation (preferred) or Johnson transformation
+**And** the system re-tests normality on transformed data
+**And** if transformation succeeds, the system stores transformation type and parameters (λ for Box-Cox)
+
+**Given** transformation does not achieve normality
+**When** alternative distribution fitting is performed
+**Then** the system fits: Weibull, Lognormal, Gamma, Exponential, Logistic, Extreme Value
+**And** the system selects the distribution with best fit (lowest Anderson-Darling or AIC)
+**And** the system stores: distribution name, parameters, goodness-of-fit metric
+**And** the system calculates PPM (parts per million) outside specification using the fitted distribution
+
+**Given** all normality/distribution work is pure Python
+**When** implemented
+**Then** no scipy dependency is used (Vercel 250MB limit)
+**And** all statistical functions are implemented in pure Python with numpy
+
+---
+
+### Story 7.3: Stability Analysis with I-MR Control Charts
+
+As a **user**,
+I want **my process stability evaluated using I-MR control charts**,
+So that **I know if my process is under statistical control before assessing capability**.
+
+**FRs covered:** FR-CP14, FR-CP15, FR-CP16
+
+**Acceptance Criteria:**
+
+**Given** a valid data set is submitted for analysis
+**When** I-Chart (Individual Values) calculations are performed
+**Then** the system calculates the center line (X̄ = mean of all values)
+**And** the system calculates MR̄ (mean of moving ranges between consecutive points)
+**And** the system calculates UCL = X̄ + 2.66 × MR̄
+**And** the system calculates LCL = X̄ - 2.66 × MR̄
+**And** points outside UCL/LCL are flagged as out-of-control
+
+**Given** MR-Chart calculations are performed
+**When** the moving range chart is generated
+**Then** the system calculates MR̄ as center line
+**And** the system calculates UCL = 3.267 × MR̄
+**And** LCL = 0
+**And** points outside UCL are flagged
+
+**Given** stability rules need evaluation
+**When** the 7 instability rules are checked
+**Then** the system evaluates:
+  1. Points beyond 3σ (outside control limits)
+  2. 7 consecutive points trending up or down
+  3. 7 consecutive points within 1σ of center (stratification)
+  4. 7 consecutive points between 2σ and 3σ above center
+  5. 7 consecutive points between 2σ and 3σ below center
+  6. 7 consecutive points in cyclic pattern
+  7. 7 consecutive points above or below center line
+**And** each rule reports: CUMPLE or NO CUMPLE
+**And** violations include specific point indices where the pattern occurs
+
+**Given** stability analysis completes
+**When** results are compiled
+**Then** the output includes all control limits, flagged points, and rule evaluations
+**And** an overall stability conclusion is provided: "Proceso Estable" or "Proceso Inestable"
+
+---
+
+### Story 7.4: Capability Indices & API Integration
+
+As a **user**,
+I want **capability indices calculated and results returned through the API**,
+So that **I receive a complete analysis with Cp, Cpk, Pp, Ppk metrics**.
+
+**FRs covered:** FR-CP17, FR-CP19
+
+**NFRs addressed:** NFR-CP2, NFR-CP3, NFR-CP4
+
+**Acceptance Criteria:**
+
+**Given** LEI (lower spec) and LES (upper spec) are provided
+**When** capability indices are calculated
+**Then** the system computes:
+  - Cp = (LES - LEI) / (6σ) — using within-subgroup std dev (from MR̄/d2)
+  - Cpk = min[(LES - μ) / 3σ, (μ - LEI) / 3σ]
+  - Pp = (LES - LEI) / (6s) — using overall sample std dev
+  - Ppk = min[(LES - μ) / 3s, (μ - LEI) / 3s]
+**And** if data is non-normal with fitted distribution, indices use distribution-based calculations
+
+**Given** capability indices are calculated
+**When** classification is determined
+**Then** the system classifies based on Cpk:
+  - Cpk ≥ 1.33 → "Capaz" (green)
+  - 1.00 ≤ Cpk < 1.33 → "Marginalmente Capaz" (yellow)
+  - Cpk < 1.00 → "No Capaz" (red)
+
+**Given** the API endpoint receives a capacidad_proceso request
+**When** `/api/analyze.py` routes the request
+**Then** `analysis_type='capacidad_proceso'` is recognized and routed to the calculator
+**And** the response includes `{ results, chartData, instructions }`
+**And** raw data is NEVER included in the response (only aggregated results)
+**And** analysis completes in < 30 seconds for up to 1000 rows
+
+**Given** the instructions field is generated
+**When** the markdown is created
+**Then** it includes three sections:
+  1. **Análisis Técnico:** tables of statistics, normality result, control limits, rule evaluations, capability indices
+  2. **Conclusión Ejecutiva:** stable/unstable, capable/not capable, normal/not normal
+  3. **Conclusión "Terrenal":** plain-language explanation and specific recommendations
+
+---
+
+## Epic 8: Capacity Visualization & Agent Integration
+
+Users see interactive charts visualizing their process capability results, can provide spec limits via form or message, and receive clear interpretations with follow-up capability.
+
+### Story 8.1: Histogram & I-Chart Components
+
+As a **user**,
+I want **to see my data visualized as a histogram and individual values chart**,
+So that **I can visually understand my data distribution and process behavior over time**.
+
+**FRs covered:** FR-CP20 (partial), FR-CP21 (partial)
+
+**Acceptance Criteria:**
+
+**Given** analysis results include chartData for histogram
+**When** the HistogramChart component renders
+**Then** it displays frequency bars for data bins
+**And** it shows LEI as a red vertical line with label
+**And** it shows LES as a red vertical line with label
+**And** it shows the mean as a blue vertical line
+**And** it shows LCI and LCS as green dashed lines (control limits)
+**And** if a distribution was fitted, a superimposed curve is displayed
+**And** hovering shows exact values in tooltip
+
+**Given** analysis results include chartData for I-Chart
+**When** the IChart component renders
+**Then** it displays data points connected by lines (run chart style)
+**And** it shows center line (X̄) as solid line
+**And** it shows UCL and LCL as dashed lines
+**And** points outside control limits are highlighted in red
+**And** instability signals are marked with indicators showing which rule was violated
+**And** hovering shows point index and value
+
+**Given** charts need to be exportable
+**When** user clicks export button on either chart
+**Then** the chart is downloaded as PNG with filename including chart type and timestamp
+**And** export happens client-side without server round-trip
+
+---
+
+### Story 8.2: MR-Chart & Normality Plot Components
+
+As a **user**,
+I want **to see moving range and normality probability charts**,
+So that **I can assess measurement variation and data distribution visually**.
+
+**FRs covered:** FR-CP20 (partial), FR-CP21 (partial)
+
+**Acceptance Criteria:**
+
+**Given** analysis results include chartData for MR-Chart
+**When** the MRChart component renders
+**Then** it displays moving range points connected by lines
+**And** it shows center line (MR̄) as solid line
+**And** it shows UCL as dashed line (LCL = 0, may be omitted)
+**And** points outside UCL are highlighted in red
+**And** hovering shows point index and MR value
+
+**Given** analysis results include chartData for Normality Plot
+**When** the NormalityPlot component renders
+**Then** it displays data points plotted against theoretical normal distribution
+**And** it shows a fit line through the points
+**And** it shows 95% confidence bands
+**And** it displays the Anderson-Darling statistic and p-value on the chart
+**And** hovering shows actual vs expected values
+
+**Given** all chart components follow consistent patterns
+**When** implemented
+**Then** they use Recharts with ResponsiveContainer
+**And** they match existing MSA chart styling (colors, fonts, tooltips)
+**And** they are responsive and readable on desktop (1024px+)
+
+---
+
+### Story 8.3: Spec Limits Form & Template Page Update
+
+As a **user**,
+I want **to provide specification limits through a form when not included in my message**,
+So that **I can complete the analysis even if I forgot to specify LEI/LES initially**.
+
+**FRs covered:** FR-CP3, FR-CP4, FR-CP5, FR-CP6
+
+**Acceptance Criteria:**
+
+**Given** a user uploads a file and requests capacidad_proceso analysis
+**When** the agent parses the message for LEI/LES
+**Then** it extracts limits from patterns like:
+  - "LEI=95, LES=105"
+  - "LEI 95 y LES 105"
+  - "límite inferior 95, superior 105"
+  - "lower spec 95, upper 105"
+**And** if found, analysis proceeds directly without showing form
+
+**Given** LEI/LES are NOT found in the user's message
+**When** the agent responds
+**Then** a SpecLimitsForm component is rendered in the chat
+**And** the form shows detected data summary: "Se detectó 1 variable numérica con {N} valores"
+**And** the form has two input fields: LEI and LES
+**And** the form has "Iniciar Análisis" and "Cancelar" buttons
+
+**Given** user fills the SpecLimitsForm
+**When** they click "Iniciar Análisis"
+**Then** the form validates: both fields required, LEI < LES, both numeric
+**And** validation errors show in Spanish below the relevant field
+**And** on valid submission, values are sent to the chat as a structured message
+**And** the agent proceeds with analysis using the provided limits
+
+**Given** user clicks "Cancelar" on the form
+**When** the form is dismissed
+**Then** the form disappears from the chat
+**And** user can upload a different file or provide limits in a new message
+
+**Given** the Plantillas page needs updating
+**When** the page is modified
+**Then** a new card appears for "Análisis de Capacidad de Proceso"
+**And** the card includes description: "Evalúa si tu proceso cumple con las especificaciones del cliente"
+**And** clicking "Descargar" downloads `plantilla-capacidad-proceso.xlsx`
+
+---
+
+### Story 8.4: Agent Tool Update & Chat Flow Integration
+
+As a **user**,
+I want **the AI agent to handle my capacity analysis requests seamlessly**,
+So that **I receive clear interpretations and can ask follow-up questions**.
+
+**FRs covered:** FR-CP22, FR-CP23
+
+**Acceptance Criteria:**
+
+**Given** the analyze tool definition needs updating
+**When** `lib/openai/tools.ts` is modified
+**Then** the tool accepts `analysis_type: 'capacidad_proceso'`
+**And** the tool accepts optional `spec_limits: { lei: number, les: number }`
+**And** the tool description mentions process capability analysis
+
+**Given** analysis completes successfully
+**When** the agent presents results
+**Then** the agent follows the `instructions` markdown from the tool response
+**And** results are streamed to the user in real-time
+**And** charts render inline after the text interpretation
+**And** the message metadata stores results and chartData for conversation reload
+
+**Given** the agent presents the interpretation
+**When** the three-part structure is followed
+**Then** Part 1 (Análisis Técnico) includes formatted tables of all metrics
+**And** Part 2 (Conclusión Ejecutiva) clearly states: estable/inestable, capaz/no capaz, normal/no normal
+**And** Part 3 (Conclusión Terrenal) explains in simple language what the numbers mean and what to do next
+
+**Given** a user asks a follow-up question after receiving results
+**When** they ask something like "¿Qué puedo hacer para mejorar?" or "¿Por qué no es capaz?"
+**Then** the agent answers using conversation context without re-invoking the analysis tool
+**And** the agent references specific values from the previous analysis
+**And** recommendations are specific to their results (e.g., if Cpk low due to centering vs spread)
+
+**Given** the chat route handles the SpecLimitsForm flow
+**When** form values are submitted
+**Then** they are received as a structured message in the chat
+**And** the agent extracts LEI/LES and invokes the analyze tool
+**And** the flow is seamless from user perspective

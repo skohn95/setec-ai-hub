@@ -22,5 +22,13 @@ export const TEMPLATES: TemplateDefinition[] = [
     downloadPath: '/templates/plantilla-msa.xlsx',
     analysisType: 'msa',
   },
-  // Future templates will be added here (Phase 2)
+  {
+    id: 'capacidad_proceso',
+    title: 'Análisis de Capacidad de Proceso',
+    description:
+      'Evalúa si tu proceso cumple con las especificaciones del cliente. Incluye datos de ejemplo para calcular índices de capacidad.',
+    filename: 'plantilla-capacidad-proceso.xlsx',
+    downloadPath: '/templates/plantilla-capacidad-proceso.xlsx',
+    analysisType: 'capacidad_proceso',
+  },
 ]

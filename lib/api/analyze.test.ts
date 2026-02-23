@@ -25,22 +25,25 @@ describe('invokeAnalysisTool', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(mockResponse),
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
     await invokeAnalysisTool('msa', 'file-123', 'msg-456')
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        analysis_type: 'msa',
-        file_id: 'file-123',
-        message_id: 'msg-456',
-      }),
-    })
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String), // URL is dynamic based on environment
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          analysis_type: 'msa',
+          file_id: 'file-123',
+          message_id: 'msg-456',
+        }),
+      })
+    )
   })
 
   it('omits message_id when not provided', async () => {
@@ -55,21 +58,50 @@ describe('invokeAnalysisTool', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(mockResponse),
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
     await invokeAnalysisTool('msa', 'file-123')
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({
+          analysis_type: 'msa',
+          file_id: 'file-123',
+        }),
+      })
+    )
+  })
+
+  it('includes spec_limits when provided for capacidad_proceso', async () => {
+    const mockResponse: AnalysisResponse = {
+      data: {
+        results: { cp: 1.5, cpk: 1.2 },
+        chartData: [{ type: 'histogram', data: [] }],
+        instructions: 'Present the capacity results...',
       },
-      body: JSON.stringify({
-        analysis_type: 'msa',
-        file_id: 'file-123',
-      }),
+      error: null,
+    }
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
+
+    await invokeAnalysisTool('capacidad_proceso', 'file-123', 'msg-456', undefined, { lei: 95, les: 105 })
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: JSON.stringify({
+          analysis_type: 'capacidad_proceso',
+          file_id: 'file-123',
+          message_id: 'msg-456',
+          spec_limits: { lei: 95, les: 105 },
+        }),
+      })
+    )
   })
 
   it('returns success data when response is ok', async () => {
@@ -84,7 +116,7 @@ describe('invokeAnalysisTool', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(mockResponse),
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
     const result = await invokeAnalysisTool('msa', 'file-123')
@@ -106,7 +138,7 @@ describe('invokeAnalysisTool', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 400,
-      json: () => Promise.resolve(mockResponse),
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
     const result = await invokeAnalysisTool('msa', 'file-123')
@@ -128,7 +160,7 @@ describe('invokeAnalysisTool', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
-      json: () => Promise.resolve(mockResponse),
+      text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
     const result = await invokeAnalysisTool('msa', 'file-123')
@@ -156,7 +188,7 @@ describe('invokeAnalysisTool', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 500,
-      json: () => Promise.reject(new Error('Invalid JSON')),
+      text: () => Promise.resolve('Not valid JSON'),
     })
 
     const result = await invokeAnalysisTool('msa', 'file-123')

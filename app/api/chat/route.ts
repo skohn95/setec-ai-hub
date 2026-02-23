@@ -309,7 +309,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 sendEvent(toolCallEvent)
 
                 // Extract arguments
-                const args = event.arguments as { analysis_type: string; file_id: string; specification?: number }
+                const args = event.arguments as {
+                  analysis_type: string
+                  file_id: string
+                  specification?: number
+                  spec_limits?: { lei: number; les: number }
+                }
 
                 // Ensure assistant message exists before tool call so we can save metadata
                 // Create message with current content (may be empty, will be updated later)
@@ -331,13 +336,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
                 console.log('[CHAT-DEBUG] File ID:', args.file_id)
                 console.log('[CHAT-DEBUG] Specification:', args.specification ?? '(none)')
+                console.log('[CHAT-DEBUG] Spec Limits:', args.spec_limits ? `LEI=${args.spec_limits.lei}, LES=${args.spec_limits.les}` : '(none)')
                 console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
 
                 const analysisResult = await invokeAnalysisTool(
                   args.analysis_type,
                   args.file_id,
                   assistantMessageId || undefined,
-                  args.specification
+                  args.specification,
+                  args.spec_limits
                 )
 
                 console.log('[CHAT-DEBUG] Analysis result:', analysisResult.error ? 'ERROR' : 'SUCCESS')
@@ -403,7 +410,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
 
           // Save complete assistant message to database
           // Clean any internal markers that shouldn't be shown to users
-          let cleanContent = fullContent
+          const cleanContent = fullContent
             // Remove instruction wrapper (no ^ anchor - match anywhere in string)
             .replace(/\[Resultado del análisis recibido\. Instrucciones:[^\]]*\]/g, '')
             // Remove error wrapper if present

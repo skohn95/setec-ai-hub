@@ -124,3 +124,79 @@ export const STREAMING_MESSAGES = {
   INCOMPLETE_RESPONSE: '[Respuesta incompleta - error de conexión]',
   CONNECTION_ERROR: 'Error de conexión. Intenta de nuevo.',
 } as const
+
+// Capacidad de Proceso error messages (Spanish)
+export const CAPACIDAD_PROCESO_ERRORS = {
+  NO_NUMERIC_COLUMN: 'No se encontró una columna numérica. El archivo debe contener una columna "Valores" con datos numéricos.',
+  EMPTY_CELLS: 'Se encontraron celdas vacías. Por favor, completa todos los valores.',
+  NON_NUMERIC_VALUES: 'Se encontraron valores no numéricos. Todos los valores deben ser números.',
+  SAMPLE_SIZE_WARNING: 'Se recomienda un mínimo de 20 valores para obtener estimaciones confiables de capacidad.',
+} as const
+
+// Story 7.3: Stability Analysis messages (Spanish)
+// Note: These constants are defined for Epic 8 frontend chart components.
+// Python generates instructions with hardcoded Spanish text; these provide
+// consistent keys for frontend localization if needed.
+export const STABILITY_RULE_DESCRIPTIONS = {
+  rule_1: 'Regla 1: Puntos fuera de los límites de control (más allá de 3σ)',
+  rule_2: 'Regla 2: 7 puntos consecutivos con tendencia ascendente o descendente',
+  rule_3: 'Regla 3: 7 puntos consecutivos dentro de 1σ del centro (estratificación)',
+  rule_4: 'Regla 4: 7 puntos consecutivos entre 2σ y 3σ arriba del centro',
+  rule_5: 'Regla 5: 7 puntos consecutivos entre 2σ y 3σ debajo del centro',
+  rule_6: 'Regla 6: 7 puntos consecutivos en patrón cíclico (alternante)',
+  rule_7: 'Regla 7: 7 puntos consecutivos arriba o debajo de la línea central',
+} as const
+
+export const STABILITY_CONCLUSIONS = {
+  stable: '✅ **Proceso Estable:** El proceso está bajo control estadístico.',
+  unstable: '⚠️ **Proceso Inestable:** Se detectaron señales de causa especial.',
+} as const
+
+export const STABILITY_INTERPRETATION = {
+  stable: 'Los datos no muestran patrones de variación por causas especiales. Es apropiado calcular índices de capacidad.',
+  unstable: 'El proceso presenta variación por causas especiales. Se recomienda investigar y eliminar estas causas antes de calcular índices de capacidad.',
+} as const
+
+// Story 7.4: Capability Analysis messages (Spanish)
+export const CAPABILITY_CLASSIFICATIONS_MESSAGES = {
+  excellent: 'Excelente - El proceso supera ampliamente los requisitos',
+  adequate: 'Capaz - El proceso cumple con los requisitos de capacidad',
+  marginal: 'Marginalmente Capaz - El proceso apenas cumple los requisitos mínimos',
+  inadequate: 'No Capaz - El proceso no cumple con los requisitos de capacidad',
+  poor: 'Muy Deficiente - El proceso requiere acción inmediata',
+} as const
+
+export const CAPABILITY_INTERPRETATIONS = {
+  excellent: 'Con un Cpk ≥ 1.67, su proceso tiene margen de seguridad significativo. La probabilidad de producir defectos es extremadamente baja.',
+  adequate: 'Con un Cpk entre 1.33 y 1.67, su proceso cumple los estándares industriales. Continúe monitoreando para mantener este nivel.',
+  marginal: 'Con un Cpk entre 1.00 y 1.33, su proceso está en el límite. Se recomienda investigar fuentes de variación y mejorar el centrado.',
+  inadequate: 'Con un Cpk < 1.00, su proceso genera defectos a una tasa inaceptable. Se requieren acciones de mejora prioritarias.',
+  poor: 'Con un Cpk < 0.67, su proceso está severamente fuera de especificación. Considere detener la producción hasta resolver.',
+} as const
+
+export const CAPABILITY_RECOMMENDATIONS = {
+  centering_issue: 'El proceso no está centrado entre las especificaciones. Ajuste el proceso hacia el valor objetivo.',
+  spread_issue: 'La variación del proceso es excesiva. Identifique y elimine fuentes de variación.',
+  both_issues: 'El proceso tiene problemas de centrado y variación. Priorice reducir la variación primero.',
+  stable_capable: 'El proceso es estable y capaz. Continúe con monitoreo de control estadístico.',
+  unstable_warning: 'El proceso es inestable. Los índices de capacidad pueden no ser confiables hasta lograr estabilidad.',
+  non_normal_note: 'Los datos no siguen una distribución normal. Los índices se calcularon usando la distribución ajustada.',
+} as const
+
+export const CAPABILITY_INDEX_DESCRIPTIONS = {
+  cp: 'Cp - Capacidad potencial del proceso (sin considerar centrado)',
+  cpk: 'Cpk - Índice de capacidad del proceso (considera centrado)',
+  pp: 'Pp - Desempeño potencial del proceso (variación total)',
+  ppk: 'Ppk - Índice de desempeño del proceso (considera centrado)',
+  cpu: 'Cpu - Capacidad hacia el límite superior',
+  cpl: 'Cpl - Capacidad hacia el límite inferior',
+  ppu: 'Ppu - Desempeño hacia el límite superior',
+  ppl: 'Ppl - Desempeño hacia el límite inferior',
+} as const
+
+export const CAPABILITY_SPEC_LIMIT_ERRORS = {
+  missing_lei: 'Se requiere el Límite de Especificación Inferior (LEI)',
+  missing_les: 'Se requiere el Límite de Especificación Superior (LES)',
+  lei_greater_than_les: 'El LEI debe ser menor que el LES',
+  invalid_values: 'LEI y LES deben ser valores numéricos válidos',
+} as const

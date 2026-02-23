@@ -177,6 +177,12 @@ export interface BiasInfo {
   rep_means?: number[]
 }
 
+// Specification limits for capacidad_proceso analysis
+export interface SpecLimits {
+  lei: number  // Lower Specification Limit (Límite de Especificación Inferior)
+  les: number  // Upper Specification Limit (Límite de Especificación Superior)
+}
+
 // MSA Analysis Results type (Story 5.1)
 // Used for displaying analysis results in chat messages
 export interface MSAResults {
@@ -288,3 +294,17 @@ export interface InteractionPlotData {
   operators: OperatorPartMeans[]
   parts: string[]
 }
+
+// =============================================================================
+// Story 8.1: Capacidad de Proceso Chart Data Types (re-exported from analysis.ts)
+// =============================================================================
+
+// Import from analysis.ts for use in API context
+export type {
+  HistogramChartData,
+  IChartData,
+  FittedDistributionCurve,
+  RuleViolation,
+  ChartPoint,
+  CapacidadProcesoChartDataItem,
+} from './analysis'
