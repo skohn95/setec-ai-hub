@@ -347,7 +347,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 console.log('\n[CHAT-DEBUG] ========== INVOKING ANALYSIS TOOL ==========')
                 console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
                 console.log('[CHAT-DEBUG] File ID:', args.file_id)
-                console.log('[CHAT-DEBUG] Specification:', args.specification ?? '(none)')
                 console.log('[CHAT-DEBUG] Spec Limits:', args.spec_limits ? `LEI=${args.spec_limits.lei}, LES=${args.spec_limits.les}` : '(none)')
                 console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
 
@@ -355,7 +354,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                   args.analysis_type,
                   args.file_id,
                   assistantMessageId || undefined,
-                  args.specification,
                   args.spec_limits
                 )
 

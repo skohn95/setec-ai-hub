@@ -89,7 +89,7 @@ describe('invokeAnalysisTool', () => {
       text: () => Promise.resolve(JSON.stringify(mockResponse)),
     })
 
-    await invokeAnalysisTool('capacidad_proceso', 'file-123', 'msg-456', undefined, { lei: 95, les: 105 })
+    await invokeAnalysisTool('capacidad_proceso', 'file-123', 'msg-456', { lei: 95, les: 105 })
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(String),

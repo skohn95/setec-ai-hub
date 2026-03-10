@@ -1054,7 +1054,7 @@ def determine_dominant_variation(ev: float, av: float, pv: float) -> str:
         return 'part_to_part'
 
 
-def generate_instructions(results: MSAResults, bias_info: dict | None = None) -> tuple[str, str]:
+def generate_instructions(results: MSAResults) -> tuple[str, str]:
     """
     Generate enhanced markdown instructions for presenting MSA results.
 
@@ -1065,7 +1065,6 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
 
     Args:
         results: MSA results dict
-        bias_info: Optional dict with specification, grand_mean, bias, bias_percent
 
     Returns:
         Tuple of (markdown instructions string, dominant_variation string)
@@ -1186,82 +1185,18 @@ def generate_instructions(results: MSAResults, bias_info: dict | None = None) ->
                 "Entrenar a todos los operadores con el mismo método",
             ]
         else:
-            # Check if it's a calibration issue by analyzing bias per operator
-            is_calibration_issue = False
-            accurate_operator = None
-            inaccurate_operators = []
-
-            if bias_info and operator_stats:
-                spec_val = bias_info['specification']
-                # Calculate bias for each operator
-                operator_biases = []
-                for op in operator_stats:
-                    op_bias = abs(op['mean'] - spec_val)
-                    op_bias_pct = abs((op['mean'] - spec_val) / spec_val * 100) if spec_val != 0 else 0
-                    operator_biases.append({
-                        'operator': op['operator'],
-                        'mean': op['mean'],
-                        'bias': op['mean'] - spec_val,
-                        'bias_abs': op_bias,
-                        'bias_pct': op_bias_pct,
-                    })
-
-                # Sort by absolute bias (most accurate first)
-                operator_biases.sort(key=lambda x: x['bias_abs'])
-
-                # Check if it's a calibration issue:
-                # 1. One operator is accurate (< 0.5% bias OR < 0.5 units)
-                # 2. There's significant spread in bias between operators
-                if len(operator_biases) >= 2:
-                    best_bias_op = operator_biases[0]
-                    worst_bias_op = operator_biases[-1]
-                    bias_spread = worst_bias_op['bias_abs'] - best_bias_op['bias_abs']
-                    bias_spread_pct = worst_bias_op['bias_pct'] - best_bias_op['bias_pct']
-
-                    # Best operator is accurate AND there's significant spread between operators
-                    best_is_accurate = best_bias_op['bias_pct'] < 0.5 or best_bias_op['bias_abs'] < 0.5
-                    significant_spread = bias_spread > 1.0 or bias_spread_pct > 1.5
-
-                    if best_is_accurate and significant_spread:
-                        is_calibration_issue = True
-                        accurate_operator = best_bias_op
-                        # All operators except the best are considered "inaccurate" for calibration
-                        inaccurate_operators = [ob for ob in operator_biases if ob['operator'] != best_bias_op['operator']]
-
-            if is_calibration_issue:
-                root_cause = "**Calibración/Puesta a Cero:** Diferencia de criterio por calibración del instrumento."
-                root_cause_details = [
-                    "No es falta de entrenamiento manual (la repetibilidad no es tan mala)",
-                    "Es probable falta de **calibración del cero** o **estándar operativo**",
-                    "Se observan diferencias sistemáticas entre operadores que sugieren distintos puntos de referencia",
-                ]
-
-                recommendations = [
-                    "Verificar que todos los operadores realicen la puesta a cero antes de medir",
-                    "Establecer un estándar de calibración/verificación diario",
-                    "Documentar el procedimiento de 'zeroing' del instrumento",
-                    "Revisar la técnica de medición con todos los operadores",
-                ]
-            else:
-                root_cause = "**Operador:** Diferencias en técnica o criterio entre operadores."
-                root_cause_details = [
-                    "Falta de entrenamiento uniforme",
-                    "Diferencias en técnica de medición",
-                    "Criterios de posicionamiento inconsistentes",
-                ]
-                # Note differences in operator measurements without ranking
-                if bias_info and operator_stats:
-                    spec_val = bias_info['specification']
-                    # Find operator with highest deviation from spec for context
-                    high_bias_op = max(operator_stats, key=lambda x: abs(x['mean'] - spec_val))
-                    root_cause_details.append(f"Se observan diferencias entre operadores (ej: {high_bias_op['operator']} con promedio {high_bias_op['mean']:.2f} vs especificación {spec_val})")
-
-                recommendations = [
-                    "Estandarizar el procedimiento de medición",
-                    "Crear instrucciones visuales paso a paso",
-                    "Implementar re-certificación periódica de operadores",
-                    "Revisar criterios de medición con todos los operadores",
-                ]
+            root_cause = "**Operador:** Diferencias en técnica o criterio entre operadores."
+            root_cause_details = [
+                "Falta de entrenamiento uniforme",
+                "Diferencias en técnica de medición",
+                "Criterios de posicionamiento inconsistentes",
+            ]
+            recommendations = [
+                "Estandarizar el procedimiento de medición",
+                "Crear instrucciones visuales paso a paso",
+                "Implementar re-certificación periódica de operadores",
+                "Revisar criterios de medición con todos los operadores",
+            ]
     else:
         dominant_display = 'PARTE A PARTE'
         root_cause = "**Sistema OK:** La variación principal proviene de las diferencias reales entre piezas."
@@ -1343,11 +1278,6 @@ Usa los datos a continuación para responder preguntas de seguimiento.
 | Total mediciones | {n_operators * n_parts * n_trials} |
 """
 
-    # Add specification to study design if available
-    if bias_info:
-        spec = bias_info['specification']
-        instructions += f"| Especificación (Target) | **{spec}** |\n"
-
     instructions += f"""
 ## Tabla ANOVA
 
@@ -1368,108 +1298,6 @@ Usa los datos a continuación para responder preguntas de seguimiento.
 ## Estadísticas por Operador
 
 {op_stats_markdown}
-
-## Estudios de Atributos del Sistema
-
-### Estabilidad
-"""
-
-    # Add stability analysis
-    if bias_info and bias_info.get('rep_means'):
-        rep_means_list = bias_info['rep_means']
-        if len(rep_means_list) > 1:
-            drift = max(rep_means_list) - min(rep_means_list)
-            grand_mean = bias_info.get('grand_mean', sum(rep_means_list) / len(rep_means_list))
-            # Calculate drift as percentage of mean for relative assessment
-            drift_pct = (drift / abs(grand_mean) * 100) if grand_mean != 0 else 0
-            # Use relative threshold: <1% drift is stable, 1-3% is moderate, >3% is significant
-            stability_status = "✅ Estable" if drift_pct < 1 else ("⚠️ Deriva moderada" if drift_pct < 3 else "❌ Deriva significativa")
-            stability_conclusion = "No se observa deriva significativa en el tiempo." if drift_pct < 1 else (
-                "Se observa una deriva moderada entre repeticiones." if drift_pct < 3 else
-                "Se detecta deriva significativa que puede indicar inestabilidad del instrumento."
-            )
-
-            # Format rep means for display
-            rep_means_str = ", ".join([f"{m:.1f}" for m in rep_means_list])
-            instructions += f"""
-Las medias por repetición ({rep_means_str}) {"no muestran" if drift_pct < 1 else "muestran"} deriva significativa en el tiempo.
-
-| Repetición | Media |
-|------------|-------|
-"""
-            for i, mean in enumerate(rep_means_list, 1):
-                instructions += f"| Rep {i} | {mean:.4f} |\n"
-            instructions += f"""
-**Deriva:** {drift:.4f} ({drift_pct:.2f}% de la media) | **Estado:** {stability_status}
-
-{stability_conclusion}
-"""
-        else:
-            instructions += """
-*Se requieren múltiples repeticiones para evaluar estabilidad.*
-"""
-    else:
-        instructions += """
-*Se requiere especificación para análisis completo de estabilidad.*
-"""
-
-    instructions += """
-### Linealidad y Sesgo (Bias)
-"""
-
-    if bias_info and operator_stats:
-        spec_val = bias_info['specification']
-
-        # Calculate bias per operator
-        instructions += f"""
-Sesgo por operador respecto a la especificación ({spec_val}):
-
-| Operador | Promedio | Sesgo | Evaluación |
-|----------|----------|-------|------------|
-"""
-        operator_biases = []
-        for op in operator_stats:
-            op_bias = op['mean'] - spec_val
-            op_bias_pct = (op_bias / spec_val * 100) if spec_val != 0 else 0
-            bias_eval = "✅ Exacto" if abs(op_bias_pct) < 1 else ("⚠️ Moderado" if abs(op_bias_pct) < 3 else "❌ Significativo")
-            operator_biases.append((op['operator'], op['mean'], op_bias, op_bias_pct, bias_eval))
-            instructions += f"| {op['operator']} | {op['mean']:.2f} | {op_bias:+.2f} ({op_bias_pct:+.1f}%) | {bias_eval} |\n"
-
-        # Analyze operator bias consistency
-        bias_values = [b[2] for b in operator_biases]
-        max_bias_diff = max(bias_values) - min(bias_values)
-
-        # Find operators with min and max bias for reference (not ranking)
-        min_bias_op = min(operator_biases, key=lambda x: abs(x[2]))
-        max_bias_op = max(operator_biases, key=lambda x: abs(x[2]))
-
-        if max_bias_diff > 1:  # More than 1 unit difference between operators
-            instructions += f"""
-**⚠️ Diferencias significativas de sesgo entre operadores:** Rango de {max_bias_diff:.2f} unidades.
-- Ejemplo: **{min_bias_op[0]}** (sesgo {min_bias_op[2]:+.2f}) vs **{max_bias_op[0]}** (sesgo {max_bias_op[2]:+.2f})
-- Esto sugiere diferencias en técnica de medición o criterio que requieren estandarización.
-"""
-        else:
-            instructions += f"""
-**Sesgo entre operadores consistente:** Diferencia de {max_bias_diff:.2f} entre operadores.
-"""
-    elif bias_info:
-        bias_val = bias_info['bias']
-        bias_pct = bias_info['bias_percent']
-        spec_val = bias_info['specification']
-        bias_status = "✅ Aceptable" if abs(bias_pct) < 5 else ("⚠️ Moderado" if abs(bias_pct) < 10 else "❌ Significativo")
-        bias_direction = "por debajo" if bias_val < 0 else "por encima"
-        instructions += f"""
-| Parámetro | Valor |
-|-----------|-------|
-| Especificación | {spec_val} |
-| Sesgo global | {bias_val:+.4f} ({bias_direction} del nominal) |
-| % Sesgo | {bias_pct:+.2f}% |
-| Estado | {bias_status} |
-"""
-    else:
-        instructions += """
-*Se requiere especificación (valor nominal) para calcular el sesgo.*
 """
 
     # Resolution analysis - signal to noise ratio
@@ -1560,18 +1388,6 @@ El **ndc (Number of Distinct Categories)** indica cuántos "grupos" o "categorí
     for i, rec in enumerate(recommendations, 1):
         instructions += f"{i}. {rec}\n"
 
-    # Add bias info to down-to-earth section if available
-    if bias_info:
-        bias = bias_info['bias']
-        spec = bias_info['specification']
-        if abs(bias) > 0.01:  # Only mention if bias is significant
-            bias_direction = "por debajo" if bias < 0 else "por encima"
-            instructions += f"""
-## Sesgo del Sistema
-
-El sistema mide consistentemente **{abs(bias):.4f} unidades {bias_direction}** del valor nominal ({spec}). Esto puede requerir ajuste o recalibración del instrumento.
-"""
-
     return instructions, dominant
 
 
@@ -1582,7 +1398,6 @@ El sistema mide consistentemente **{abs(bias):.4f} unidades {bias_direction}** d
 def analyze_msa(
     df: pd.DataFrame,
     validated_columns: dict[str, Any] | None = None,
-    specification: float | None = None
 ) -> tuple[MSAOutput | None, str | None]:
     """
     Perform MSA (Gauge R&R) analysis on measurement data.
@@ -1595,7 +1410,6 @@ def analyze_msa(
         validated_columns: Optional pre-validated column mapping from validator.
             If not provided, will attempt to detect columns automatically.
             Format: {'part': str, 'operator': str, 'measurements': list[str]}
-        specification: Optional target/nominal value for bias calculation
 
     Returns:
         tuple: (MSAOutput, error_code)
@@ -1647,41 +1461,8 @@ def analyze_msa(
             variance_components['study_info']['n_parts']
         )
 
-        # Calculate bias if specification is provided
-        bias_info = None
-        if specification is not None:
-            grand_mean = long_df['measurement'].mean()
-            bias = grand_mean - specification
-            bias_percent = (bias / specification) * 100 if specification != 0 else 0
-
-            # Calculate stability metrics (mean per repetition)
-            n_trials = variance_components['study_info']['n_trials']
-            rep_means = []
-            for i, m_col in enumerate(measurement_cols):
-                rep_data = []
-                for idx, row in df.iterrows():
-                    value = row[m_col]
-                    if isinstance(value, str):
-                        value = float(value.replace(',', '.').strip())
-                    else:
-                        value = float(value)
-                    rep_data.append(value)
-                rep_means.append(np.mean(rep_data))
-
-            bias_info = {
-                'specification': specification,
-                'grand_mean': round(grand_mean, 4),
-                'bias': round(bias, 4),
-                'bias_percent': round(bias_percent, 2),
-                'rep_means': [round(m, 4) for m in rep_means],
-            }
-
         # Format results
         results = format_msa_results(variance_components, grr_metrics, operator_stats)
-
-        # Add bias info to results if available
-        if bias_info:
-            results['bias_info'] = bias_info
 
         # Format chart data (JSON structure for chart generation)
         chart_data_json = format_chart_data(
@@ -1692,7 +1473,7 @@ def analyze_msa(
         chart_data = chart_data_json
 
         # Generate instructions and get dominant variation
-        instructions, dominant_variation = generate_instructions(results, bias_info)
+        instructions, dominant_variation = generate_instructions(results)
 
         output: MSAOutput = {
             'results': results,

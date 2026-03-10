@@ -168,15 +168,6 @@ export interface SSEToolResultEvent {
 // Union type for all SSE events
 export type SSEEvent = StreamChunk | SSEToolCallEvent | SSEToolResultEvent
 
-// Bias/specification information
-export interface BiasInfo {
-  specification: number
-  grand_mean: number
-  bias: number
-  bias_percent: number
-  rep_means?: number[]
-}
-
 // Specification limits for capacidad_proceso analysis
 export interface SpecLimits {
   lei: number  // Lower Specification Limit (Límite de Especificación Inferior)
@@ -199,7 +190,6 @@ export interface MSAResults {
   operator_stats?: OperatorStats[]
   variance_operator?: number
   variance_interaction?: number
-  bias_info?: BiasInfo
 }
 
 // ANOVA table row

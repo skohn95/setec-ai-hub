@@ -10,7 +10,7 @@ Request Body:
         "analysis_type": string,  // Required. Analysis type: "msa" | "capacidad_proceso"
         "file_id": string,        // Required. UUID of file in files table
         "message_id": string,     // Optional. UUID of associated message
-        "specification": number   // Optional. Target/nominal value for bias calculation (MSA only)
+        "spec_limits": object     // Optional. {lei, les} for capacidad_proceso analysis
     }
 
 Success Response (200):
@@ -144,7 +144,6 @@ class handler(BaseHTTPRequestHandler):
             analysis_type = body['analysis_type']
             file_id = body['file_id']
             message_id = body.get('message_id')  # Optional
-            specification = body.get('specification')  # Optional - target value for bias calculation
             spec_limits = body.get('spec_limits')  # Optional - {lei, les} for PPM (capacidad_proceso)
 
             # Validate file_id is a valid UUID format
@@ -222,7 +221,7 @@ class handler(BaseHTTPRequestHandler):
             analysis_error = None
 
             if analysis_type == 'msa':
-                analysis_output, analysis_error = analyze_msa(df, validated_columns, specification)
+                analysis_output, analysis_error = analyze_msa(df, validated_columns)
 
             elif analysis_type == 'capacidad_proceso':
                 values = validated_data['values']

@@ -711,7 +711,7 @@ type MainAgentEvent =
 | `id` | UUID (PK) | Unique identifier |
 | `message_id` | UUID (FK) | Associated assistant message |
 | `file_id` | UUID (FK) | Analyzed file |
-| `analysis_type` | TEXT | 'msa', 'bias', 'linearity', 'stability' |
+| `analysis_type` | TEXT | 'msa' |
 | `results` | JSONB | Numerical analysis data |
 | `chart_data` | JSONB | Visualization data |
 | `instructions` | TEXT | Presentation guidance |
@@ -851,7 +851,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
   - Number of Distinct Categories (NDC)
   - AIAG classification thresholds (<10%, 10-30%, >30%)
 
-**Planned (in types but not implemented):**
-- Bias Analysis
-- Linearity Analysis
-- Stability Analysis
+

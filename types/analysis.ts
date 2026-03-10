@@ -1,6 +1,6 @@
 // MSA Analysis types
 
-export type AnalysisType = 'gage_rr' | 'bias' | 'linearity' | 'stability' | 'capacidad_proceso'
+export type AnalysisType = 'gage_rr' | 'capacidad_proceso'
 
 // FileStatus is imported from chat.ts (exported from there)
 import type { FileStatus } from './chat'
@@ -32,7 +32,7 @@ export interface AnalysisResult {
   messageId: string
   fileId: string
   analysisType: AnalysisType
-  results: GageRRResults | BiasResults | LinearityResults | StabilityResults | CapacidadProcesoResult
+  results: GageRRResults | CapacidadProcesoResult
   chartData: ChartData
   instructions: string
   pythonVersion: string | null
@@ -53,40 +53,6 @@ export interface GageRRResults {
     partToPart: number
   }
   acceptability: 'acceptable' | 'marginal' | 'unacceptable'
-}
-
-// Bias analysis results
-export interface BiasResults {
-  bias: number
-  biasPercent: number
-  referenceValue: number
-  averageMeasured: number
-  tStatistic: number
-  pValue: number
-  significant: boolean
-}
-
-// Linearity analysis results
-export interface LinearityResults {
-  slope: number
-  intercept: number
-  rSquared: number
-  biasAtPoints: Array<{
-    reference: number
-    bias: number
-    biasPercent: number
-  }>
-  linearityPercent: number
-}
-
-// Stability analysis results
-export interface StabilityResults {
-  mean: number
-  stdDev: number
-  ucl: number // Upper Control Limit
-  lcl: number // Lower Control Limit
-  outOfControlPoints: number[]
-  stable: boolean
 }
 
 // Capacidad de Proceso (Process Capability) types

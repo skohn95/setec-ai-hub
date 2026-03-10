@@ -110,7 +110,6 @@ function getApiBaseUrl(): string {
  * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso')
  * @param fileId - UUID of the file to analyze
  * @param messageId - Optional UUID of the assistant message for result storage
- * @param specification - Optional target/nominal value for bias calculation (MSA only)
  * @param specLimits - Optional specification limits for capacidad_proceso { lei, les }
  * @returns Promise with analysis results or error
  */
@@ -118,7 +117,6 @@ export async function invokeAnalysisTool(
   analysisType: string,
   fileId: string,
   messageId?: string,
-  specification?: number,
   specLimits?: SpecLimits
 ): Promise<AnalysisResponse> {
   const body: Record<string, unknown> = {
@@ -129,11 +127,6 @@ export async function invokeAnalysisTool(
   // Only include message_id if provided
   if (messageId) {
     body.message_id = messageId
-  }
-
-  // Only include specification if provided (for MSA)
-  if (specification !== undefined) {
-    body.specification = specification
   }
 
   // Only include spec_limits if provided (for capacidad_proceso)
