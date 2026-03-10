@@ -854,6 +854,51 @@ describe('POST /api/chat', () => {
       )
     })
 
+    it('enhances user message with file attachment info when text and file sent together', async () => {
+      const userMessage = {
+        id: 'user-msg-id',
+        conversation_id: VALID_CONVERSATION_ID,
+        role: 'user',
+        content: '90 y 111',
+        metadata: { fileId: MOCK_FILE_ID },
+        created_at: new Date().toISOString(),
+      }
+
+      mockFilterMessage.mockResolvedValueOnce({ allowed: true })
+      mockCreateMessage
+        .mockResolvedValueOnce({ data: userMessage, error: null })
+        .mockResolvedValueOnce({
+          data: { id: 'asst-id', role: 'assistant', content: '' },
+          error: null,
+        })
+      mockFetchMessages.mockResolvedValueOnce({ data: [], error: null })
+      mockBuildFileContext.mockResolvedValueOnce(mockFileContext)
+
+      mockStreamMainAgentWithTools.mockImplementation(async function* () {
+        yield { type: 'text', content: 'Analizando...' }
+        yield { type: 'done' }
+      })
+
+      const req = createRequest({
+        conversationId: VALID_CONVERSATION_ID,
+        content: '90 y 111',
+        fileId: MOCK_FILE_ID,
+      })
+
+      const response = await POST(req)
+      await response.text()
+
+      // User message saved to DB should be original text only
+      expect(mockCreateMessage.mock.calls[0][2]).toBe('90 y 111')
+
+      // Message sent to LLM should include file attachment indicator
+      expect(mockStreamMainAgentWithTools).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userMessage: `90 y 111\n[Archivo adjunto: datos-msa.xlsx]`,
+        })
+      )
+    })
+
     it('does not invoke tool when no files available and user asks for analysis', async () => {
       const emptyFileContext = {
         files: [],

@@ -64,7 +64,7 @@ from api.utils.capacidad_proceso_calculator import (
     perform_normality_analysis,
     build_capacidad_proceso_output,
 )
-from api.utils.stability_analysis import perform_stability_analysis
+from api.utils.sigma_estimation import estimate_sigma
 
 
 def is_valid_uuid(value: str) -> bool:
@@ -240,12 +240,12 @@ class handler(BaseHTTPRequestHandler):
 
                 normality_result = perform_normality_analysis(values, lei, les)
 
-                # Perform stability analysis (Story 7.3)
-                stability_result = perform_stability_analysis(values)
+                # Estimate sigma values (Story 9.1)
+                sigma_result = estimate_sigma(values)
 
-                # Build output with normality, stability, and capability results (Story 7.4)
+                # Build output with normality, sigma, and capability results
                 analysis_output = build_capacidad_proceso_output(
-                    validated_data, basic_stats, normality_result, stability_result, spec_limits
+                    validated_data, basic_stats, normality_result, sigma_result, spec_limits
                 )
                 # No analysis_error for capacidad_proceso - errors handled in validation
 

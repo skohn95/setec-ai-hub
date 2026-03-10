@@ -45,8 +45,6 @@ describe('HistogramChart', () => {
       les: 110,
       mean: 100,
       std: 3.5,
-      lcl: 93,
-      ucl: 107,
       fitted_distribution: null,
     },
   }
@@ -82,11 +80,6 @@ describe('HistogramChart', () => {
       expect(screen.getByText(/Media \(μ\)/)).toBeInTheDocument()
     })
 
-    it('renders legend item for control limits', () => {
-      render(<HistogramChart data={validHistogramData} />)
-      expect(screen.getByText(/LCI \/ LCS/)).toBeInTheDocument()
-    })
-
     it('renders the export button', () => {
       render(<HistogramChart data={validHistogramData} />)
       expect(screen.getByTitle('Descargar como imagen')).toBeInTheDocument()
@@ -103,8 +96,6 @@ describe('HistogramChart', () => {
           les: 110,
           mean: 100,
           std: 3.5,
-          lcl: 93,
-          ucl: 107,
           fitted_distribution: null,
         },
       }
@@ -121,8 +112,6 @@ describe('HistogramChart', () => {
           les: 110,
           mean: 100,
           std: 3.5,
-          lcl: 93,
-          ucl: 107,
           fitted_distribution: null,
         },
       } as HistogramChartData
@@ -137,22 +126,10 @@ describe('HistogramChart', () => {
       expect(screen.getByTestId('histogram-chart')).toBeInTheDocument()
     })
 
-    it('handles null control limits gracefully', () => {
-      const dataWithNullLimits: HistogramChartData = {
-        type: 'histogram',
-        data: {
-          values: [95, 97, 100, 102, 105],
-          lei: 90,
-          les: 110,
-          mean: 100,
-          std: 3.5,
-          lcl: null,
-          ucl: null,
-          fitted_distribution: null,
-        },
-      }
-      render(<HistogramChart data={dataWithNullLimits} />)
-      expect(screen.getByTestId('histogram-chart')).toBeInTheDocument()
+    it('does not render LCI/LCS control limit lines', () => {
+      render(<HistogramChart data={validHistogramData} />)
+      expect(screen.queryByText('LCI')).not.toBeInTheDocument()
+      expect(screen.queryByText('LCS')).not.toBeInTheDocument()
     })
   })
 
@@ -207,8 +184,6 @@ describe('HistogramChart', () => {
           les: 110,
           mean: 100,
           std: 3.5,
-          lcl: 93,
-          ucl: 107,
           fitted_distribution: {
             name: 'lognormal',
             params: { mu: 4.6, sigma: 0.1 },
@@ -230,8 +205,6 @@ describe('HistogramChart', () => {
           les: 6,
           mean: 3,
           std: 1.58,
-          lcl: 1,
-          ucl: 5,
           fitted_distribution: null,
         },
       }
@@ -248,8 +221,6 @@ describe('HistogramChart', () => {
           les: 110,
           mean: 100,
           std: 0,
-          lcl: 100,
-          ucl: 100,
           fitted_distribution: null,
         },
       }
@@ -266,8 +237,6 @@ describe('HistogramChart', () => {
           les: 110,
           mean: 100,
           std: 0,
-          lcl: 100,
-          ucl: 100,
           fitted_distribution: null,
         },
       }

@@ -124,7 +124,7 @@ export default function ChatMessage({
   const capacidadProcesoChartData: CapacidadProcesoChartDataItem[] | null = (() => {
     if (!chartData) return null
     const cpCharts = chartData.filter(
-      (d) => d.type === 'histogram' || d.type === 'i_chart' || d.type === 'mr_chart' || d.type === 'normality_plot'
+      (d) => d.type === 'histogram' || d.type === 'normality_plot'
     ) as unknown as CapacidadProcesoChartDataItem[]
     return cpCharts.length > 0 ? cpCharts : null
   })()
@@ -192,7 +192,7 @@ export default function ChatMessage({
         {(staticChartData || (chartData && chartData.length > 0)) && (
           <div
             data-testid="analysis-results-container"
-            className="mt-4 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded-2xl rounded-tl-md shadow-sm max-w-[85%] md:max-w-[70%] space-y-4"
+            className="mt-4 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded-2xl rounded-tl-md shadow-sm w-[60%] md:w-[60%] space-y-4"
           >
             {/* Static charts (server-rendered images) */}
             {staticChartData && staticChartData.length > 0 && (
@@ -209,7 +209,7 @@ export default function ChatMessage({
               <MeasurementsByOperator data={measurementsByOperatorData} />
             )}
             {interactionPlotData && <InteractionPlot data={interactionPlotData} />}
-            {/* Story 8.1: Capacidad de Proceso charts (histogram and I-Chart) */}
+            {/* Capacidad de Proceso charts (histogram and normality plot) */}
             {capacidadProcesoChartData && capacidadProcesoChartData.length > 0 && (
               <CapacidadProcesoCharts chartData={capacidadProcesoChartData} />
             )}

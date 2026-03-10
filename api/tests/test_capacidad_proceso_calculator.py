@@ -601,142 +601,75 @@ class TestGenerateNormalityInstructions:
 
 
 # =============================================================================
-# Stability Analysis Integration Tests (Story 7.3)
+# Sigma Estimation Integration Tests (Story 9.1)
 # =============================================================================
 
-class TestOutputWithStability:
-    """Tests for output structure including stability results."""
+class TestOutputWithSigma:
+    """Tests for output structure including sigma estimation results."""
 
-    def test_output_includes_stability_when_provided(self):
-        """Test that output includes stability results."""
+    def test_output_includes_sigma_when_provided(self):
+        """Test that output includes sigma estimation results."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 30)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
 
-        output = build_capacidad_proceso_output(validated_data, stats, normality, stability)
+        output = build_capacidad_proceso_output(validated_data, stats, normality, sigma)
 
-        assert 'stability' in output['results']
-        assert output['results']['stability']['is_stable'] is not None
-        assert 'conclusion' in output['results']['stability']
+        assert 'sigma' in output['results']
+        assert 'sigma_within' in output['results']['sigma']
+        assert 'sigma_overall' in output['results']['sigma']
+        assert 'mr_bar' in output['results']['sigma']
 
-    def test_output_instructions_include_stability(self):
-        """Test that instructions include stability interpretation."""
+    def test_sigma_results_structure(self):
+        """Test sigma results have correct structure and values."""
+        from utils.capacidad_proceso_calculator import (
+            calculate_basic_statistics,
+            build_capacidad_proceso_output
+        )
+        from utils.sigma_estimation import estimate_sigma
+
+        np.random.seed(42)
+        values = np.random.normal(100, 10, 30)
+        stats = calculate_basic_statistics(values)
+        sigma = estimate_sigma(values)
+        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
+
+        output = build_capacidad_proceso_output(validated_data, stats, None, sigma)
+
+        sigma_result = output['results']['sigma']
+        assert sigma_result['sigma_within'] > 0
+        assert sigma_result['sigma_overall'] > 0
+        assert sigma_result['mr_bar'] > 0
+
+    def test_output_no_stability_fields(self):
+        """Test that output does NOT include stability-related fields."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 30)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
 
-        output = build_capacidad_proceso_output(validated_data, stats, normality, stability)
+        output = build_capacidad_proceso_output(validated_data, stats, normality, sigma)
 
-        # Instructions should mention stability analysis
-        assert 'Estabilidad' in output['instructions']
-        assert 'Carta I' in output['instructions'] or 'I-MR' in output['instructions']
-
-    def test_stability_results_structure(self):
-        """Test stability results have correct structure."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 30)
-        stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-
-        output = build_capacidad_proceso_output(validated_data, stats, None, stability)
-
-        stability_result = output['results']['stability']
-        assert 'is_stable' in stability_result
-        assert 'conclusion' in stability_result
-        assert 'i_chart' in stability_result
-        assert 'mr_chart' in stability_result
-        assert 'rules' in stability_result
-        assert 'sigma' in stability_result
-
-
-class TestGenerateStabilityInstructions:
-    """Tests for stability instructions generation."""
-
-    def test_function_exists(self):
-        """Test that generate_stability_instructions function exists."""
-        from utils.capacidad_proceso_calculator import generate_stability_instructions
-        assert callable(generate_stability_instructions)
-
-    def test_stable_process_instructions(self):
-        """Test instructions for stable process."""
-        from utils.capacidad_proceso_calculator import generate_stability_instructions
-
-        stability_result = {
-            'is_stable': True,
-            'conclusion': 'Proceso Estable',
-            'i_chart': {'center': 100.0, 'ucl': 110.0, 'lcl': 90.0, 'ooc_points': []},
-            'mr_chart': {'center': 5.0, 'ucl': 16.3, 'lcl': 0, 'ooc_points': []},
-            'rules': {
-                'rule_1': {'cumple': True, 'violations': []},
-                'rule_2': {'cumple': True, 'violations': []},
-                'rule_3': {'cumple': True, 'violations': []},
-                'rule_4': {'cumple': True, 'violations': []},
-                'rule_5': {'cumple': True, 'violations': []},
-                'rule_6': {'cumple': True, 'violations': []},
-                'rule_7': {'cumple': True, 'violations': []},
-            },
-            'sigma': 4.43
-        }
-        instructions = generate_stability_instructions(stability_result)
-
-        assert 'Estable' in instructions
-        assert 'control' in instructions.lower()
-        assert 'CUMPLE' in instructions
-
-    def test_unstable_process_instructions(self):
-        """Test instructions for unstable process."""
-        from utils.capacidad_proceso_calculator import generate_stability_instructions
-
-        stability_result = {
-            'is_stable': False,
-            'conclusion': 'Proceso Inestable',
-            'i_chart': {'center': 100.0, 'ucl': 110.0, 'lcl': 90.0, 'ooc_points': [
-                {'index': 5, 'value': 115.0, 'limit': 'UCL'}
-            ]},
-            'mr_chart': {'center': 5.0, 'ucl': 16.3, 'lcl': 0, 'ooc_points': []},
-            'rules': {
-                'rule_1': {'cumple': False, 'violations': [{'index': 5, 'value': 115.0, 'limit': 'UCL'}]},
-                'rule_2': {'cumple': True, 'violations': []},
-                'rule_3': {'cumple': True, 'violations': []},
-                'rule_4': {'cumple': True, 'violations': []},
-                'rule_5': {'cumple': True, 'violations': []},
-                'rule_6': {'cumple': True, 'violations': []},
-                'rule_7': {'cumple': True, 'violations': []},
-            },
-            'sigma': 4.43
-        }
-        instructions = generate_stability_instructions(stability_result)
-
-        assert 'Inestable' in instructions
-        assert 'NO CUMPLE' in instructions
-        assert 'fuera de control' in instructions.lower() or 'Puntos fuera' in instructions
+        assert 'stability' not in output['results']
 
 
 # =============================================================================
@@ -753,18 +686,18 @@ class TestOutputWithCapability:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         assert 'capability' in output['results']
@@ -778,17 +711,17 @@ class TestOutputWithCapability:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, None
+            validated_data, stats, normality, sigma, None
         )
 
         assert 'capability' not in output['results']
@@ -800,18 +733,18 @@ class TestOutputWithCapability:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         # Instructions should mention capability analysis
@@ -825,17 +758,17 @@ class TestOutputWithCapability:
             calculate_basic_statistics,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, None, stability, spec_limits
+            validated_data, stats, None, sigma, spec_limits
         )
 
         capability_result = output['results']['capability']
@@ -855,17 +788,17 @@ class TestOutputWithCapability:
             calculate_basic_statistics,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, None, stability, spec_limits
+            validated_data, stats, None, sigma, spec_limits
         )
 
         cpk_class = output['results']['capability']['cpk_classification']
@@ -879,17 +812,17 @@ class TestOutputWithCapability:
             calculate_basic_statistics,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 130, 'les': 70}  # Invalid: LEI > LES
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, None, stability, spec_limits
+            validated_data, stats, None, sigma, spec_limits
         )
 
         # Should not have capability or have invalid capability
@@ -902,17 +835,17 @@ class TestOutputWithCapability:
             calculate_basic_statistics,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, None, stability, spec_limits
+            validated_data, stats, None, sigma, spec_limits
         )
 
         ppm = output['results']['capability']['ppm']
@@ -954,18 +887,18 @@ class TestChartDataStructure:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         assert 'chartData' in output
@@ -979,33 +912,33 @@ class TestChartDataStructure:
         )
         assert histogram_chart is not None
 
-    def test_chartdata_contains_i_chart(self):
-        """Test that chartData includes I-Chart when stability analysis is performed."""
+    def test_chartdata_does_not_contain_i_chart(self):
+        """Test that chartData does NOT include I-Chart (removed in Story 9.1)."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
-        # Find I-Chart
+        # I-Chart removed in Story 9.1
         i_chart = next(
             (c for c in output['chartData'] if c['type'] == 'i_chart'),
             None
         )
-        assert i_chart is not None
+        assert i_chart is None
 
     def test_histogram_data_structure(self):
         """Test that histogram chart data has correct structure."""
@@ -1014,18 +947,18 @@ class TestChartDataStructure:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         histogram_chart = next(
@@ -1040,8 +973,6 @@ class TestChartDataStructure:
         assert 'les' in data
         assert 'mean' in data
         assert 'std' in data
-        assert 'lcl' in data
-        assert 'ucl' in data
 
         # Values should be a list
         assert isinstance(data['values'], list)
@@ -1051,88 +982,6 @@ class TestChartDataStructure:
         assert data['lei'] == 70
         assert data['les'] == 130
 
-    def test_i_chart_data_structure(self):
-        """Test that I-Chart data has correct structure."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        data = i_chart['data']
-        assert 'values' in data
-        assert 'center' in data
-        assert 'ucl' in data
-        assert 'lcl' in data
-        assert 'ooc_points' in data
-
-        # Values should be a list
-        assert isinstance(data['values'], list)
-        assert len(data['values']) == 50
-
-        # OOC points should be a list
-        assert isinstance(data['ooc_points'], list)
-
-        # Rules violations should be present (Story 8.1)
-        assert 'rules_violations' in data
-        assert isinstance(data['rules_violations'], list)
-
-    def test_i_chart_rules_violations_structure(self):
-        """Test that I-Chart rules_violations has correct structure when violations exist."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        # Create data with intentional outliers to trigger rule violations
-        values = np.random.normal(100, 10, 47)
-        values = np.append(values, [150, 50, 145])  # Should trigger Rule 1
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        data = i_chart['data']
-        assert 'rules_violations' in data
-
-        # If there are violations, check structure
-        if len(data['rules_violations']) > 0:
-            violation = data['rules_violations'][0]
-            assert 'rule' in violation
-
     def test_histogram_includes_fitted_distribution_when_non_normal(self):
         """Test that histogram includes fitted distribution when data is non-normal."""
         from utils.capacidad_proceso_calculator import (
@@ -1140,7 +989,7 @@ class TestChartDataStructure:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         # Create clearly non-normal (skewed) data
         np.random.seed(42)
@@ -1148,12 +997,12 @@ class TestChartDataStructure:
         values = np.random.lognormal(mean=2.0, sigma=0.5, size=50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 1, 'les': 50}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         histogram_chart = next(
@@ -1167,42 +1016,8 @@ class TestChartDataStructure:
         data = histogram_chart['data']
         assert 'fitted_distribution' in data
 
-    def test_i_chart_includes_ooc_points(self):
-        """Test that I-Chart includes out-of-control points."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        # Create data with intentional outliers
-        values = np.random.normal(100, 10, 47)
-        # Add outliers outside 3-sigma
-        values = np.append(values, [150, 50, 145])  # Should be OOC
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        data = i_chart['data']
-        # Should have OOC points from the outliers
-        assert isinstance(data['ooc_points'], list)
-
-    def test_chartdata_empty_when_no_spec_limits_and_no_stability(self):
-        """Test that chartData is empty when no spec limits and no stability."""
+    def test_chartdata_empty_when_no_spec_limits(self):
+        """Test that chartData has no histogram when no spec limits."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             build_capacidad_proceso_output
@@ -1225,18 +1040,18 @@ class TestChartDataStructure:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         histogram_chart = next(
@@ -1250,308 +1065,6 @@ class TestChartDataStructure:
         assert isinstance(data['values'], list)
         assert not isinstance(data['values'], np.ndarray)
 
-    def test_i_chart_values_are_python_lists(self):
-        """Test that I-Chart values are Python lists, not numpy arrays."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        data = i_chart['data']
-        # Should be Python list, not numpy array
-        assert isinstance(data['values'], list)
-        assert not isinstance(data['values'], np.ndarray)
-
-    def test_i_chart_rules_violations_is_list_type(self):
-        """Test that I-Chart rules_violations is a list type."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        data = i_chart['data']
-        # rules_violations key should exist
-        assert 'rules_violations' in data
-        assert isinstance(data['rules_violations'], list)
-
-    def test_chartdata_with_stability_but_no_spec_limits(self):
-        """Test that chartData includes I-Chart even without spec limits."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-
-        # No spec_limits
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, None
-        )
-
-        # Should still have I-Chart (stability is independent of spec limits)
-        i_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'i_chart'),
-            None
-        )
-        assert i_chart is not None
-
-        # Should NOT have histogram (needs spec limits for LEI/LES)
-        histogram_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'histogram'),
-            None
-        )
-        assert histogram_chart is None
-
-
-# =============================================================================
-# MR-Chart and Normality Plot Tests (Story 8.2)
-# =============================================================================
-
-class TestMRChartData:
-    """Tests for MR-Chart data structure in chartData (Story 8.2)."""
-
-    def test_chartdata_contains_mr_chart(self):
-        """Test that chartData includes MR-Chart when stability analysis is performed."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        # Find MR-Chart
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-    def test_mr_chart_data_structure(self):
-        """Test that MR-Chart data has correct structure."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-        data = mr_chart['data']
-        assert 'values' in data
-        assert 'center' in data
-        assert 'ucl' in data
-        assert 'lcl' in data
-        assert 'ooc_points' in data
-
-    def test_mr_chart_values_has_n_minus_1_points(self):
-        """Test that MR-Chart values array has n-1 points for n observations."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-        data = mr_chart['data']
-        # MR values should have n-1 points (50 observations -> 49 MR values)
-        assert len(data['values']) == 49
-
-    def test_mr_chart_lcl_is_zero(self):
-        """Test that MR-Chart LCL is always 0."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-        data = mr_chart['data']
-        assert data['lcl'] == 0
-
-    def test_mr_chart_ooc_points_structure(self):
-        """Test that MR-Chart OOC points have correct structure."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        # Create data with large jumps to trigger MR OOC points
-        values = np.random.normal(100, 5, 48)
-        values = np.append(values, [150, 50])  # Large jump should trigger MR OOC
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-        data = mr_chart['data']
-        assert 'ooc_points' in data
-        assert isinstance(data['ooc_points'], list)
-
-        # If there are OOC points, check structure
-        if len(data['ooc_points']) > 0:
-            ooc_point = data['ooc_points'][0]
-            assert 'index' in ooc_point
-            assert 'value' in ooc_point
-
-    def test_mr_chart_values_are_python_lists(self):
-        """Test that MR-Chart values are Python lists, not numpy arrays."""
-        from utils.capacidad_proceso_calculator import (
-            calculate_basic_statistics,
-            perform_normality_analysis,
-            build_capacidad_proceso_output
-        )
-        from utils.stability_analysis import perform_stability_analysis
-
-        np.random.seed(42)
-        values = np.random.normal(100, 10, 50)
-        stats = calculate_basic_statistics(values)
-        normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
-        validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
-        spec_limits = {'lei': 70, 'les': 130}
-
-        output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
-        )
-
-        mr_chart = next(
-            (c for c in output['chartData'] if c['type'] == 'mr_chart'),
-            None
-        )
-        assert mr_chart is not None
-
-        data = mr_chart['data']
-        # Should be Python list, not numpy array
-        assert isinstance(data['values'], list)
-        assert not isinstance(data['values'], np.ndarray)
-
-
 class TestNormalityPlotData:
     """Tests for Normality Plot data structure in chartData (Story 8.2)."""
 
@@ -1562,18 +1075,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         # Find Normality Plot
@@ -1590,18 +1103,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(
@@ -1623,18 +1136,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(
@@ -1662,18 +1175,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(
@@ -1697,18 +1210,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(
@@ -1734,18 +1247,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(
@@ -1762,55 +1275,55 @@ class TestNormalityPlotData:
         assert 'is_normal' in ad
         assert isinstance(ad['is_normal'], bool)
 
-    def test_chartdata_order_histogram_ichart_mrchart_normalityplot(self):
-        """Test that charts appear in correct order: Histogram, I-Chart, MR-Chart, Normality Plot."""
+    def test_chartdata_order_histogram_normalityplot(self):
+        """Test that charts appear in correct order: Histogram, Normality Plot."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         chart_types = [c['type'] for c in output['chartData']]
 
-        # Should have 4 chart types
-        assert len(chart_types) == 4
+        # Should have 2 chart types (stability charts removed in Story 9.1)
+        assert len(chart_types) == 2
 
         # Check order
         assert chart_types[0] == 'histogram'
-        assert chart_types[1] == 'i_chart'
-        assert chart_types[2] == 'mr_chart'
-        assert chart_types[3] == 'normality_plot'
+        assert chart_types[1] == 'normality_plot'
 
-    def test_normality_plot_without_stability(self):
-        """Test that Normality Plot is included even without stability analysis."""
+    def test_normality_plot_without_spec_limits(self):
+        """Test that Normality Plot is included even without spec limits."""
         from utils.capacidad_proceso_calculator import (
             calculate_basic_statistics,
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
 
-        # No stability, no spec limits
+        # With sigma, no spec limits
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, None, None
+            validated_data, stats, normality, sigma, None
         )
 
         # Should have normality plot
@@ -1826,18 +1339,18 @@ class TestNormalityPlotData:
             calculate_basic_statistics,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         # No normality result
         output = build_capacidad_proceso_output(
-            validated_data, stats, None, stability, spec_limits
+            validated_data, stats, None, sigma, spec_limits
         )
 
         # Should NOT have normality plot
@@ -1854,18 +1367,18 @@ class TestNormalityPlotData:
             perform_normality_analysis,
             build_capacidad_proceso_output
         )
-        from utils.stability_analysis import perform_stability_analysis
+        from utils.sigma_estimation import estimate_sigma
 
         np.random.seed(42)
         values = np.random.normal(100, 10, 50)
         stats = calculate_basic_statistics(values)
         normality = perform_normality_analysis(values)
-        stability = perform_stability_analysis(values)
+        sigma = estimate_sigma(values)
         validated_data = {'column_name': 'Valores', 'values': values, 'warnings': []}
         spec_limits = {'lei': 70, 'les': 130}
 
         output = build_capacidad_proceso_output(
-            validated_data, stats, normality, stability, spec_limits
+            validated_data, stats, normality, sigma, spec_limits
         )
 
         normality_plot = next(

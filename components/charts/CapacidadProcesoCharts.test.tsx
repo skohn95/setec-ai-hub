@@ -3,8 +3,6 @@ import { describe, it, expect, vi, beforeAll } from 'vitest'
 import CapacidadProcesoCharts from './CapacidadProcesoCharts'
 import type {
   HistogramChartData,
-  IChartData,
-  MRChartData,
   NormalityPlotData,
   CapacidadProcesoChartDataItem,
 } from '@/types/analysis'
@@ -12,14 +10,6 @@ import type {
 // Mock child chart components to isolate container testing
 vi.mock('./HistogramChart', () => ({
   default: () => <div data-testid="histogram-chart">HistogramChart</div>,
-}))
-
-vi.mock('./IChart', () => ({
-  default: () => <div data-testid="i-chart">IChart</div>,
-}))
-
-vi.mock('./MRChart', () => ({
-  default: () => <div data-testid="mr-chart">MRChart</div>,
 }))
 
 vi.mock('./NormalityPlot', () => ({
@@ -46,32 +36,7 @@ const createHistogramData = (): HistogramChartData => ({
     les: 110,
     mean: 100,
     std: 3.5,
-    lcl: 89.5,
-    ucl: 110.5,
     fitted_distribution: null,
-  },
-})
-
-const createIChartData = (): IChartData => ({
-  type: 'i_chart',
-  data: {
-    values: [95, 100, 105, 98, 102],
-    center: 100,
-    ucl: 110,
-    lcl: 90,
-    ooc_points: [],
-    rules_violations: [],
-  },
-})
-
-const createMRChartData = (): MRChartData => ({
-  type: 'mr_chart',
-  data: {
-    values: [5, 5, 7, 4],
-    center: 5.25,
-    ucl: 17.15,
-    lcl: 0,
-    ooc_points: [],
   },
 })
 
@@ -126,18 +91,6 @@ describe('CapacidadProcesoCharts', () => {
       expect(screen.getByTestId('histogram-chart')).toBeInTheDocument()
     })
 
-    it('renders IChart when i_chart data is provided', () => {
-      const chartData: CapacidadProcesoChartDataItem[] = [createIChartData()]
-      render(<CapacidadProcesoCharts chartData={chartData} />)
-      expect(screen.getByTestId('i-chart')).toBeInTheDocument()
-    })
-
-    it('renders MRChart when mr_chart data is provided', () => {
-      const chartData: CapacidadProcesoChartDataItem[] = [createMRChartData()]
-      render(<CapacidadProcesoCharts chartData={chartData} />)
-      expect(screen.getByTestId('mr-chart')).toBeInTheDocument()
-    })
-
     it('renders NormalityPlot when normality_plot data is provided', () => {
       const chartData: CapacidadProcesoChartDataItem[] = [createNormalityPlotData()]
       render(<CapacidadProcesoCharts chartData={chartData} />)
@@ -146,11 +99,9 @@ describe('CapacidadProcesoCharts', () => {
   })
 
   describe('Chart Order', () => {
-    it('renders charts in correct order: Histogram, I-Chart, MR-Chart, Normality Plot', () => {
+    it('renders charts in correct order: Histogram, Normality Plot', () => {
       const chartData: CapacidadProcesoChartDataItem[] = [
         createHistogramData(),
-        createIChartData(),
-        createMRChartData(),
         createNormalityPlotData(),
       ]
       render(<CapacidadProcesoCharts chartData={chartData} />)
@@ -160,17 +111,13 @@ describe('CapacidadProcesoCharts', () => {
 
       // Verify order of rendered charts
       expect(children[0]).toHaveAttribute('data-testid', 'histogram-chart')
-      expect(children[1]).toHaveAttribute('data-testid', 'i-chart')
-      expect(children[2]).toHaveAttribute('data-testid', 'mr-chart')
-      expect(children[3]).toHaveAttribute('data-testid', 'normality-plot')
+      expect(children[1]).toHaveAttribute('data-testid', 'normality-plot')
     })
 
     it('maintains correct order even when data provided in different order', () => {
       // Provide data in reverse order
       const chartData: CapacidadProcesoChartDataItem[] = [
         createNormalityPlotData(),
-        createMRChartData(),
-        createIChartData(),
         createHistogramData(),
       ]
       render(<CapacidadProcesoCharts chartData={chartData} />)
@@ -180,33 +127,16 @@ describe('CapacidadProcesoCharts', () => {
 
       // Component should render in correct order regardless of input order
       expect(children[0]).toHaveAttribute('data-testid', 'histogram-chart')
-      expect(children[1]).toHaveAttribute('data-testid', 'i-chart')
-      expect(children[2]).toHaveAttribute('data-testid', 'mr-chart')
-      expect(children[3]).toHaveAttribute('data-testid', 'normality-plot')
+      expect(children[1]).toHaveAttribute('data-testid', 'normality-plot')
     })
   })
 
   describe('Partial Chart Data', () => {
-    it('renders only available charts when some are missing', () => {
-      const chartData: CapacidadProcesoChartDataItem[] = [
-        createIChartData(),
-        createMRChartData(),
-      ]
-      render(<CapacidadProcesoCharts chartData={chartData} />)
-
-      expect(screen.queryByTestId('histogram-chart')).not.toBeInTheDocument()
-      expect(screen.getByTestId('i-chart')).toBeInTheDocument()
-      expect(screen.getByTestId('mr-chart')).toBeInTheDocument()
-      expect(screen.queryByTestId('normality-plot')).not.toBeInTheDocument()
-    })
-
     it('renders only histogram when only histogram data provided', () => {
       const chartData: CapacidadProcesoChartDataItem[] = [createHistogramData()]
       render(<CapacidadProcesoCharts chartData={chartData} />)
 
       expect(screen.getByTestId('histogram-chart')).toBeInTheDocument()
-      expect(screen.queryByTestId('i-chart')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('mr-chart')).not.toBeInTheDocument()
       expect(screen.queryByTestId('normality-plot')).not.toBeInTheDocument()
     })
 
@@ -215,8 +145,6 @@ describe('CapacidadProcesoCharts', () => {
       render(<CapacidadProcesoCharts chartData={chartData} />)
 
       expect(screen.queryByTestId('histogram-chart')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('i-chart')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('mr-chart')).not.toBeInTheDocument()
       expect(screen.getByTestId('normality-plot')).toBeInTheDocument()
     })
   })
@@ -224,7 +152,7 @@ describe('CapacidadProcesoCharts', () => {
   describe('Empty/Missing Data Handling', () => {
     it('returns null when no recognized chart types exist', () => {
       // Create an array with an unrecognized type (cast to bypass TypeScript)
-      const chartData = [{ type: 'unknown_chart', data: {} }] as CapacidadProcesoChartDataItem[]
+      const chartData = [{ type: 'unknown_chart', data: {} }] as unknown as CapacidadProcesoChartDataItem[]
       const { container } = render(<CapacidadProcesoCharts chartData={chartData} />)
       expect(container.firstChild).toBeNull()
     })
@@ -232,10 +160,10 @@ describe('CapacidadProcesoCharts', () => {
     it('handles mixed valid and invalid chart types gracefully', () => {
       const chartData = [
         { type: 'unknown_chart', data: {} } as unknown as CapacidadProcesoChartDataItem,
-        createIChartData(),
+        createHistogramData(),
       ]
       render(<CapacidadProcesoCharts chartData={chartData} />)
-      expect(screen.getByTestId('i-chart')).toBeInTheDocument()
+      expect(screen.getByTestId('histogram-chart')).toBeInTheDocument()
     })
   })
 

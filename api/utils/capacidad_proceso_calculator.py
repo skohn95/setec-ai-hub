@@ -11,7 +11,6 @@ from typing import Any
 
 from .normality_tests import analyze_normality, _normal_cdf
 from .distribution_fitting import fit_all_distributions, calculate_ppm
-from .stability_analysis import perform_stability_analysis
 from .capability_indices import (
     calculate_capability_indices,
     generate_capability_instructions,
@@ -119,10 +118,6 @@ def calculate_basic_statistics(values: np.ndarray) -> dict[str, Any]:
         'count': int(len(values)),
     }
 
-
-# =============================================================================
-# Output Formatting (matches MSA pattern)
-# =============================================================================
 
 # =============================================================================
 # Normality Analysis
@@ -390,96 +385,7 @@ Estos datos son la base para el análisis de capacidad de proceso.
 
 ---
 
-💡 **Próximos pasos:** Para un análisis completo de capacidad de proceso, se realizarán pruebas de normalidad, análisis de estabilidad y cálculo de índices de capacidad (Cp, Cpk, Pp, Ppk).
-"""
-
-    return instructions
-
-
-def generate_stability_instructions(stability_result: dict[str, Any]) -> str:
-    """
-    Generate markdown instructions for stability analysis results.
-
-    Args:
-        stability_result: Result from perform_stability_analysis
-
-    Returns:
-        Markdown string with stability interpretation
-    """
-    # Overall conclusion
-    if stability_result['is_stable']:
-        conclusion = "✅ **Proceso Estable**"
-        interpretation = "El proceso está bajo control estadístico. Es apropiado calcular índices de capacidad."
-    else:
-        conclusion = "⚠️ **Proceso Inestable**"
-        interpretation = "Se detectaron señales de causa especial. Investigar antes de calcular capacidad."
-
-    # I-Chart limits
-    i_chart = stability_result['i_chart']
-    mr_chart = stability_result['mr_chart']
-
-    # Rules evaluation table
-    rules = stability_result['rules']
-
-    rule_descriptions = {
-        'rule_1': 'Puntos fuera de límites (3σ)',
-        'rule_2': 'Tendencia (7 consecutivos)',
-        'rule_3': 'Estratificación (7 en 1σ)',
-        'rule_4': 'Zona superior (7 en 2-3σ arriba)',
-        'rule_5': 'Zona inferior (7 en 2-3σ abajo)',
-        'rule_6': 'Patrón cíclico (alternante)',
-        'rule_7': 'Un lado (7 arriba/abajo centro)',
-    }
-
-    rules_table = "| Regla | Descripción | Resultado |\n|-------|-------------|----------|\n"
-    for rule_key, desc in rule_descriptions.items():
-        rule_result = rules.get(rule_key, {'cumple': True})
-        status = "✅ CUMPLE" if rule_result['cumple'] else "❌ NO CUMPLE"
-        rules_table += f"| {rule_key.replace('_', ' ').title()} | {desc} | {status} |\n"
-
-    # Out-of-control points summary
-    i_ooc = i_chart.get('ooc_points', [])
-    mr_ooc = mr_chart.get('ooc_points', [])
-
-    ooc_text = ""
-    if i_ooc:
-        # 1-indexed for user readability
-        i_indices = [str(p['index'] + 1) for p in i_ooc]
-        ooc_text += f"\n**Puntos fuera de control (Carta I):** {', '.join(i_indices)}"
-    if mr_ooc:
-        mr_indices = [str(p['index'] + 1) for p in mr_ooc]
-        ooc_text += f"\n**Puntos fuera de control (Carta MR):** {', '.join(mr_indices)}"
-
-    instructions = f"""
-## Análisis de Estabilidad (Cartas I-MR)
-
-### Límites de Control
-
-**Carta I (Valores Individuales):**
-| Parámetro | Valor |
-|-----------|-------|
-| **Línea Central (X̄)** | {i_chart['center']:.4f} |
-| **UCL** | {i_chart['ucl']:.4f} |
-| **LCL** | {i_chart['lcl']:.4f} |
-
-**Carta MR (Rangos Móviles):**
-| Parámetro | Valor |
-|-----------|-------|
-| **Línea Central (MR̄)** | {mr_chart['center']:.4f} |
-| **UCL** | {mr_chart['ucl']:.4f} |
-| **LCL** | 0 |
-
-**Desviación estándar dentro del subgrupo (σ):** {stability_result['sigma']:.4f}
-
-### Evaluación de Reglas de Estabilidad
-
-{rules_table}
-### Conclusión
-
-{conclusion}
-
-**Interpretación:** {interpretation}
-{ooc_text}
+💡 **Próximos pasos:** Para un análisis completo de capacidad de proceso, se realizarán pruebas de normalidad y cálculo de índices de capacidad (Cp, Cpk, Pp, Ppk).
 """
 
     return instructions
@@ -505,46 +411,6 @@ def _build_fitted_distribution_curve(normality_result: dict[str, Any] | None) ->
     return {
         'name': fitted_dist.get('name'),
         'params': fitted_dist.get('params', {})
-    }
-
-
-# =============================================================================
-# MR-Chart Data Builder (Story 8.2)
-# =============================================================================
-
-def _build_mr_chart_data(stability_result: dict[str, Any]) -> dict:
-    """
-    Build data structure for MR (Moving Range) control chart.
-
-    MR chart shows the moving ranges between consecutive observations,
-    with center line at MR̄ and UCL at 3.267 × MR̄.
-
-    Args:
-        stability_result: Result from perform_stability_analysis
-
-    Returns:
-        dict: {
-            'type': 'mr_chart',
-            'data': {
-                'values': list,       # MR values (n-1 points for n observations)
-                'center': float,      # MR̄ (mean of moving ranges)
-                'ucl': float,         # Upper control limit
-                'lcl': float,         # Lower control limit (always 0)
-                'ooc_points': list    # Points exceeding UCL
-            }
-        }
-    """
-    mr_data = stability_result.get('mr_chart', {})
-
-    return {
-        'type': 'mr_chart',
-        'data': {
-            'values': mr_data.get('values', []),
-            'center': mr_data.get('center'),
-            'ucl': mr_data.get('ucl'),
-            'lcl': 0,  # Always 0 for MR chart
-            'ooc_points': mr_data.get('ooc_points', [])
-        }
     }
 
 
@@ -738,50 +604,19 @@ def _build_normality_plot_data(
     }
 
 
-def _extract_rules_violations(stability_result: dict[str, Any]) -> list[dict]:
-    """
-    Extract rules violations from stability analysis for I-Chart visualization.
-
-    Args:
-        stability_result: Stability analysis results
-
-    Returns:
-        List of rule violation dictionaries with rule name and violation details
-    """
-    violations = []
-
-    rules = stability_result.get('rules', {})
-    for rule_key, rule_data in rules.items():
-        if not rule_data.get('cumple', True):  # Rule is violated (cumple = False)
-            for violation in rule_data.get('violations', []):
-                violations.append({
-                    'rule': rule_key,
-                    'start_index': violation.get('start'),
-                    'end_index': violation.get('end'),
-                    'index': violation.get('index'),
-                    'direction': violation.get('direction'),
-                    'side': violation.get('side'),
-                    'limit': violation.get('limit'),
-                })
-
-    return violations
-
-
 def _build_chart_data(
     values: np.ndarray | None,
     spec_limits: dict[str, float] | None,
-    stability_result: dict[str, Any] | None,
     normality_result: dict[str, Any] | None
 ) -> list[dict]:
     """
     Build chartData array for Capacidad de Proceso visualization.
 
-    Chart order: Histogram, I-Chart, MR-Chart, Normality Plot
+    Chart order: Histogram, Normality Plot (Story 9.1: I-Chart and MR-Chart removed)
 
     Args:
         values: NumPy array of data values
         spec_limits: Specification limits {lei, les}
-        stability_result: Stability analysis results
         normality_result: Normality analysis results
 
     Returns:
@@ -806,33 +641,12 @@ def _build_chart_data(
                     'les': les,
                     'mean': float(np.mean(values)),
                     'std': float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
-                    'lcl': stability_result['i_chart']['lcl'] if stability_result else None,
-                    'ucl': stability_result['i_chart']['ucl'] if stability_result else None,
                     'fitted_distribution': _build_fitted_distribution_curve(normality_result)
                 }
             }
             chart_data.append(histogram_data)
 
-    # 2. Add I-Chart data (requires stability analysis)
-    if stability_result is not None:
-        i_chart_data = {
-            'type': 'i_chart',
-            'data': {
-                'values': values.tolist(),
-                'center': stability_result['i_chart']['center'],
-                'ucl': stability_result['i_chart']['ucl'],
-                'lcl': stability_result['i_chart']['lcl'],
-                'ooc_points': stability_result['i_chart'].get('ooc_points', []),
-                'rules_violations': _extract_rules_violations(stability_result)
-            }
-        }
-        chart_data.append(i_chart_data)
-
-        # 3. Add MR-Chart data (Story 8.2)
-        mr_chart_data = _build_mr_chart_data(stability_result)
-        chart_data.append(mr_chart_data)
-
-    # 4. Add Normality Plot data (Story 8.2)
+    # 2. Add Normality Plot data
     if normality_result is not None and len(values) >= 2:
         normality_plot_data = _build_normality_plot_data(values, normality_result)
         chart_data.append(normality_plot_data)
@@ -844,7 +658,7 @@ def build_capacidad_proceso_output(
     validated_data: dict[str, Any],
     basic_stats: dict[str, Any],
     normality_result: dict[str, Any] | None = None,
-    stability_result: dict[str, Any] | None = None,
+    sigma_result: dict[str, Any] | None = None,
     spec_limits: dict[str, float] | None = None
 ) -> dict[str, Any]:
     """
@@ -856,20 +670,20 @@ def build_capacidad_proceso_output(
         validated_data: Validated data from validator (column_name, values, warnings)
         basic_stats: Basic statistics dictionary
         normality_result: Normality analysis results (optional, from perform_normality_analysis)
-        stability_result: Stability analysis results (optional, from perform_stability_analysis)
+        sigma_result: Sigma estimation results (optional, from estimate_sigma)
         spec_limits: Specification limits {lei, les} (optional, for capability indices)
 
     Returns:
         dict: {
             'results': {
                 'basic_statistics': dict,
-                'normality': dict | None,  # Story 7.2 - normality analysis results
-                'stability': dict | None,  # Story 7.3 - stability analysis results
-                'capability': dict | None,  # Story 7.4 - capability indices
+                'normality': dict | None,
+                'sigma': dict | None,
+                'capability': dict | None,
                 'sample_size': int,
                 'warnings': list,
             },
-            'chartData': list,  # Story 8.1 - histogram and I-Chart data
+            'chartData': list,
             'instructions': str,
         }
     """
@@ -885,11 +699,6 @@ def build_capacidad_proceso_output(
         normality_instructions = generate_normality_instructions(normality_result)
         instructions = instructions + "\n" + normality_instructions
 
-    # Add stability instructions if available
-    if stability_result is not None:
-        stability_instructions = generate_stability_instructions(stability_result)
-        instructions = instructions + "\n" + stability_instructions
-
     # Build results structure
     results = {
         'basic_statistics': basic_stats,
@@ -901,13 +710,13 @@ def build_capacidad_proceso_output(
     if normality_result is not None:
         results['normality'] = normality_result
 
-    # Add stability if available
-    if stability_result is not None:
-        results['stability'] = stability_result
+    # Add sigma estimates if available
+    if sigma_result is not None:
+        results['sigma'] = sigma_result
 
-    # Calculate and add capability indices if spec_limits provided (Story 7.4)
+    # Calculate and add capability indices if spec_limits provided
     capability_result = None
-    if spec_limits is not None and stability_result is not None and values is not None:
+    if spec_limits is not None and sigma_result is not None and values is not None:
         lei = spec_limits.get('lei')
         les = spec_limits.get('les')
 
@@ -916,7 +725,7 @@ def build_capacidad_proceso_output(
                 values,
                 lei,
                 les,
-                stability_result,
+                sigma_result,
                 normality_result
             )
 
@@ -928,8 +737,8 @@ def build_capacidad_proceso_output(
                 capability_instructions = generate_capability_instructions(capability_result)
                 instructions = instructions + "\n" + capability_instructions
 
-    # Build chartData for visualization (Story 8.1)
-    chart_data = _build_chart_data(values, spec_limits, stability_result, normality_result)
+    # Build chartData for visualization
+    chart_data = _build_chart_data(values, spec_limits, normality_result)
 
     return {
         'results': results,

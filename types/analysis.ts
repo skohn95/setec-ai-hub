@@ -138,57 +138,6 @@ export interface NormalityAnalysis extends NormalityTestResult {
   ppm?: PPMResult | null
 }
 
-// Story 7.3: Stability Analysis types
-export interface IChartLimits {
-  center: number  // X̄ - Center line
-  ucl: number     // Upper Control Limit
-  lcl: number     // Lower Control Limit
-  mr_bar: number  // Mean of moving ranges
-}
-
-export interface MRChartLimits {
-  center: number  // MR̄ - Center line
-  ucl: number     // Upper Control Limit
-  lcl: number     // Always 0 for MR chart
-}
-
-export interface OutOfControlPoint {
-  index: number       // 0-based index in data array (API returns 0-indexed; markdown instructions show 1-indexed for user readability)
-  value: number       // The actual value
-  limit?: 'UCL' | 'LCL'  // Which limit was violated (I-Chart only)
-}
-
-export interface StabilityRuleResult {
-  cumple: boolean  // CUMPLE (true) or NO CUMPLE (false)
-  violations: Array<{
-    start?: number    // 0-based start index (API returns 0-indexed)
-    end?: number      // 0-based end index (API returns 0-indexed)
-    index?: number    // 0-based index (API returns 0-indexed)
-    value?: number
-    direction?: 'up' | 'down'
-    side?: 'above' | 'below'
-    limit?: 'UCL' | 'LCL'
-    pattern?: string
-  }>
-}
-
-export interface StabilityAnalysisResult {
-  is_stable: boolean
-  conclusion: 'Proceso Estable' | 'Proceso Inestable'
-  i_chart: IChartLimits & { ooc_points: OutOfControlPoint[] }
-  mr_chart: MRChartLimits & { ooc_points: OutOfControlPoint[] }
-  rules: {
-    rule_1: StabilityRuleResult
-    rule_2: StabilityRuleResult
-    rule_3: StabilityRuleResult
-    rule_4: StabilityRuleResult
-    rule_5: StabilityRuleResult
-    rule_6: StabilityRuleResult
-    rule_7: StabilityRuleResult
-  }
-  sigma: number  // Within-subgroup std dev (MR̄/d2)
-}
-
 // Story 7.4: Capability Indices types
 export interface CapabilityIndices {
   cp: number | null
@@ -282,7 +231,6 @@ export interface NonNormalCapabilityResult {
 export interface CapacidadProcesoResult {
   basic_statistics: CapacidadProcesoBasicStats
   normality?: NormalityAnalysis
-  stability?: StabilityAnalysisResult  // Story 7.3
   capability?: CapabilityAnalysisResult  // Story 7.4
   sample_size: number
   warnings: string[]
@@ -333,67 +281,13 @@ export interface HistogramChartData {
     les: number
     mean: number
     std: number
-    lcl: number | null
-    ucl: number | null
     fitted_distribution: FittedDistributionCurve | null
   }
 }
 
-/**
- * I-Chart (Individual Values Control Chart) data
- */
-export interface IChartData {
-  type: 'i_chart'
-  data: {
-    values: number[]
-    center: number
-    ucl: number
-    lcl: number
-    ooc_points: OutOfControlPoint[]
-    rules_violations: RuleViolation[]
-  }
-}
-
-/**
- * Rule violation data for I-Chart instability indicators
- */
-export interface RuleViolation {
-  rule: string
-  start_index?: number | null
-  end_index?: number | null
-  index?: number | null
-  direction?: 'up' | 'down' | null
-  side?: 'above' | 'below' | null
-  limit?: 'UCL' | 'LCL' | null
-}
-
-/**
- * Chart point data for I-Chart visualization
- */
-export interface ChartPoint {
-  index: number
-  value: number
-  isOOC: boolean
-  limit?: 'UCL' | 'LCL'
-}
-
 // =============================================================================
-// Story 8.2: MR-Chart and Normality Plot Types
+// Story 8.2: Normality Plot Types
 // =============================================================================
-
-/**
- * MR-Chart (Moving Range Control Chart) data
- */
-export interface MRChartData {
-  type: 'mr_chart'
-  data: {
-    values: number[]         // Moving range values (n-1 points for n observations)
-    center: number           // MR̄ (mean of moving ranges)
-    ucl: number              // Upper control limit (3.267 × MR̄)
-    lcl: number              // Lower control limit (always 0)
-    ooc_points: OutOfControlPoint[]  // Points exceeding UCL
-  }
-}
 
 /**
  * Normality Plot point data (Q-Q plot)
@@ -447,8 +341,6 @@ export interface NormalityPlotData {
  */
 export type CapacidadProcesoChartDataItem =
   | HistogramChartData
-  | IChartData
-  | MRChartData
   | NormalityPlotData
 
 export interface TokenUsage {

@@ -20,6 +20,13 @@ capacidadProcesoCompletedAt: 2026-02-20
 capacidadProcesoInputDocuments:
   - prd-v2.md
   - architecture.md
+# PRD-v3 Scope Refinement (2026-03-09)
+prdV3StepsCompleted:
+  - epic-9-created
+prdV3Status: complete
+prdV3CompletedAt: 2026-03-09
+prdV3InputDocuments:
+  - prd-v3.md
 ---
 
 # Setec AI Hub - LLM - Epic Breakdown
@@ -310,6 +317,31 @@ Users have full transparency about data handling and experience a polished, reli
 - User-friendly error messages in Spanish
 - Production deployment configuration
 - Final polish and testing
+
+---
+
+### Epic 9: PRD-v3 Scope Refinement — Remove Stability, Add Sigma Differentiation
+The process capability analysis is streamlined from 3 pillars (Normalidad + Estabilidad + Capacidad) to 2 pillars (Normalidad + Capacidad). Stability analysis is removed, I-MR charts are deleted, and capability indices explicitly differentiate Within (MR̄/d2) vs Overall (sample std dev) sigma.
+
+**PRD source:** prd-v3.md
+
+**Supersedes (from Epics 7–8):**
+- Story 7.3 (Stability Analysis with I-MR Control Charts) → **entirely removed**
+- Story 8.1 (I-Chart portion) → **removed**
+- Story 8.2 (MR-Chart portion) → **removed**
+- Story 7.4 (Capability Indices) → **updated by Story 9.2**
+- Story 8.1 (Histogram LCI/LCS) → **updated by Story 9.3**
+- Story 8.4 (Agent instructions stability references) → **updated by Story 9.4**
+
+**FRs covered (PRD-v3 numbering):** FR-CP14, FR-CP17, FR-CP19, FR-CP20
+
+**Deliverables:**
+- `sigma_estimation.py` module with Within/Overall sigma calculation
+- Removal of stability analysis code, I-MR chart components, and all stability references
+- Updated capability index calculations with explicit sigma differentiation
+- Updated histogram (no control limit lines)
+- Updated chartData TypeScript interface (2 charts)
+- Updated agent instructions and presentation (no stability mentions)
 
 ---
 
@@ -1774,3 +1806,156 @@ So that **I receive clear interpretations and can ask follow-up questions**.
 **Then** they are received as a structured message in the chat
 **And** the agent extracts LEI/LES and invokes the analyze tool
 **And** the flow is seamless from user perspective
+
+---
+
+## Epic 9: PRD-v3 Scope Refinement — Remove Stability, Add Sigma Differentiation
+
+The process capability analysis is streamlined from 3 pillars (Normalidad + Estabilidad + Capacidad) to 2 pillars (Normalidad + Capacidad). Stability analysis is removed entirely, and capability indices explicitly differentiate Within vs Overall sigma.
+
+**PRD source:** prd-v3.md
+
+### Story 9.1: Create Sigma Estimation Module & Remove Stability Analysis
+
+As a **user**,
+I want **the system to use properly differentiated sigma estimates for capability indices**,
+So that **Cp/Cpk reflect short-term Within variation and Pp/Ppk reflect long-term Overall variation**.
+
+**FRs covered (PRD-v3):** FR-CP14
+
+**Supersedes:** Story 7.3 (Stability Analysis with I-MR Control Charts) — entirely removed
+
+**Acceptance Criteria:**
+
+**Given** a new module `sigma_estimation.py` is created
+**When** the module is implemented
+**Then** it calculates σ_within = MR̄ / d2 (where d2 = 1.128 for n=2 moving ranges)
+**And** it calculates σ_overall = sample standard deviation of the data
+**And** both values are returned in the analysis results
+**And** σ_within is used exclusively for Cp and Cpk calculations
+**And** σ_overall is used exclusively for Pp and Ppk calculations
+
+**Given** stability analysis code exists from Story 7.3
+**When** the v3 scope refinement is applied
+**Then** all stability analysis functions are removed (I-MR chart calculations, 7 instability rules)
+**And** the `stability_analysis.py` module (if it exists) is deleted or replaced by `sigma_estimation.py`
+**And** `capacidad_proceso_calculator.py` is updated to import from `sigma_estimation.py` instead
+**And** no stability-related calculations remain in the Python codebase
+
+**Given** the analysis runs with the new sigma module
+**When** results are returned
+**Then** the results JSON includes both `sigma_within` and `sigma_overall` values
+**And** no control limits (LCI, LCS), instability rules, or stability conclusions are present in results
+
+---
+
+### Story 9.2: Update Capability Index Formulas with Explicit Sigma Differentiation
+
+As a **user**,
+I want **capability indices calculated with the correct sigma for each metric**,
+So that **Cp/Cpk (Within) and Pp/Ppk (Overall) are statistically accurate and comparable to Minitab**.
+
+**FRs covered (PRD-v3):** FR-CP14
+
+**Supersedes:** Story 7.4 capability index calculations (partial update)
+
+**Acceptance Criteria:**
+
+**Given** LEI and LES are provided and σ_within and σ_overall are calculated
+**When** capability indices are computed
+**Then** the system calculates:
+  - Cp = (LES - LEI) / (6 × σ_within)
+  - Cpk = min[(LES - μ) / (3 × σ_within), (μ - LEI) / (3 × σ_within)]
+  - Pp = (LES - LEI) / (6 × σ_overall)
+  - Ppk = min[(LES - μ) / (3 × σ_overall), (μ - LEI) / (3 × σ_overall)]
+**And** the formulas are explicitly documented in code comments
+
+**Given** the results JSON is generated
+**When** capability indices are included
+**Then** the output clearly labels which sigma was used for each index pair
+**And** both sigma values are reported alongside the indices
+**And** classification still uses Cpk (≥1.33 Capaz, 1.00–1.33 Marginal, <1.00 No Capaz)
+
+**Given** data is non-normal with a fitted alternative distribution
+**When** capability indices are calculated
+**Then** distribution-based PPM calculation uses the fitted distribution
+**And** the sigma differentiation still applies for Cp/Cpk vs Pp/Ppk
+
+---
+
+### Story 9.3: Remove I-Chart & MR-Chart, Update Histogram & chartData Interface
+
+As a **user**,
+I want **to see only the 2 relevant charts (Histogram and Normality Plot)**,
+So that **the visualization focuses on normality and capability without stability clutter**.
+
+**FRs covered (PRD-v3):** FR-CP17
+
+**Supersedes:** Story 8.1 (I-Chart portion + Histogram LCI/LCS), Story 8.2 (MR-Chart portion)
+
+**Acceptance Criteria:**
+
+**Given** the I-Chart and MR-Chart components exist from Epic 8
+**When** the v3 scope refinement is applied
+**Then** `IChart.tsx` is deleted
+**And** `MRChart.tsx` is deleted
+**And** any imports or references to these components are removed from the codebase
+
+**Given** the Histogram component exists
+**When** it is updated for v3
+**Then** the green dashed control limit lines (LCI/LCS) are removed
+**And** the histogram retains: frequency bars, LEI (red), LES (red), Mean (blue), distribution curve
+**And** the visible values show LEI, LES, and Mean only (no LCI, LCS)
+
+**Given** the TypeScript `CapacidadProcesoChartData` interface exists
+**When** it is updated for v3
+**Then** the `charts` tuple contains exactly 2 entries: `histogram` and `normalityPlot`
+**And** the `iChart` and `mrChart` entries are removed
+**And** the histogram `data` type no longer includes `lci` or `lcs` fields
+**And** the normalityPlot definition remains unchanged
+
+**Given** the Python analysis generates `chartData`
+**When** the output is structured
+**Then** `chartData.charts` contains exactly 2 chart objects
+**And** no I-Chart or MR-Chart data is generated
+**And** the histogram chart data does not include `lci` or `lcs` values
+
+---
+
+### Story 9.4: Update Agent Instructions & Presentation — Remove Stability
+
+As a **user**,
+I want **the analysis interpretation to focus on normality and capability without mentioning stability**,
+So that **the results are clear, consistent with the 2-pillar scope, and not confusing**.
+
+**FRs covered (PRD-v3):** FR-CP19
+
+**Supersedes:** Story 8.4 instruction/presentation portions related to stability
+
+**Acceptance Criteria:**
+
+**Given** the Python analysis generates the `instructions` markdown
+**When** Part 1 (Análisis Técnico) is constructed
+**Then** it includes: basic statistics table, normality result (A², p-value, conclusion), transformation details if applicable
+**And** it includes: "Desviaciones estándar: σ Within = {value}, σ Overall = {value}"
+**And** it includes: capability indices table (Cp, Cpk, Pp, Ppk) with sigma labels
+**And** it does NOT include: control limits table (X̄, LCI, LCS, MR̄)
+**And** it does NOT include: stability rules list or their evaluations
+
+**Given** Part 2 (Conclusión Ejecutiva) is constructed
+**When** the conclusion is generated
+**Then** it states: "Los datos SON/NO SON normales" with reason
+**And** it states: "El proceso ES/NO ES capaz" with Cpk value and classification
+**And** it does NOT state anything about stability (no "estable/inestable")
+
+**Given** Part 3 (Conclusión Terrenal) is constructed
+**When** the plain-language summary is generated
+**Then** it explains normality and capability in simple terms
+**And** it provides specific recommendations based on results
+**And** it does NOT mention stability, control charts, or control limits
+
+**Given** the agent system prompt or tool instructions reference stability
+**When** the v3 update is applied
+**Then** all stability-related instructions are removed from the agent's guidance
+**And** the agent's follow-up capability correctly answers questions about the 2-pillar analysis
+**And** if a user asks about stability, the agent explains it is not part of this analysis scope

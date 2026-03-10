@@ -296,15 +296,12 @@ export interface InteractionPlotData {
 }
 
 // =============================================================================
-// Story 8.1: Capacidad de Proceso Chart Data Types (re-exported from analysis.ts)
+// Capacidad de Proceso Chart Data Types (re-exported from analysis.ts)
 // =============================================================================
 
 // Import from analysis.ts for use in API context
 export type {
   HistogramChartData,
-  IChartData,
   FittedDistributionCurve,
-  RuleViolation,
-  ChartPoint,
   CapacidadProcesoChartDataItem,
 } from './analysis'

@@ -1,13 +1,10 @@
 """
 Capability Indices Module - Process Capability Calculations
 
-Story 7.4: Capability Indices & API Integration
 Provides Cp, Cpk, Pp, Ppk calculations and capability classification.
+Sigma values are received pre-calculated from sigma_estimation.py.
 
 All calculations use pure Python/NumPy (no scipy) to meet Vercel 250MB limit.
-
-Control Chart Constants (AIAG SPC Manual, n=2):
-- d2 = 1.128 (Sigma estimation factor for moving range)
 
 Capability Thresholds (Industry Standard):
 - Excellent: Cpk >= 1.67
@@ -33,8 +30,6 @@ from .distribution_fitting import (
 # =============================================================================
 # Statistical Constants
 # =============================================================================
-
-D2_CONSTANT = 1.128  # For n=2 moving range (AIAG SPC Manual)
 
 CAPABILITY_THRESHOLDS = {
     'excellent': 1.67,
@@ -87,48 +82,6 @@ def validate_spec_limits(lei: float | None, les: float | None) -> dict[str, Any]
         errors.append(f"El LEI ({lei}) debe ser menor que el LES ({les})")
 
     return {'valid': len(errors) == 0, 'errors': errors}
-
-
-# =============================================================================
-# Sigma Calculations
-# =============================================================================
-
-def calculate_sigma_within(mr_bar: float) -> float:
-    """
-    Calculate within-subgroup standard deviation from MR̄.
-
-    σ_within = MR̄ / d2 where d2 = 1.128 (for n=2)
-
-    Args:
-        mr_bar: Mean of moving ranges (MR̄)
-
-    Returns:
-        Within-subgroup standard deviation
-    """
-    if mr_bar <= 0:
-        return 0.0
-    return mr_bar / D2_CONSTANT
-
-
-def calculate_sigma_overall(values: np.ndarray) -> float:
-    """
-    Calculate overall sample standard deviation.
-
-    Uses ddof=1 for sample standard deviation.
-
-    Args:
-        values: NumPy array of numeric values
-
-    Returns:
-        Overall standard deviation (sample, ddof=1)
-    """
-    if len(values) < 2:
-        return 0.0
-
-    std = np.std(values, ddof=1)
-    if np.isnan(std):
-        return 0.0
-    return float(std)
 
 
 # =============================================================================
@@ -570,7 +523,7 @@ def calculate_capability_indices(
     values: np.ndarray,
     lei: float,
     les: float,
-    stability_result: dict[str, Any],
+    sigma_result: dict[str, Any],
     normality_result: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """
@@ -578,9 +531,9 @@ def calculate_capability_indices(
 
     Steps:
     1. Validate specification limits
-    2. Extract mean and sigma values
-    3. Calculate Cp, Cpk using sigma_within
-    4. Calculate Pp, Ppk using sigma_overall
+    2. Extract mean and sigma values from sigma_result
+    3. Calculate Cp, Cpk using sigma_within (short-term)
+    4. Calculate Pp, Ppk using sigma_overall (long-term)
     5. Classify indices
     6. Calculate PPM
 
@@ -588,7 +541,8 @@ def calculate_capability_indices(
         values: NumPy array of measurement values
         lei: Lower specification limit
         les: Upper specification limit
-        stability_result: Result from stability analysis (contains MR̄ for sigma_within)
+        sigma_result: Result from sigma_estimation.estimate_sigma()
+                      {'sigma_within': float, 'sigma_overall': float, 'mr_bar': float}
         normality_result: Optional normality analysis result (for non-normal handling)
 
     Returns:
@@ -638,16 +592,10 @@ def calculate_capability_indices(
     # Extract mean
     mean = float(np.mean(values))
 
-    # Extract sigma_within from stability result
-    mr_bar = stability_result.get('i_chart', {}).get('mr_bar', 0)
-    sigma_within = calculate_sigma_within(mr_bar)
-
-    # Also check if stability_result has sigma directly (from perform_stability_analysis)
-    if sigma_within == 0 and 'sigma' in stability_result:
-        sigma_within = stability_result['sigma']
-
-    # Calculate sigma_overall
-    sigma_overall = calculate_sigma_overall(values)
+    # Cp/Cpk use sigma_within (short-term, MR̄/d2 method)
+    sigma_within = sigma_result.get('sigma_within', 0.0)
+    # Pp/Ppk use sigma_overall (long-term, sample std dev)
+    sigma_overall = sigma_result.get('sigma_overall', 0.0)
 
     # Check if data is non-normal and use alternative calculation
     if normality_result is not None and not normality_result.get('is_normal', True):
@@ -858,17 +806,17 @@ def generate_capability_instructions(capability_result: dict[str, Any]) -> str:
 
 ---
 
-## Conclusión Ejecutiva
+## Conclusión Técnica
 
-| Aspecto | Resultado |
-|---------|-----------|
-| **Capacidad (Cpk)** | {cpk_emoji} {cpk_class.get('classification', 'N/A')} |
-| **Desempeño (Ppk)** | {ppk_emoji} {ppk_class.get('classification', 'N/A')} |
-| **PPM Total Esperado** | {ppm_total:,} ({ppm_total_pct:.4f}%) |
+| Aspecto | Resultado | Qué significa |
+|---------|-----------|---------------|
+| **Capacidad (Cpk)** | {cpk_emoji} {cpk_class.get('classification', 'N/A')} | Cpk mide qué tan centrado y estrecho está su proceso respecto a los límites de especificación. Un Cpk ≥ 1.33 indica que el proceso cabe holgadamente dentro de las tolerancias. |
+| **Desempeño (Ppk)** | {ppk_emoji} {ppk_class.get('classification', 'N/A')} | Ppk evalúa el desempeño real considerando toda la variación histórica. Si Ppk es menor que Cpk, hay fuentes de variación a largo plazo que deben investigarse. |
+| **PPM Total Esperado** | {ppm_total:,} ({ppm_total_pct:.4f}%) | De cada millón de piezas producidas, se esperaría que aproximadamente {ppm_total:,} estén fuera de especificación. |
 
 ---
 
-## Conclusión Terrenal
+## Conclusión Práctica
 
 {interpretation}
 

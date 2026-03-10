@@ -1,31 +1,26 @@
 """
 Tests for Capability Indices Module
 
-Story 7.4: Capability Indices & API Integration
 Tests for Cp, Cpk, Pp, Ppk calculations and classifications.
 
 Test coverage:
-- sigma_within calculation (MR̄/d2)
-- sigma_overall calculation (sample std dev)
 - Cp calculation with known values
 - Cpk calculation (balanced, Cpu limited, Cpl limited)
 - Pp calculation
 - Ppk calculation
 - Specification limit validation
 - Capability classification thresholds
+- Sigma differentiation: Cp/Cpk use sigma_within, Pp/Ppk use sigma_overall
 - Edge cases (zero sigma, data at spec limits)
-- Non-normal capability calculation
+- Non-normal capability calculation with sigma differentiation
 - PPM calculation accuracy
 """
 import pytest
 import numpy as np
 
 from api.utils.capability_indices import (
-    D2_CONSTANT,
     CAPABILITY_THRESHOLDS,
     validate_spec_limits,
-    calculate_sigma_within,
-    calculate_sigma_overall,
     calculate_cp,
     calculate_cpk,
     calculate_pp,
@@ -45,9 +40,10 @@ from api.utils.capability_indices import (
 class TestConstants:
     """Test module constants are correct."""
 
-    def test_d2_constant(self):
-        """d2 should be 1.128 for n=2 moving range."""
-        assert D2_CONSTANT == 1.128
+    def test_d2_constant_not_in_capability_indices(self):
+        """D2_CONSTANT should NOT be in capability_indices (only in sigma_estimation)."""
+        import api.utils.capability_indices as ci
+        assert not hasattr(ci, 'D2_CONSTANT')
 
     def test_capability_thresholds(self):
         """Capability thresholds should match industry standards."""
@@ -56,52 +52,11 @@ class TestConstants:
         assert CAPABILITY_THRESHOLDS['marginal'] == 1.00
         assert CAPABILITY_THRESHOLDS['inadequate'] == 0.67
 
-
-# =============================================================================
-# Test Sigma Calculations
-# =============================================================================
-
-class TestSigmaCalculations:
-    """Test sigma (standard deviation) calculations."""
-
-    def test_sigma_within_basic(self):
-        """sigma_within = MR̄ / d2."""
-        mr_bar = 1.128  # MR̄ = d2 → σ = 1.0
-        sigma = calculate_sigma_within(mr_bar)
-        assert sigma == pytest.approx(1.0, abs=0.0001)
-
-    def test_sigma_within_known_value(self):
-        """Test with known MR̄ value."""
-        mr_bar = 2.256  # 2 × d2 → σ = 2.0
-        sigma = calculate_sigma_within(mr_bar)
-        assert sigma == pytest.approx(2.0, abs=0.0001)
-
-    def test_sigma_within_zero(self):
-        """Zero MR̄ should return 0."""
-        sigma = calculate_sigma_within(0.0)
-        assert sigma == 0.0
-
-    def test_sigma_overall_basic(self):
-        """sigma_overall uses sample std dev (ddof=1)."""
-        values = np.array([2, 4, 4, 4, 5, 5, 7, 9])
-        # Mean = 5, sample std dev = 2.138...
-        sigma = calculate_sigma_overall(values)
-        expected = np.std(values, ddof=1)
-        assert sigma == pytest.approx(expected, abs=0.0001)
-
-    def test_sigma_overall_constant_values(self):
-        """Constant values should have sigma = 0."""
-        values = np.array([5.0, 5.0, 5.0, 5.0])
-        sigma = calculate_sigma_overall(values)
-        assert sigma == 0.0
-
-    def test_sigma_overall_single_value(self):
-        """Single value edge case."""
-        values = np.array([5.0])
-        # With ddof=1, std of single value is undefined (NaN in numpy)
-        # Should return 0 for single value
-        sigma = calculate_sigma_overall(values)
-        assert sigma == 0.0
+    def test_sigma_functions_not_in_capability_indices(self):
+        """calculate_sigma_within/overall should NOT be in capability_indices."""
+        import api.utils.capability_indices as ci
+        assert not hasattr(ci, 'calculate_sigma_within')
+        assert not hasattr(ci, 'calculate_sigma_overall')
 
 
 # =============================================================================
@@ -449,19 +404,19 @@ class TestCapabilityIndicesCalculation:
     """Test the main calculate_capability_indices function."""
 
     def test_basic_capability_calculation(self):
-        """Test complete capability calculation."""
-        # Create data centered at 5 with std ~1
+        """Test complete capability calculation with sigma_result format."""
         np.random.seed(42)
         values = np.random.normal(5.0, 1.0, 100)
         lei, les = 2.0, 8.0
 
-        # Mock stability result with known mr_bar
-        stability_result = {
-            'i_chart': {'mr_bar': 1.128},  # σ_within = 1.0
-            'sigma': 1.0
+        # sigma_result format from sigma_estimation.estimate_sigma()
+        sigma_result = {
+            'sigma_within': 1.0,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 1.128
         }
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
         # Check structure
         assert 'cp' in result
@@ -479,12 +434,66 @@ class TestCapabilityIndicesCalculation:
         assert 'ppk_classification' in result
         assert 'ppm' in result
 
+    def test_capability_uses_sigma_within_for_cp_cpk(self):
+        """Cp/Cpk must use sigma_within (short-term)."""
+        values = np.array([4.0, 5.0, 6.0, 5.0, 4.5, 5.5] * 10)
+        mean = float(np.mean(values))
+        lei, les = 2.0, 8.0
+        sigma_within = 0.8
+        sigma_overall = 1.2
+
+        sigma_result = {
+            'sigma_within': sigma_within,
+            'sigma_overall': sigma_overall,
+            'mr_bar': sigma_within * 1.128
+        }
+
+        result = calculate_capability_indices(values, lei, les, sigma_result)
+
+        # Cp = (LES - LEI) / (6 * sigma_within)
+        expected_cp = (les - lei) / (6 * sigma_within)
+        assert result['cp'] == pytest.approx(expected_cp, abs=0.001)
+        assert result['sigma_within'] == sigma_within
+
+        # Cpk = min[(LES - mean) / (3 * sigma_within), (mean - LEI) / (3 * sigma_within)]
+        expected_cpu = (les - mean) / (3 * sigma_within)
+        expected_cpl = (mean - lei) / (3 * sigma_within)
+        expected_cpk = min(expected_cpu, expected_cpl)
+        assert result['cpk'] == pytest.approx(expected_cpk, abs=0.001)
+
+    def test_capability_uses_sigma_overall_for_pp_ppk(self):
+        """Pp/Ppk must use sigma_overall (long-term)."""
+        values = np.array([4.0, 5.0, 6.0, 5.0, 4.5, 5.5] * 10)
+        mean = float(np.mean(values))
+        lei, les = 2.0, 8.0
+        sigma_within = 0.8
+        sigma_overall = 1.2
+
+        sigma_result = {
+            'sigma_within': sigma_within,
+            'sigma_overall': sigma_overall,
+            'mr_bar': sigma_within * 1.128
+        }
+
+        result = calculate_capability_indices(values, lei, les, sigma_result)
+
+        # Pp = (LES - LEI) / (6 * sigma_overall)
+        expected_pp = (les - lei) / (6 * sigma_overall)
+        assert result['pp'] == pytest.approx(expected_pp, abs=0.001)
+        assert result['sigma_overall'] == sigma_overall
+
+        # Ppk = min[(LES - mean) / (3 * sigma_overall), (mean - LEI) / (3 * sigma_overall)]
+        expected_ppu = (les - mean) / (3 * sigma_overall)
+        expected_ppl = (mean - lei) / (3 * sigma_overall)
+        expected_ppk = min(expected_ppu, expected_ppl)
+        assert result['ppk'] == pytest.approx(expected_ppk, abs=0.001)
+
     def test_capability_with_invalid_spec_limits(self):
         """Invalid spec limits should return error result."""
         values = np.array([1, 2, 3, 4, 5])
-        stability_result = {'i_chart': {'mr_bar': 1.128}, 'sigma': 1.0}
+        sigma_result = {'sigma_within': 1.0, 'sigma_overall': 1.58, 'mr_bar': 1.128}
 
-        result = calculate_capability_indices(values, 10.0, 5.0, stability_result)  # LEI > LES
+        result = calculate_capability_indices(values, 10.0, 5.0, sigma_result)  # LEI > LES
 
         assert result.get('valid') is False
         assert 'errors' in result
@@ -494,15 +503,17 @@ class TestCapabilityIndicesCalculation:
         np.random.seed(42)
         values = np.random.normal(5.0, 1.0, 100)
         lei, les = 2.0, 8.0
-        stability_result = {'i_chart': {'mr_bar': 1.128}, 'sigma': 1.0}
+        sigma_result = {
+            'sigma_within': 1.0,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 1.128
+        }
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
-        # Cpk should be <= Cp (centering penalty)
         if result['cp'] is not None and result['cpk'] is not None:
             assert result['cpk'] <= result['cp'] + 0.001
 
-        # Ppk should be <= Pp
         if result['pp'] is not None and result['ppk'] is not None:
             assert result['ppk'] <= result['pp'] + 0.001
 
@@ -511,14 +522,16 @@ class TestCapabilityIndicesCalculation:
         np.random.seed(42)
         values = np.random.normal(5.0, 1.0, 50)
         lei, les = 2.0, 8.0
-        stability_result = {'i_chart': {'mr_bar': 1.128}, 'sigma': 1.0}
+        sigma_result = {
+            'sigma_within': 1.0,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 1.128
+        }
 
-        # Explicitly pass normality_result=None
         result = calculate_capability_indices(
-            values, lei, les, stability_result, normality_result=None
+            values, lei, les, sigma_result, normality_result=None
         )
 
-        # Should use normal method when normality_result is None
         assert result.get('valid', True) is True
         assert result.get('method') == 'normal'
         assert result['cp'] is not None
@@ -529,16 +542,29 @@ class TestCapabilityIndicesCalculation:
         np.random.seed(42)
         values = np.random.normal(5.0, 1.0, 50)
         lei, les = 2.0, 8.0
-        stability_result = {'i_chart': {'mr_bar': 1.128}, 'sigma': 1.0}
+        sigma_result = {
+            'sigma_within': 1.0,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 1.128
+        }
 
-        # Normal data - should use normal method
         normality_result = {'is_normal': True, 'fitted_distribution': None}
 
         result = calculate_capability_indices(
-            values, lei, les, stability_result, normality_result
+            values, lei, les, sigma_result, normality_result
         )
 
         assert result.get('method') == 'normal'
+
+    def test_capability_with_zero_sigma_within(self):
+        """Zero sigma_within should handle gracefully (Cp/Cpk = None)."""
+        values = np.array([5.0, 5.0, 5.0, 5.0, 5.0])
+        sigma_result = {'sigma_within': 0.0, 'sigma_overall': 0.0, 'mr_bar': 0.0}
+
+        result = calculate_capability_indices(values, 2.0, 8.0, sigma_result)
+
+        assert result['cp'] is None
+        assert result['cpk'] is None
 
 
 # =============================================================================
@@ -579,6 +605,41 @@ class TestNonNormalCapability:
         result = calculate_capability_non_normal(values, lei, les, fitted_dist)
 
         assert result['method'] == 'non_normal'
+
+    def test_non_normal_sigma_differentiation_via_wrapper(self):
+        """Non-normal path in calculate_capability_indices still uses sigma_within/sigma_overall."""
+        np.random.seed(42)
+        values = np.exp(np.random.normal(1.0, 0.5, 100))
+        mean = float(np.mean(values))
+        lei, les = 0.5, 10.0
+        sigma_within = 0.8
+        sigma_overall = 1.5
+
+        sigma_result = {
+            'sigma_within': sigma_within,
+            'sigma_overall': sigma_overall,
+            'mr_bar': sigma_within * 1.128
+        }
+
+        normality_result = {
+            'is_normal': False,
+            'fitted_distribution': {
+                'name': 'lognormal',
+                'params': {'mu': 1.0, 'sigma': 0.5}
+            }
+        }
+
+        result = calculate_capability_indices(values, lei, les, sigma_result, normality_result)
+
+        assert result['method'] == 'non_normal'
+        # Cp/Cpk must use sigma_within even in non-normal path
+        expected_cp = (les - lei) / (6 * sigma_within)
+        assert result['cp'] == pytest.approx(expected_cp, abs=0.001)
+        # Pp/Ppk must use sigma_overall even in non-normal path
+        expected_pp = (les - lei) / (6 * sigma_overall)
+        assert result['pp'] == pytest.approx(expected_pp, abs=0.001)
+        assert result['sigma_within'] == sigma_within
+        assert result['sigma_overall'] == sigma_overall
 
 
 # =============================================================================
@@ -682,30 +743,28 @@ class TestEdgeCases:
     def test_empty_values_array(self):
         """Empty values should be handled."""
         values = np.array([])
-        stability_result = {'i_chart': {'mr_bar': 0}, 'sigma': 0}
+        sigma_result = {'sigma_within': 0.0, 'sigma_overall': 0.0, 'mr_bar': 0.0}
 
-        result = calculate_capability_indices(values, 0.0, 10.0, stability_result)
+        result = calculate_capability_indices(values, 0.0, 10.0, sigma_result)
 
-        # Should return error or None values
         assert result.get('valid') is False or result.get('cpk') is None
 
     def test_single_value(self):
         """Single value should handle gracefully."""
         values = np.array([5.0])
-        stability_result = {'i_chart': {'mr_bar': 0}, 'sigma': 0}
+        sigma_result = {'sigma_within': 0.0, 'sigma_overall': 0.0, 'mr_bar': 0.0}
 
-        result = calculate_capability_indices(values, 0.0, 10.0, stability_result)
+        result = calculate_capability_indices(values, 0.0, 10.0, sigma_result)
 
-        # Should not raise, may have None indices
         assert 'cpk' in result or 'valid' in result
 
     def test_data_exactly_at_spec_limits(self):
         """Data at spec limits should handle correctly."""
-        values = np.array([2.0, 8.0, 5.0, 5.0, 5.0])  # Some at LEI/LES
+        values = np.array([2.0, 8.0, 5.0, 5.0, 5.0])
         lei, les = 2.0, 8.0
-        stability_result = {'i_chart': {'mr_bar': 1.0}, 'sigma': 0.885}
+        sigma_result = {'sigma_within': 0.885, 'sigma_overall': float(np.std(values, ddof=1)), 'mr_bar': 1.0}
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
         assert result['cp'] is not None or result['pp'] is not None
 
@@ -713,9 +772,9 @@ class TestEdgeCases:
         """Negative spec limits should work."""
         values = np.array([-5.0, -4.0, -3.0, -2.0, -1.0])
         lei, les = -6.0, 0.0
-        stability_result = {'i_chart': {'mr_bar': 1.0}, 'sigma': 0.885}
+        sigma_result = {'sigma_within': 0.885, 'sigma_overall': float(np.std(values, ddof=1)), 'mr_bar': 1.0}
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
         assert result['cp'] is not None
 
@@ -723,11 +782,14 @@ class TestEdgeCases:
         """Very small sigma should not cause numerical issues."""
         values = np.array([5.0, 5.0001, 5.0002, 4.9999, 4.9998])
         lei, les = 0.0, 10.0
-        stability_result = {'i_chart': {'mr_bar': 0.0001}, 'sigma': 0.0001 / 1.128}
+        sigma_result = {
+            'sigma_within': 0.0001 / 1.128,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 0.0001
+        }
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
-        # Cp should be very high but not infinite
         if result['cp'] is not None:
             assert result['cp'] > 100
 
@@ -736,9 +798,13 @@ class TestEdgeCases:
         np.random.seed(42)
         values = np.random.normal(5.0, 1.0, 1000)
         lei, les = 2.0, 8.0
-        stability_result = {'i_chart': {'mr_bar': 1.128}, 'sigma': 1.0}
+        sigma_result = {
+            'sigma_within': 1.0,
+            'sigma_overall': float(np.std(values, ddof=1)),
+            'mr_bar': 1.128
+        }
 
-        result = calculate_capability_indices(values, lei, les, stability_result)
+        result = calculate_capability_indices(values, lei, les, sigma_result)
 
         assert result['cp'] is not None
         assert result['cpk'] is not None

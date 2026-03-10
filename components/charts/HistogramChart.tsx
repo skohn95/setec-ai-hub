@@ -113,7 +113,7 @@ function formatNumber(value: number): string {
 }
 
 /**
- * Histogram Legend component for specification and control limits
+ * Histogram Legend component for specification limits
  */
 function HistogramLegend({ showCurve, distributionName }: { showCurve?: boolean; distributionName?: string }) {
   // Map distribution names to Spanish display names
@@ -141,10 +141,6 @@ function HistogramLegend({ showCurve, distributionName }: { showCurve?: boolean;
         <div className="w-4 h-0.5 bg-[#3B82F6]" />
         <span>Media (μ)</span>
       </div>
-      <div className="flex items-center gap-1">
-        <div className="w-4 h-0 border-t-2 border-dashed border-[#10B981]" />
-        <span>LCI / LCS (Control)</span>
-      </div>
       {showCurve && (
         <div className="flex items-center gap-1">
           <div className="w-4 h-0.5 bg-[#F97316]" />
@@ -156,8 +152,8 @@ function HistogramLegend({ showCurve, distributionName }: { showCurve?: boolean;
 }
 
 /**
- * HistogramChart component displays a histogram with specification limits,
- * control limits, and mean line for Capacidad de Proceso analysis.
+ * HistogramChart component displays a histogram with specification limits
+ * and mean line for Capacidad de Proceso analysis.
  */
 export default function HistogramChart({ data }: HistogramChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
@@ -209,7 +205,7 @@ export default function HistogramChart({ data }: HistogramChartProps) {
     return null
   }
 
-  const { lei, les, mean, lcl, ucl, fitted_distribution } = data.data
+  const { lei, les, mean, fitted_distribution } = data.data
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -239,9 +235,7 @@ export default function HistogramChart({ data }: HistogramChartProps) {
     lei,
     les,
     mean,
-    lcl,
-    ucl,
-  ].filter((v): v is number => v !== null && v !== undefined)
+  ]
   const xMin = Math.min(...allXValues)
   const xMax = Math.max(...allXValues)
   const xPadding = (xMax - xMin) * 0.05
@@ -266,7 +260,7 @@ export default function HistogramChart({ data }: HistogramChartProps) {
       <div ref={chartRef} data-testid="histogram-chart" className="mb-4 bg-card rounded-lg border p-4">
         <h4 className="text-sm font-medium mb-3 text-foreground">Histograma de Datos</h4>
         <p className="text-xs text-muted-foreground mb-2">
-          Distribución de frecuencias con límites de especificación y control.
+          Distribución de frecuencias con límites de especificación.
         </p>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart
@@ -333,26 +327,6 @@ export default function HistogramChart({ data }: HistogramChartProps) {
               strokeWidth={2}
               label={{ value: 'μ', position: 'top', fontSize: 10, fill: '#3B82F6' }}
             />
-            {/* LCI - Lower Control Limit */}
-            {lcl !== null && lcl !== undefined && (
-              <ReferenceLine
-                x={lcl}
-                stroke="#10B981"
-                strokeDasharray="5 5"
-                strokeWidth={2}
-                label={{ value: 'LCI', position: 'top', fontSize: 10, fill: '#10B981' }}
-              />
-            )}
-            {/* LCS - Upper Control Limit */}
-            {ucl !== null && ucl !== undefined && (
-              <ReferenceLine
-                x={ucl}
-                stroke="#10B981"
-                strokeDasharray="5 5"
-                strokeWidth={2}
-                label={{ value: 'LCS', position: 'top', fontSize: 10, fill: '#10B981' }}
-              />
-            )}
             {/* Histogram bars */}
             <Bar
               dataKey="count"

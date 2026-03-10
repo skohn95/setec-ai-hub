@@ -133,30 +133,6 @@ export const CAPACIDAD_PROCESO_ERRORS = {
   SAMPLE_SIZE_WARNING: 'Se recomienda un mínimo de 20 valores para obtener estimaciones confiables de capacidad.',
 } as const
 
-// Story 7.3: Stability Analysis messages (Spanish)
-// Note: These constants are defined for Epic 8 frontend chart components.
-// Python generates instructions with hardcoded Spanish text; these provide
-// consistent keys for frontend localization if needed.
-export const STABILITY_RULE_DESCRIPTIONS = {
-  rule_1: 'Regla 1: Puntos fuera de los límites de control (más allá de 3σ)',
-  rule_2: 'Regla 2: 7 puntos consecutivos con tendencia ascendente o descendente',
-  rule_3: 'Regla 3: 7 puntos consecutivos dentro de 1σ del centro (estratificación)',
-  rule_4: 'Regla 4: 7 puntos consecutivos entre 2σ y 3σ arriba del centro',
-  rule_5: 'Regla 5: 7 puntos consecutivos entre 2σ y 3σ debajo del centro',
-  rule_6: 'Regla 6: 7 puntos consecutivos en patrón cíclico (alternante)',
-  rule_7: 'Regla 7: 7 puntos consecutivos arriba o debajo de la línea central',
-} as const
-
-export const STABILITY_CONCLUSIONS = {
-  stable: '✅ **Proceso Estable:** El proceso está bajo control estadístico.',
-  unstable: '⚠️ **Proceso Inestable:** Se detectaron señales de causa especial.',
-} as const
-
-export const STABILITY_INTERPRETATION = {
-  stable: 'Los datos no muestran patrones de variación por causas especiales. Es apropiado calcular índices de capacidad.',
-  unstable: 'El proceso presenta variación por causas especiales. Se recomienda investigar y eliminar estas causas antes de calcular índices de capacidad.',
-} as const
-
 // Story 7.4: Capability Analysis messages (Spanish)
 export const CAPABILITY_CLASSIFICATIONS_MESSAGES = {
   excellent: 'Excelente - El proceso supera ampliamente los requisitos',
@@ -178,8 +154,7 @@ export const CAPABILITY_RECOMMENDATIONS = {
   centering_issue: 'El proceso no está centrado entre las especificaciones. Ajuste el proceso hacia el valor objetivo.',
   spread_issue: 'La variación del proceso es excesiva. Identifique y elimine fuentes de variación.',
   both_issues: 'El proceso tiene problemas de centrado y variación. Priorice reducir la variación primero.',
-  stable_capable: 'El proceso es estable y capaz. Continúe con monitoreo de control estadístico.',
-  unstable_warning: 'El proceso es inestable. Los índices de capacidad pueden no ser confiables hasta lograr estabilidad.',
+  capable: 'El proceso es capaz. Continúe con monitoreo periódico.',
   non_normal_note: 'Los datos no siguen una distribución normal. Los índices se calcularon usando la distribución ajustada.',
 } as const
 

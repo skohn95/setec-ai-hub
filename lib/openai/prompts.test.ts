@@ -28,9 +28,10 @@ describe('prompts', () => {
         expect(prompt).toContain('normalidad')
       })
 
-      it('allows stability and I-MR chart questions', () => {
+      it('allows sigma Within/Overall questions', () => {
         const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
-        expect(prompt).toContain('estabilidad')
+        expect(prompt).toContain('sigma within')
+        expect(prompt).toContain('sigma overall')
       })
 
       it('allows specification limits questions', () => {
@@ -240,9 +241,10 @@ describe('prompts', () => {
         expect(prompt).toContain('límite')
       })
 
-      it('recognizes LEI/LES patterns in user messages', () => {
+      it('recognizes LEI/LES specification limits', () => {
         const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
-        expect(prompt).toContain('lei=')
+        expect(prompt).toContain('lei')
+        expect(prompt).toContain('les')
       })
 
       it('has three-part result presentation for capacidad de proceso', () => {
@@ -259,10 +261,10 @@ describe('prompts', () => {
         expect(prompt).toContain('anderson-darling')
       })
 
-      it('includes stability analysis guidance', () => {
+      it('includes sigma de corto plazo (Within) / largo plazo (Overall) guidance', () => {
         const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
-        expect(prompt).toContain('estabilidad')
-        expect(prompt).toContain('i-mr')
+        expect(prompt).toContain('sigma de corto plazo (within')
+        expect(prompt).toContain('sigma de largo plazo (overall')
       })
 
       it('includes capability indices guidance', () => {
@@ -273,12 +275,11 @@ describe('prompts', () => {
         expect(prompt).toContain('ppk')
       })
 
-      it('describes the 4 charts generated', () => {
+      it('describes the 2 charts generated', () => {
         const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
         expect(prompt).toContain('histograma')
-        expect(prompt).toContain('gráfico i')
-        expect(prompt).toContain('gráfico mr')
-        expect(prompt).toContain('normalidad')
+        expect(prompt).toContain('gráfico de normalidad')
+        expect(prompt).toContain('2 gráficos')
       })
     })
   })

@@ -1259,15 +1259,15 @@ class TestAnalyzeEndpointCapacidadProcesoIntegration:
         )
 
 
-class TestAnalyzeEndpointCapacidadProcesoStability:
-    """Integration tests for Capacidad de Proceso stability analysis (Story 7.3)."""
+class TestAnalyzeEndpointCapacidadProcesoSigma:
+    """Integration tests for Capacidad de Proceso sigma estimation (Story 9.1)."""
 
     @patch('analyze.fetch_file_from_storage')
     @patch('analyze.load_excel_to_dataframe')
     @patch('analyze.update_file_validation')
     @patch('analyze.update_file_status')
     @patch('analyze.save_analysis_results')
-    def test_capacidad_proceso_returns_stability_results(
+    def test_capacidad_proceso_returns_sigma_results(
         self,
         mock_save_results,
         mock_update_status,
@@ -1275,7 +1275,7 @@ class TestAnalyzeEndpointCapacidadProcesoStability:
         mock_load_excel,
         mock_fetch_file
     ):
-        """Test that capacidad_proceso returns stability analysis results."""
+        """Test that capacidad_proceso returns sigma estimation results."""
         from analyze import handler
         import pandas as pd
 
@@ -1309,22 +1309,22 @@ class TestAnalyzeEndpointCapacidadProcesoStability:
         response = json.loads(mock_handler.wfile.getvalue().decode())
         results = response['data']['results']
 
-        # Verify stability results structure
-        assert 'stability' in results
-        stability = results['stability']
-        assert 'is_stable' in stability
-        assert 'conclusion' in stability
-        assert 'i_chart' in stability
-        assert 'mr_chart' in stability
-        assert 'rules' in stability
-        assert 'sigma' in stability
+        # Verify sigma results structure (replaces stability)
+        assert 'sigma' in results
+        sigma = results['sigma']
+        assert 'sigma_within' in sigma
+        assert 'sigma_overall' in sigma
+        assert 'mr_bar' in sigma
+
+        # Stability should NOT be present
+        assert 'stability' not in results
 
     @patch('analyze.fetch_file_from_storage')
     @patch('analyze.load_excel_to_dataframe')
     @patch('analyze.update_file_validation')
     @patch('analyze.update_file_status')
     @patch('analyze.save_analysis_results')
-    def test_capacidad_proceso_stability_has_i_chart_structure(
+    def test_capacidad_proceso_sigma_values_are_positive(
         self,
         mock_save_results,
         mock_update_status,
@@ -1332,7 +1332,7 @@ class TestAnalyzeEndpointCapacidadProcesoStability:
         mock_load_excel,
         mock_fetch_file
     ):
-        """Test that I-Chart results have correct structure."""
+        """Test that sigma values are positive for variable data."""
         from analyze import handler
         import pandas as pd
 
@@ -1361,113 +1361,11 @@ class TestAnalyzeEndpointCapacidadProcesoStability:
         h.do_POST()
 
         response = json.loads(mock_handler.wfile.getvalue().decode())
-        i_chart = response['data']['results']['stability']['i_chart']
+        sigma = response['data']['results']['sigma']
 
-        assert 'center' in i_chart
-        assert 'ucl' in i_chart
-        assert 'lcl' in i_chart
-        assert 'ooc_points' in i_chart
-        assert isinstance(i_chart['ooc_points'], list)
-
-    @patch('analyze.fetch_file_from_storage')
-    @patch('analyze.load_excel_to_dataframe')
-    @patch('analyze.update_file_validation')
-    @patch('analyze.update_file_status')
-    @patch('analyze.save_analysis_results')
-    def test_capacidad_proceso_stability_has_all_seven_rules(
-        self,
-        mock_save_results,
-        mock_update_status,
-        mock_update_validation,
-        mock_load_excel,
-        mock_fetch_file
-    ):
-        """Test that all 7 stability rules are evaluated."""
-        from analyze import handler
-        import pandas as pd
-
-        test_df = pd.DataFrame({'Valores': [10.0, 20.0, 30.0, 40.0, 50.0] * 6})
-
-        mock_fetch_file.return_value = (b'file_bytes', None)
-        mock_load_excel.return_value = (test_df, None)
-        mock_update_validation.return_value = True
-        mock_update_status.return_value = True
-        mock_save_results.return_value = True
-
-        mock_handler = MockRequestHandler(body={
-            'analysis_type': 'capacidad_proceso',
-            'file_id': '550e8400-e29b-41d4-a716-446655440000'
-        })
-
-        h = handler.__new__(handler)
-        h.__dict__.update(mock_handler.__dict__)
-        h.send_response = mock_handler.send_response
-        h.send_header = mock_handler.send_header
-        h.end_headers = mock_handler.end_headers
-        h.wfile = mock_handler.wfile
-        h.rfile = mock_handler.rfile
-        h.headers = mock_handler.headers
-
-        h.do_POST()
-
-        response = json.loads(mock_handler.wfile.getvalue().decode())
-        rules = response['data']['results']['stability']['rules']
-
-        # All 7 rules should be present
-        for i in range(1, 8):
-            rule_key = f'rule_{i}'
-            assert rule_key in rules
-            assert 'cumple' in rules[rule_key]
-            assert 'violations' in rules[rule_key]
-
-    @patch('analyze.fetch_file_from_storage')
-    @patch('analyze.load_excel_to_dataframe')
-    @patch('analyze.update_file_validation')
-    @patch('analyze.update_file_status')
-    @patch('analyze.save_analysis_results')
-    def test_capacidad_proceso_instructions_include_stability(
-        self,
-        mock_save_results,
-        mock_update_status,
-        mock_update_validation,
-        mock_load_excel,
-        mock_fetch_file
-    ):
-        """Test that instructions include stability analysis section."""
-        from analyze import handler
-        import pandas as pd
-
-        test_df = pd.DataFrame({'Valores': [97.52, 111.20, 83.97, 103.58, 99.45] * 6})
-
-        mock_fetch_file.return_value = (b'file_bytes', None)
-        mock_load_excel.return_value = (test_df, None)
-        mock_update_validation.return_value = True
-        mock_update_status.return_value = True
-        mock_save_results.return_value = True
-
-        mock_handler = MockRequestHandler(body={
-            'analysis_type': 'capacidad_proceso',
-            'file_id': '550e8400-e29b-41d4-a716-446655440000'
-        })
-
-        h = handler.__new__(handler)
-        h.__dict__.update(mock_handler.__dict__)
-        h.send_response = mock_handler.send_response
-        h.send_header = mock_handler.send_header
-        h.end_headers = mock_handler.end_headers
-        h.wfile = mock_handler.wfile
-        h.rfile = mock_handler.rfile
-        h.headers = mock_handler.headers
-
-        h.do_POST()
-
-        response = json.loads(mock_handler.wfile.getvalue().decode())
-        instructions = response['data']['instructions']
-
-        # Instructions should mention stability analysis
-        assert 'Estabilidad' in instructions
-        assert 'Carta I' in instructions or 'I-MR' in instructions
-        assert 'Regla' in instructions or 'CUMPLE' in instructions
+        assert sigma['sigma_within'] > 0
+        assert sigma['sigma_overall'] > 0
+        assert sigma['mr_bar'] > 0
 
 
 class TestAnalyzeEndpointCapacidadProcesoCapability:

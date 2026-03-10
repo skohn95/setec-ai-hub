@@ -8,11 +8,7 @@ export { default as MeasurementsByOperator } from './MeasurementsByOperator'
 export { default as InteractionPlot } from './InteractionPlot'
 export { default as StaticChartDisplay } from './StaticChartDisplay'
 
-// Story 8.1: Capacidad de Proceso charts
+// Capacidad de Proceso charts
 export { default as HistogramChart } from './HistogramChart'
-export { default as IChart } from './IChart'
 export { default as CapacidadProcesoCharts } from './CapacidadProcesoCharts'
-
-// Story 8.2: MR-Chart and Normality Plot
-export { default as MRChart } from './MRChart'
 export { default as NormalityPlot } from './NormalityPlot'
