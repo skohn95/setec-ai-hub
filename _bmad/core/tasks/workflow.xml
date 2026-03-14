@@ -27,6 +27,10 @@
         <phase n="4">Ask user for input of any variables that are still unknown</phase>
       </substep>
 
+      <substep n="1a2" title="Check Execution Mode">
+        <check>If workflow.yaml contains execution_mode: yolo → Activate #yolo mode immediately (skip all confirmations)</check>
+      </substep>
+
       <substep n="1b" title="Load Required Components">
         <mandate>Instructions: Read COMPLETE file from path OR embedded list (REQUIRED)</mandate>
         <check>If template path → Read COMPLETE template file</check>

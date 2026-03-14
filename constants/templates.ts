@@ -31,4 +31,13 @@ export const TEMPLATES: TemplateDefinition[] = [
     downloadPath: '/templates/plantilla-capacidad-proceso.xlsx',
     analysisType: 'capacidad_proceso',
   },
+  {
+    id: 'hipotesis_2_muestras',
+    title: 'Prueba de Hipótesis — 2 Muestras',
+    description:
+      'Compara dos grupos de datos para determinar si existe una diferencia estadísticamente significativa entre sus medias. Incluye datos de ejemplo con muestras de diferente tamaño.',
+    filename: 'plantilla-hipotesis-2-muestras.xlsx',
+    downloadPath: '/templates/plantilla-hipotesis-2-muestras.xlsx',
+    analysisType: 'hipotesis_2_muestras',
+  },
 ]

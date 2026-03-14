@@ -107,17 +107,21 @@ function getApiBaseUrl(): string {
 /**
  * Invoke the Python analysis endpoint
  *
- * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso')
+ * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso', 'hipotesis_2_muestras')
  * @param fileId - UUID of the file to analyze
  * @param messageId - Optional UUID of the assistant message for result storage
  * @param specLimits - Optional specification limits for capacidad_proceso { lei, les }
+ * @param confidenceLevel - Optional confidence level for hipotesis_2_muestras (0.90, 0.95, 0.99)
+ * @param alternativeHypothesis - Optional alternative hypothesis for hipotesis_2_muestras ('two-sided', 'greater', 'less')
  * @returns Promise with analysis results or error
  */
 export async function invokeAnalysisTool(
   analysisType: string,
   fileId: string,
   messageId?: string,
-  specLimits?: SpecLimits
+  specLimits?: SpecLimits,
+  confidenceLevel?: number,
+  alternativeHypothesis?: string,
 ): Promise<AnalysisResponse> {
   const body: Record<string, unknown> = {
     analysis_type: analysisType,
@@ -132,6 +136,16 @@ export async function invokeAnalysisTool(
   // Only include spec_limits if provided (for capacidad_proceso)
   if (specLimits) {
     body.spec_limits = specLimits
+  }
+
+  // Only include confidence_level if provided (for hipotesis_2_muestras)
+  if (confidenceLevel !== undefined) {
+    body.confidence_level = confidenceLevel
+  }
+
+  // Only include alternative_hypothesis if provided (for hipotesis_2_muestras)
+  if (alternativeHypothesis !== undefined) {
+    body.alternative_hypothesis = alternativeHypothesis
   }
 
   // Build absolute URL for Edge runtime compatibility

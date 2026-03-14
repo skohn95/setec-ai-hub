@@ -118,6 +118,182 @@ class TestAnalyzeEndpointValidation:
         assert 'no soportado' in response['error']['message']
 
 
+class TestHipotesis2MuestrasRouting:
+    """Tests for hipotesis_2_muestras routing in the analyze endpoint."""
+
+    @patch('analyze.save_analysis_results', return_value=True)
+    @patch('analyze.update_file_status', return_value=True)
+    @patch('analyze.update_file_validation')
+    @patch('analyze.load_excel_to_dataframe')
+    @patch('analyze.fetch_file_from_storage')
+    def test_hipotesis_2_muestras_routes_correctly(
+        self, mock_fetch, mock_load, mock_validate, mock_status, mock_save
+    ):
+        """AC 7: hipotesis_2_muestras analysis type routes to the correct handler."""
+        import pandas as pd
+        from analyze import handler
+
+        # Create a valid 2-sample DataFrame
+        df = pd.DataFrame({
+            'Muestra A': [10.1, 10.2, 10.3, 10.4, 10.5],
+            'Muestra B': [11.1, 11.2, 11.3, 11.4, 11.5],
+        })
+        mock_fetch.return_value = (b'fake_bytes', None)
+        mock_load.return_value = (df, None)
+
+        mock_handler = MockRequestHandler(body={
+            'analysis_type': 'hipotesis_2_muestras',
+            'file_id': '550e8400-e29b-41d4-a716-446655440000',
+        })
+
+        h = handler.__new__(handler)
+        h.__dict__.update(mock_handler.__dict__)
+        h.send_response = mock_handler.send_response
+        h.send_header = mock_handler.send_header
+        h.end_headers = mock_handler.end_headers
+        h.wfile = mock_handler.wfile
+        h.rfile = mock_handler.rfile
+        h.headers = mock_handler.headers
+
+        h.do_POST()
+
+        assert mock_handler.response_code == 200
+        response = json.loads(mock_handler.wfile.getvalue().decode())
+        assert response['data'] is not None
+        # Story 10.2: Now returns descriptive + normality results instead of validation-only
+        results = response['data']['results']
+        assert 'descriptive_a' in results
+        assert 'descriptive_b' in results
+        assert results['descriptive_a']['n'] == 5
+        assert results['descriptive_b']['n'] == 5
+        assert 'normality_a' in results
+        assert 'normality_b' in results
+        assert 'sample_size' in results
+        assert 'box_cox' in results
+        assert response['error'] is None
+
+    @patch('analyze.update_file_validation')
+    @patch('analyze.load_excel_to_dataframe')
+    @patch('analyze.fetch_file_from_storage')
+    def test_hipotesis_2_muestras_validation_error_returns_400(
+        self, mock_fetch, mock_load, mock_validate
+    ):
+        """hipotesis_2_muestras with invalid file returns 400 validation error."""
+        import pandas as pd
+        from analyze import handler
+
+        # Create a DataFrame with only one numeric column
+        df = pd.DataFrame({
+            'Muestra A': [10.1, 10.2, 10.3],
+            'Texto': ['a', 'b', 'c'],
+        })
+        mock_fetch.return_value = (b'fake_bytes', None)
+        mock_load.return_value = (df, None)
+
+        mock_handler = MockRequestHandler(body={
+            'analysis_type': 'hipotesis_2_muestras',
+            'file_id': '550e8400-e29b-41d4-a716-446655440000',
+        })
+
+        h = handler.__new__(handler)
+        h.__dict__.update(mock_handler.__dict__)
+        h.send_response = mock_handler.send_response
+        h.send_header = mock_handler.send_header
+        h.end_headers = mock_handler.end_headers
+        h.wfile = mock_handler.wfile
+        h.rfile = mock_handler.rfile
+        h.headers = mock_handler.headers
+
+        h.do_POST()
+
+        assert mock_handler.response_code == 400
+        response = json.loads(mock_handler.wfile.getvalue().decode())
+        assert response['data'] is None
+        assert response['error'] is not None
+
+    def test_hipotesis_2_muestras_in_supported_types(self):
+        """hipotesis_2_muestras is listed in SUPPORTED_ANALYSIS_TYPES."""
+        from analyze import SUPPORTED_ANALYSIS_TYPES
+        assert 'hipotesis_2_muestras' in SUPPORTED_ANALYSIS_TYPES
+
+    def test_hipotesis_2_muestras_invalid_confidence_level_returns_400(self):
+        """Invalid confidence_level returns 400 validation error."""
+        from analyze import handler
+
+        mock_handler = MockRequestHandler(body={
+            'analysis_type': 'hipotesis_2_muestras',
+            'file_id': '550e8400-e29b-41d4-a716-446655440000',
+            'confidence_level': 0.50,
+        })
+
+        h = handler.__new__(handler)
+        h.__dict__.update(mock_handler.__dict__)
+        h.send_response = mock_handler.send_response
+        h.send_header = mock_handler.send_header
+        h.end_headers = mock_handler.end_headers
+        h.wfile = mock_handler.wfile
+        h.rfile = mock_handler.rfile
+        h.headers = mock_handler.headers
+
+        h.do_POST()
+
+        assert mock_handler.response_code == 400
+        response = json.loads(mock_handler.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert '0.90' in response['error']['message']
+
+    def test_hipotesis_2_muestras_invalid_alternative_hypothesis_returns_400(self):
+        """Invalid alternative_hypothesis returns 400 validation error."""
+        from analyze import handler
+
+        mock_handler = MockRequestHandler(body={
+            'analysis_type': 'hipotesis_2_muestras',
+            'file_id': '550e8400-e29b-41d4-a716-446655440000',
+            'alternative_hypothesis': 'invalid',
+        })
+
+        h = handler.__new__(handler)
+        h.__dict__.update(mock_handler.__dict__)
+        h.send_response = mock_handler.send_response
+        h.send_header = mock_handler.send_header
+        h.end_headers = mock_handler.end_headers
+        h.wfile = mock_handler.wfile
+        h.rfile = mock_handler.rfile
+        h.headers = mock_handler.headers
+
+        h.do_POST()
+
+        assert mock_handler.response_code == 400
+        response = json.loads(mock_handler.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'two-sided' in response['error']['message']
+
+    def test_hipotesis_2_muestras_non_numeric_confidence_level_returns_400(self):
+        """Non-numeric confidence_level returns 400 instead of 500."""
+        from analyze import handler
+
+        mock_handler = MockRequestHandler(body={
+            'analysis_type': 'hipotesis_2_muestras',
+            'file_id': '550e8400-e29b-41d4-a716-446655440000',
+            'confidence_level': 'abc',
+        })
+
+        h = handler.__new__(handler)
+        h.__dict__.update(mock_handler.__dict__)
+        h.send_response = mock_handler.send_response
+        h.send_header = mock_handler.send_header
+        h.end_headers = mock_handler.end_headers
+        h.wfile = mock_handler.wfile
+        h.rfile = mock_handler.rfile
+        h.headers = mock_handler.headers
+
+        h.do_POST()
+
+        assert mock_handler.response_code == 400
+        response = json.loads(mock_handler.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+
 class TestAnalyzeEndpointErrorFormat:
     """Tests for error response format."""
 

@@ -1,6 +1,6 @@
-// MSA Analysis types
+// Analysis types (MSA, Capacidad de Proceso, Hipotesis 2 Muestras)
 
-export type AnalysisType = 'gage_rr' | 'capacidad_proceso'
+export type AnalysisType = 'gage_rr' | 'capacidad_proceso' | 'hipotesis_2_muestras'
 
 // FileStatus is imported from chat.ts (exported from there)
 import type { FileStatus } from './chat'
@@ -32,7 +32,7 @@ export interface AnalysisResult {
   messageId: string
   fileId: string
   analysisType: AnalysisType
-  results: GageRRResults | CapacidadProcesoResult
+  results: GageRRResults | CapacidadProcesoResult | Hipotesis2MuestrasResult
   chartData: ChartData
   instructions: string
   pythonVersion: string | null
@@ -308,6 +308,156 @@ export interface NormalityPlotData {
 export type CapacidadProcesoChartDataItem =
   | HistogramChartData
   | NormalityPlotData
+
+// ============================================
+// Hipotesis 2 Muestras Types
+// ============================================
+
+export interface Hipotesis2MuestrasOutliers {
+  q1: number
+  q3: number
+  iqr: number
+  lower_fence: number
+  upper_fence: number
+  outlier_count: number
+  outlier_values: number[]
+  outlier_percentage: number
+}
+
+export interface Hipotesis2MuestrasDescriptive {
+  sample_name: string
+  n: number
+  mean: number
+  median: number
+  std_dev: number
+  skewness: number
+  outliers: Hipotesis2MuestrasOutliers
+}
+
+export interface Hipotesis2MuestrasSampleSizeEntry {
+  n: number
+  tcl_applies: boolean
+  small_sample_warning: boolean
+  note: string
+}
+
+export interface Hipotesis2MuestrasSampleSize {
+  a: Hipotesis2MuestrasSampleSizeEntry
+  b: Hipotesis2MuestrasSampleSizeEntry
+}
+
+export interface Hipotesis2MuestrasNormality {
+  is_normal: boolean
+  ad_statistic: number
+  p_value: number
+  alpha: number
+  is_robust: boolean | null
+  robustness_details: string | null
+}
+
+export interface Hipotesis2MuestrasBoxCox {
+  applied: boolean
+  lambda_a: number | null
+  lambda_b: number | null
+  normality_improved: boolean | null
+  using_transformed_data: boolean
+  warning: string | null
+}
+
+export interface Hipotesis2MuestrasVarianceTest {
+  method: string
+  f_statistic: number
+  p_value: number
+  df1: number
+  df2: number
+  alpha: number
+  equal_variances: boolean
+  conclusion: string
+}
+
+export interface Hipotesis2MuestrasMeansTest {
+  method: string
+  t_statistic: number
+  degrees_of_freedom: number
+  p_value: number
+  ci_lower: number | null
+  ci_upper: number | null
+  difference: number
+  alpha: number
+  confidence_level: number
+  alternative_hypothesis: 'two-sided' | 'greater' | 'less'
+  equal_variances: boolean
+  conclusion: string
+}
+
+export interface Hipotesis2MuestrasResult {
+  descriptive_a: Hipotesis2MuestrasDescriptive
+  descriptive_b: Hipotesis2MuestrasDescriptive
+  sample_size: Hipotesis2MuestrasSampleSize
+  normality_a: Hipotesis2MuestrasNormality
+  normality_b: Hipotesis2MuestrasNormality
+  box_cox: Hipotesis2MuestrasBoxCox
+  variance_test: Hipotesis2MuestrasVarianceTest
+  means_test: Hipotesis2MuestrasMeansTest
+  warnings: string[]
+}
+
+// Chart Data Types for Hipotesis 2 Muestras
+
+export interface Hipotesis2MHistogramBin {
+  start: number
+  end: number
+  count: number
+}
+
+export interface Hipotesis2MHistogramData {
+  type: 'histogram_a' | 'histogram_b'
+  data: {
+    bins: Hipotesis2MHistogramBin[]
+    mean: number
+    sampleName: string
+    outliers: number[]
+  }
+}
+
+export interface Hipotesis2MBoxplotSample {
+  name: string
+  min: number
+  q1: number
+  median: number
+  q3: number
+  max: number
+  outliers: number[]
+  mean: number
+}
+
+export interface Hipotesis2MBoxplotMeansSample extends Hipotesis2MBoxplotSample {
+  ciLower: number
+  ciUpper: number
+}
+
+export interface Hipotesis2MBoxplotVarianceData {
+  type: 'boxplot_variance'
+  data: {
+    samples: [Hipotesis2MBoxplotSample, Hipotesis2MBoxplotSample]
+    leveneTestPValue: number
+    leveneConclusion: string
+  }
+}
+
+export interface Hipotesis2MBoxplotMeansData {
+  type: 'boxplot_means'
+  data: {
+    samples: [Hipotesis2MBoxplotMeansSample, Hipotesis2MBoxplotMeansSample]
+    tTestPValue: number
+    tTestConclusion: string
+  }
+}
+
+export type Hipotesis2MChartDataItem =
+  | Hipotesis2MHistogramData
+  | Hipotesis2MBoxplotVarianceData
+  | Hipotesis2MBoxplotMeansData
 
 export interface TokenUsage {
   id: string

@@ -15,6 +15,7 @@ import {
   InteractionPlot,
   StaticChartDisplay,
   CapacidadProcesoCharts,
+  Hipotesis2MCharts,
 } from '@/components/charts'
 import FileAttachmentCard from './FileAttachmentCard'
 import type { MessageRowWithFiles } from '@/lib/supabase/messages'
@@ -27,6 +28,7 @@ import type {
   MeasurementsByOperatorItem,
   InteractionPlotData,
   CapacidadProcesoChartDataItem,
+  Hipotesis2MChartDataItem,
 } from '@/types/api'
 
 interface ChatMessageProps {
@@ -129,6 +131,15 @@ export default function ChatMessage({
     return cpCharts.length > 0 ? cpCharts : null
   })()
 
+  // Extract Hipotesis 2 Muestras chart data (Story 11.2)
+  const hipotesis2MChartData: Hipotesis2MChartDataItem[] | null = (() => {
+    if (!chartData) return null
+    const h2mCharts = chartData.filter(
+      (d) => d.type === 'histogram_a' || d.type === 'histogram_b' || d.type === 'boxplot_variance' || d.type === 'boxplot_means'
+    ) as unknown as Hipotesis2MChartDataItem[]
+    return h2mCharts.length > 0 ? h2mCharts : null
+  })()
+
   const handleDownload = (fileId: string) => {
     onDownload?.(fileId)
   }
@@ -212,6 +223,10 @@ export default function ChatMessage({
             {/* Capacidad de Proceso charts (histogram and normality plot) */}
             {capacidadProcesoChartData && capacidadProcesoChartData.length > 0 && (
               <CapacidadProcesoCharts chartData={capacidadProcesoChartData} />
+            )}
+            {/* Hipotesis 2 Muestras charts (histograms and boxplots) */}
+            {hipotesis2MChartData && hipotesis2MChartData.length > 0 && (
+              <Hipotesis2MCharts chartData={hipotesis2MChartData} />
             )}
           </div>
         )}

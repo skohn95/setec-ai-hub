@@ -12,3 +12,8 @@ export { default as StaticChartDisplay } from './StaticChartDisplay'
 export { default as HistogramChart } from './HistogramChart'
 export { default as CapacidadProcesoCharts } from './CapacidadProcesoCharts'
 export { default as NormalityPlot } from './NormalityPlot'
+
+// Hipotesis 2 Muestras charts
+export { default as Hipotesis2MHistogramChart } from './Hipotesis2MHistogramChart'
+export { default as BoxplotChart } from './BoxplotChart'
+export { default as Hipotesis2MCharts } from './Hipotesis2MCharts'

@@ -2,12 +2,12 @@
 Statistical Analysis Endpoint
 
 This Python serverless function handles Excel file analysis for
-Measurement System Analysis (MSA) and Process Capability analysis.
+Measurement System Analysis (MSA), Process Capability, and 2-Sample Hypothesis Testing.
 
 Endpoint: POST /api/analyze
 Request Body:
     {
-        "analysis_type": string,  // Required. Analysis type: "msa" | "capacidad_proceso"
+        "analysis_type": string,  // Required. Analysis type: "msa" | "capacidad_proceso" | "hipotesis_2_muestras"
         "file_id": string,        // Required. UUID of file in files table
         "message_id": string,     // Optional. UUID of associated message
         "spec_limits": object     // Optional. {lei, les} for capacidad_proceso analysis
@@ -59,6 +59,12 @@ from api.utils.file_loader import load_excel_to_dataframe
 from api.utils.msa_validator import validate_msa_file
 from api.utils.msa_calculator import analyze_msa
 from api.utils.capacidad_proceso_validator import validate_capacidad_proceso_file
+from api.utils.hipotesis_2_muestras_validator import validate_hipotesis_2_muestras_file
+from api.utils.hipotesis_2_muestras_calculator import (
+    perform_descriptive_normality_analysis,
+    perform_hypothesis_tests,
+    build_hipotesis_2_muestras_output,
+)
 from api.utils.capacidad_proceso_calculator import (
     calculate_basic_statistics,
     perform_normality_analysis,
@@ -77,7 +83,7 @@ def is_valid_uuid(value: str) -> bool:
 
 
 # Supported analysis types
-SUPPORTED_ANALYSIS_TYPES = {'msa', 'capacidad_proceso'}
+SUPPORTED_ANALYSIS_TYPES = {'msa', 'capacidad_proceso', 'hipotesis_2_muestras'}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -173,6 +179,46 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json_response(400, response)
                 return
 
+            # Validate hipotesis_2_muestras-specific parameters early (before file fetch)
+            confidence_level = None
+            alternative_hypothesis = None
+            if analysis_type == 'hipotesis_2_muestras':
+                raw_confidence = body.get('confidence_level', 0.95)
+                try:
+                    confidence_level = float(raw_confidence)
+                except (ValueError, TypeError):
+                    response = error_response(
+                        'VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='confidence_level debe ser un número (0.90, 0.95, o 0.99)'
+                        ),
+                    )
+                    self.send_json_response(400, response)
+                    return
+
+                VALID_CONFIDENCE_LEVELS = {0.90, 0.95, 0.99}
+                if confidence_level not in VALID_CONFIDENCE_LEVELS:
+                    response = error_response(
+                        'VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details=f'confidence_level debe ser 0.90, 0.95 o 0.99 (recibido: {raw_confidence})'
+                        ),
+                    )
+                    self.send_json_response(400, response)
+                    return
+
+                alternative_hypothesis = body.get('alternative_hypothesis', 'two-sided')
+                VALID_ALTERNATIVES = {'two-sided', 'greater', 'less'}
+                if alternative_hypothesis not in VALID_ALTERNATIVES:
+                    response = error_response(
+                        'VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details=f'alternative_hypothesis debe ser two-sided, greater o less (recibido: {alternative_hypothesis})'
+                        ),
+                    )
+                    self.send_json_response(400, response)
+                    return
+
             # Fetch file from Supabase Storage
             file_bytes, fetch_error = fetch_file_from_storage(file_id)
             if fetch_error:
@@ -216,6 +262,16 @@ class handler(BaseHTTPRequestHandler):
                 # Update file status to valid
                 update_file_validation(file_id, is_valid=True)
 
+            elif analysis_type == 'hipotesis_2_muestras':
+                validated_data, validation_error = validate_hipotesis_2_muestras_file(df)
+                if validation_error:
+                    update_file_validation(file_id, is_valid=False, errors=validation_error)
+                    response = validation_error_response(validation_error)
+                    self.send_json_response(400, response)
+                    return
+
+                update_file_validation(file_id, is_valid=True)
+
             # Route to appropriate analyzer
             analysis_output = None
             analysis_error = None
@@ -247,6 +303,29 @@ class handler(BaseHTTPRequestHandler):
                     validated_data, basic_stats, normality_result, sigma_result, spec_limits
                 )
                 # No analysis_error for capacidad_proceso - errors handled in validation
+
+            elif analysis_type == 'hipotesis_2_muestras':
+                # confidence_level and alternative_hypothesis already validated above
+
+                # Descriptive statistics + normality analysis (Story 10.2)
+                calc_results = perform_descriptive_normality_analysis(
+                    validated_data['muestra_a'],
+                    validated_data['muestra_b'],
+                    validated_data['column_names'],
+                )
+
+                # Levene variance test + 2-sample t-test (Story 10.3)
+                full_results = perform_hypothesis_tests(
+                    calc_results, confidence_level, alternative_hypothesis
+                )
+
+                # Add validation warnings
+                all_warnings = validated_data.get('warnings', []) + full_results.get('warnings', [])
+
+                # Build complete output: results + chartData + instructions (Story 10.4)
+                analysis_output = build_hipotesis_2_muestras_output(
+                    full_results, all_warnings, confidence_level
+                )
 
             else:
                 # This shouldn't happen due to earlier validation, but handle it

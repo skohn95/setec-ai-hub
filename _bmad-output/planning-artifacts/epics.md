@@ -27,6 +27,29 @@ prdV3Status: complete
 prdV3CompletedAt: 2026-03-09
 prdV3InputDocuments:
   - prd-v3.md
+# PRD-v4 Hipótesis 2 Muestras (2026-03-14)
+prdV4StepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
+prdV4Status: complete
+prdV4CompletedAt: 2026-03-14
+prdV4InputDocuments:
+  - prd-v4.md
+  - architecture.md
+# PRD-v5 Tamaño de Muestra (2026-03-14)
+prdV5StepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
+prdV5Status: complete
+prdV5CompletedAt: 2026-03-14
+prdV5InputDocuments:
+  - prd-v5.md
+  - architecture.md
+  - architecture-addendum-v5.md
 ---
 
 # Setec AI Hub - LLM - Epic Breakdown
@@ -1959,3 +1982,754 @@ So that **the results are clear, consistent with the 2-pillar scope, and not con
 **Then** all stability-related instructions are removed from the agent's guidance
 **And** the agent's follow-up capability correctly answers questions about the 2-pillar analysis
 **And** if a user asks about stability, the agent explains it is not part of this analysis scope
+
+---
+
+## Epic List — Hipótesis 2 Muestras (PRD-v4)
+
+### Epic 10: 2-Sample Hypothesis Testing Statistical Engine
+The Python backend can validate 2-sample data files, calculate descriptive statistics with outlier detection, evaluate normality with robustness assessment, perform Levene's variance test, and execute 2-sample t-tests (pooled or Welch), producing complete structured results, chart data, and interpretation instructions.
+**FRs covered:** FR-H1, FR-H2, FR-H5, FR-H6, FR-H7, FR-H8, FR-H9, FR-H10, FR-H12, FR-H14, FR-H15, FR-H16, FR-H17, FR-H18, FR-H19, FR-H20, FR-H21, FR-H22, FR-H23, FR-H24, FR-H25, FR-H28, FR-H30
+**NFRs:** NFR-H1, NFR-H2, NFR-H3, NFR-H4, NFR-H5, NFR-H6
+
+### Epic 11: 2-Sample Hypothesis Visualization & Agent Integration
+Users can configure the analysis conversationally (confidence level, hypothesis direction), see the n<30 data collection prompt, view 4 interactive charts (2 histograms + 2 comparative boxplots with CI), and ask follow-up questions — all through the existing chat interface.
+**FRs covered:** FR-H3, FR-H4, FR-H11, FR-H13, FR-H26, FR-H27, FR-H29
+
+### FR Coverage Map — PRD-v4
+
+FR-H1: Epic 10 (Story 10.1) + Epic 11 (Story 11.1) — Template file + plantillas card
+FR-H2: Epic 10 (Story 10.1) — 2-column format, unequal lengths
+FR-H3: Epic 11 (Story 11.1 + 11.3) — Tool params + conversational config
+FR-H4: Epic 11 (Story 11.3) — Agent waits for config
+FR-H5: Epic 10 (Story 10.1) — Validates 2 numeric columns
+FR-H6: Epic 10 (Story 10.1) — Reports errors with cell location
+FR-H7: Epic 10 (Story 10.1) — Minimum 2 values per sample
+FR-H8: Epic 10 (Story 10.1) — Spanish error messages
+FR-H9: Epic 10 (Story 10.2) — Per-sample descriptive stats
+FR-H10: Epic 10 (Story 10.2) — IQR outlier detection
+FR-H11: Epic 11 (Story 11.2) — Histogram chart components
+FR-H12: Epic 10 (Story 10.2) — TCL indication
+FR-H13: Epic 11 (Story 11.3) — n<30 conversational flow
+FR-H14: Epic 10 (Story 10.2) — Independent per-sample evaluation
+FR-H15: Epic 10 (Story 10.2) — Anderson-Darling per sample
+FR-H16: Epic 10 (Story 10.2) — Robustness evaluation
+FR-H17: Epic 10 (Story 10.2) — Robustness → continue or Box-Cox
+FR-H18: Epic 10 (Story 10.2) — Box-Cox fail-safe
+FR-H19: Epic 10 (Story 10.3) — Levene variance test
+FR-H20: Epic 10 (Story 10.3) — Variance interpretation
+FR-H21: Epic 10 (Story 10.3) — Variance result drives t-test type
+FR-H22: Epic 10 (Story 10.3) — 2-sample t-test
+FR-H23: Epic 10 (Story 10.3) — Pooled vs Welch selection
+FR-H24: Epic 10 (Story 10.3) — t, df, p-value, CI
+FR-H25: Epic 10 (Story 10.3) — Means interpretation
+FR-H26: Epic 11 (Story 11.2) — 4 chart components
+FR-H27: Epic 11 (Story 11.2) — Interactive, exportable, responsive
+FR-H28: Epic 10 (Story 10.4) — 5-part markdown instructions
+FR-H29: Epic 11 (Story 11.3) — Follow-up Q&A
+FR-H30: Epic 10 (Story 10.4) — Caveats in interpretations
+
+---
+
+## Epic 10: 2-Sample Hypothesis Testing Statistical Engine
+
+The Python backend can validate 2-sample data files, calculate descriptive statistics with outlier detection, evaluate normality with robustness assessment, perform Levene's variance test, and execute 2-sample t-tests (pooled or Welch), producing complete structured results, chart data, and interpretation instructions.
+
+### Story 10.1: Template, Validator & Routing Foundation
+
+As a user,
+I want to download a 2-sample hypothesis testing template and have my uploaded file validated correctly,
+So that I can prepare my data with confidence and get clear error messages if something is wrong.
+
+**FRs:** FR-H1, FR-H2, FR-H5, FR-H6, FR-H7, FR-H8
+
+**Acceptance Criteria:**
+
+**Given** a user navigates to the /plantillas page
+**When** they look for the hypothesis testing template
+**Then** the file `plantilla-hipotesis-2-muestras.xlsx` is available for download
+**And** it contains two columns: "Muestra A" and "Muestra B" with sample data rows
+
+**Given** a valid Excel file with two numeric columns of unequal length (e.g., 45 in A, 40 in B)
+**When** the validator processes the file
+**Then** it returns success with both columns extracted as numeric arrays
+**And** trailing empty cells in the shorter column are handled correctly (not flagged as errors)
+
+**Given** an Excel file with only one numeric column
+**When** the validator processes the file
+**Then** it returns a validation error in Spanish: guidance to add a second column
+
+**Given** an Excel file with non-numeric values (e.g., "N/A" in row 15 of Muestra A)
+**When** the validator processes the file
+**Then** it returns a validation error with specific cell location (column, row)
+**And** the message is in Spanish with guidance on how to fix
+
+**Given** an Excel file with intercalated empty cells (e.g., row 8 of Muestra B is blank but row 9 has data)
+**When** the validator processes the file
+**Then** it reports the empty cell location as a validation error
+**And** distinguishes this from trailing blanks in a shorter column
+
+**Given** a column with only 1 value
+**When** the validator processes the file
+**Then** it returns a validation error (minimum 2 values per sample)
+
+**Given** `analysis_type='hipotesis_2_muestras'` is sent to `POST /api/analyze`
+**When** the endpoint receives the request
+**Then** it routes to the hypothesis 2-sample handler
+**And** the analysis type is added to the valid types in the routing logic
+
+### Story 10.2: Descriptive Statistics, Sample Size Evaluation & Normality Analysis
+
+As a user,
+I want my two samples analyzed for basic statistics, normality, and robustness,
+So that the system determines the correct statistical approach before running hypothesis tests.
+
+**FRs:** FR-H9, FR-H10, FR-H12, FR-H14, FR-H15, FR-H16, FR-H17, FR-H18
+
+**Acceptance Criteria:**
+
+**Given** two validated numeric arrays (Muestra A and Muestra B)
+**When** descriptive statistics are calculated per sample
+**Then** the results include: n, mean, median, standard deviation, skewness
+**And** all values are computed correctly (verifiable against known datasets)
+
+**Given** a sample with values [10, 12, 11, 50, 13, 12, 11]
+**When** IQR outlier detection runs
+**Then** the value 50 is flagged as an outlier (> Q3 + 1.5×IQR)
+**And** the result includes the count and specific values of outliers
+
+**Given** a sample with n = 45
+**When** sample size evaluation runs
+**Then** the result includes a note that TCL applies and the t-test is robust against mild normality deviations
+
+**Given** a sample with n = 22
+**When** sample size evaluation runs
+**Then** the result includes a warning that normality is critical
+**And** the `small_sample_warning` flag is set to true for that sample
+
+**Given** Muestra A has n=50 and Muestra B has n=18
+**When** sample size evaluation runs
+**Then** the TCL note applies only to Muestra A
+**And** the critical warning applies only to Muestra B
+
+**Given** a sample with p-value ≥ 0.05 on Anderson-Darling test
+**When** normality analysis runs
+**Then** the sample is classified as "Normal"
+**And** the A² statistic and p-value are reported
+
+**Given** a sample with p-value < 0.05 (not normal)
+**When** robustness evaluation runs
+**Then** it checks: |skewness| < 1.0 AND outliers < 5% of data
+**And** if both criteria pass → classified as "robust, continue with original data"
+**And** if either criterion fails → classified as "not robust, Box-Cox required"
+
+**Given** both samples need Box-Cox transformation
+**When** Box-Cox is applied
+**Then** both samples are transformed (even if only one failed robustness)
+**And** normality is re-tested on transformed data
+**And** lambda (λ) is reported
+
+**Given** data contains zeros or negative values
+**When** Box-Cox transformation is attempted
+**Then** the transformation is skipped
+**And** a warning is included: "Box-Cox no aplicable (datos ≤ 0)"
+**And** analysis continues with original data plus caveat
+
+**Given** Box-Cox is applied but normality still fails
+**When** re-test results are evaluated
+**Then** a warning is included: "La transformación no logró normalidad"
+**And** analysis continues with original data plus caveat
+
+### Story 10.3: Levene Variance Test & 2-Sample T-Test (Pure Python)
+
+As a user,
+I want variance and means tests calculated with Minitab-comparable accuracy,
+So that I can trust the statistical conclusions for my decision-making.
+
+**FRs:** FR-H19, FR-H20, FR-H21, FR-H22, FR-H23, FR-H24, FR-H25
+**NFRs:** NFR-H1, NFR-H2, NFR-H3
+
+**Acceptance Criteria:**
+
+**Given** two samples and confidence_level = 0.95 (α = 0.05)
+**When** Levene's test (median variant) is calculated
+**Then** the F-statistic and p-value are produced
+**And** the p-value is comparable to Minitab (±0.01)
+**And** the Levene implementation uses pure Python (no scipy)
+
+**Given** Levene p-value ≥ α
+**When** variance interpretation runs
+**Then** conclusion is "Varianzas estadísticamente iguales" (H₀ not rejected)
+**And** the `equal_variances` flag is set to true
+
+**Given** Levene p-value < α
+**When** variance interpretation runs
+**Then** conclusion is "Varianzas estadísticamente diferentes" (H₀ rejected)
+**And** the `equal_variances` flag is set to false
+
+**Given** equal_variances = true
+**When** the means test executes
+**Then** it uses the pooled (equal variance) t-test
+
+**Given** equal_variances = false
+**When** the means test executes
+**Then** it uses the Welch (unequal variance) t-test with Welch-Satterthwaite degrees of freedom
+
+**Given** alternative_hypothesis = 'two-sided' (μA ≠ μB)
+**When** the t-test calculates the p-value
+**Then** it computes the two-tailed p-value
+**And** the result is comparable to Minitab's 2-Sample t output (±0.01)
+
+**Given** alternative_hypothesis = 'greater' (μA > μB)
+**When** the t-test calculates the p-value
+**Then** it computes the one-tailed p-value for the upper tail
+
+**Given** alternative_hypothesis = 'less' (μA < μB)
+**When** the t-test calculates the p-value
+**Then** it computes the one-tailed p-value for the lower tail
+
+**Given** any t-test result
+**When** calculation completes
+**Then** the result includes: t-statistic, degrees of freedom, p-value, and confidence interval for the difference of means
+**And** the CI width matches the chosen confidence level
+
+**Given** confidence_level = 0.90 (α = 0.10)
+**When** Levene and t-test run
+**Then** both tests use α = 0.10 for their rejection thresholds
+**And** the CI is a 90% confidence interval
+
+**Given** confidence_level = 0.99 (α = 0.01)
+**When** Levene and t-test run
+**Then** both tests use α = 0.01
+**And** the CI is a 99% confidence interval
+
+**Given** the t-distribution function is implemented
+**When** p-values are calculated
+**Then** the implementation is pure Python (no scipy)
+**And** uses the existing beta function infrastructure (betainc, betacf)
+
+### Story 10.4: Results Assembly, Chart Data & Instructions Generation
+
+As a user,
+I want the analysis to produce complete structured output with chart data and interpretation instructions,
+So that the agent can present my results clearly and the frontend can render charts.
+
+**FRs:** FR-H28, FR-H30
+**NFRs:** NFR-H4, NFR-H5, NFR-H6
+
+**Acceptance Criteria:**
+
+**Given** the full analysis pipeline has completed (descriptive + normality + Levene + t-test)
+**When** results assembly runs
+**Then** it produces a JSON object with `results`, `chartData`, and `instructions`
+**And** the structure matches the `Hipotesis2MChartData` interface from PRD-v4
+
+**Given** the results object
+**When** it is serialized
+**Then** it includes all sections: `descriptive_a`, `descriptive_b`, `normality_a`, `normality_b`, `sample_size`, `variance_test`, `means_test`, `warnings`
+
+**Given** chart data is generated
+**When** histogram data is built for each sample
+**Then** each histogram includes: bins (start, end, count), mean, sampleName, outliers array
+
+**Given** chart data is generated
+**When** boxplot_variance data is built
+**Then** it includes two sample objects with: min, q1, median, q3, max, outliers, mean
+**And** includes leveneTestPValue and leveneConclusion
+
+**Given** chart data is generated
+**When** boxplot_means data is built
+**Then** it includes the same boxplot data plus ciLower and ciUpper per sample
+**And** includes tTestPValue and tTestConclusion
+
+**Given** the instructions are generated
+**When** markdown is constructed
+**Then** it has 5 parts: Descriptivos, Normalidad, Varianzas, Medias, Conclusión Terrenal
+**And** all text is in Spanish
+
+**Given** the analysis encountered caveats (n < 30, Box-Cox failed, normality not achieved)
+**When** instructions are generated
+**Then** each applicable caveat appears in both the technical sections and the Conclusión Terrenal
+**And** the terrenal section says: "Los resultados deben interpretarse con precaución..."
+
+**Given** a file with up to 1000 rows per sample
+**When** the complete analysis runs
+**Then** it completes in less than 30 seconds
+
+**Given** the raw data arrays
+**When** results are assembled
+**Then** the raw data values are NOT included in the instructions or results object
+**And** only aggregated statistics and chart data points are returned
+
+---
+
+## Epic 11: 2-Sample Hypothesis Visualization & Agent Integration
+
+Users can configure the analysis conversationally (confidence level, hypothesis direction), see the n<30 data collection prompt, view 4 interactive charts (2 histograms + 2 comparative boxplots with CI), and ask follow-up questions — all through the existing chat interface.
+
+### Story 11.1: Type Definitions, Tool Parameters & Plantillas Integration
+
+As a developer,
+I want the TypeScript types, tool definition, and plantillas page updated for the new analysis,
+So that the frontend and agent can invoke and render 2-sample hypothesis testing results.
+
+**FRs:** FR-H3 (tool params), supports FR-H26 (type defs for chart data)
+
+**Acceptance Criteria:**
+
+**Given** the `types/analysis.ts` file
+**When** the new analysis type is added
+**Then** `'hipotesis_2_muestras'` is added to the `AnalysisType` union type
+**And** a `Hipotesis2MResult` interface is defined matching the Python output structure (descriptive_a, descriptive_b, normality_a, normality_b, sample_size, variance_test, means_test, warnings)
+
+**Given** the `constants/analysis.ts` file
+**When** the new analysis type is added
+**Then** `ANALYSIS_TYPES.HIPOTESIS_2_MUESTRAS = 'hipotesis_2_muestras'` is added
+
+**Given** the `lib/openai/tools.ts` tool definition
+**When** the analyze tool is updated
+**Then** `'hipotesis_2_muestras'` is added to the `analysis_type` enum
+**And** a new optional parameter `confidence_level` (number, enum: [0.90, 0.95, 0.99]) is added
+**And** a new optional parameter `alternative_hypothesis` (string, enum: ['two-sided', 'greater', 'less']) is added
+
+**Given** the `lib/api/analyze.ts` client function
+**When** `invokeAnalysisTool` is called with `hipotesis_2_muestras`
+**Then** it passes `confidence_level` and `alternative_hypothesis` to the API
+**And** existing analysis types are unaffected
+
+**Given** the plantillas page at `/app/(dashboard)/plantillas/page.tsx`
+**When** the page renders
+**Then** a new template card appears for "Test de Hipótesis: 2 Muestras"
+**And** it links to download `/templates/plantilla-hipotesis-2-muestras.xlsx`
+**And** the description explains the 2-column format
+
+**Given** the `constants/templates.ts` file
+**When** the new template is added
+**Then** it includes id, title, description, filename, and download path
+
+### Story 11.2: BoxplotChart Component & Chart Container
+
+As a user,
+I want to see interactive histograms and comparative boxplots for my two samples,
+So that I can visually understand the distribution, spread, and means comparison.
+
+**FRs:** FR-H11, FR-H26, FR-H27
+
+**Acceptance Criteria:**
+
+**Given** histogram chart data for a sample (bins, mean, outliers)
+**When** the histogram renders
+**Then** it displays frequency bars for each bin
+**And** a vertical line marks the mean
+**And** outlier values are visually indicated (different color or marker)
+**And** hover shows bin range and count
+
+**Given** boxplot_variance chart data with two samples
+**When** the BoxplotChart renders in variance mode
+**Then** it shows two side-by-side boxplots (Muestra A and Muestra B)
+**And** each boxplot displays: median line, Q1-Q3 box, whiskers to min/max (excluding outliers), outlier dots
+**And** the title includes the Levene test p-value and conclusion
+**And** hover on any element shows the numeric value
+
+**Given** boxplot_means chart data with two samples
+**When** the BoxplotChart renders in means mode
+**Then** it shows the same side-by-side boxplots as variance mode
+**And** additionally overlays confidence interval markers for each sample's mean
+**And** the mean is marked with a distinct symbol (diamond or cross, differentiated from median)
+**And** the title includes the t-test p-value and conclusion
+
+**Given** any of the 4 charts
+**When** the user clicks the export button
+**Then** the chart is exported as a PNG image
+
+**Given** any of the 4 charts on a desktop viewport (≥1024px)
+**When** the charts render
+**Then** they display at full width within the chat message area
+**And** are responsive (scale down on smaller viewports without breaking)
+
+**Given** the `Hipotesis2MCharts.tsx` container component
+**When** it receives the full chartData array from analysis results
+**Then** it renders all 4 charts in order: Histogram A, Histogram B, Boxplot Varianzas, Boxplot Medias
+**And** each chart is wrapped in the ExportableChart component
+
+**Given** the `components/charts/index.ts` barrel export
+**When** the new components are created
+**Then** `BoxplotChart` and `Hipotesis2MCharts` are exported
+
+### Story 11.3: Agent Conversational Flow & System Prompt
+
+As a user,
+I want the AI agent to guide me through configuring the analysis and understand my results,
+So that I get a natural conversational experience without needing to know statistical details upfront.
+
+**FRs:** FR-H3, FR-H4, FR-H13, FR-H29
+
+**Acceptance Criteria:**
+
+**Given** a user uploads a file and expresses intent for 2-sample hypothesis testing
+**When** the agent detects the intent
+**Then** the agent asks: "¿Con qué nivel de confianza quieres que haga el análisis? Por default es 95%." with options 90%, 95%, 99%
+**And** the agent waits for the user's response before proceeding
+
+**Given** the user has selected a confidence level
+**When** the agent continues the configuration
+**Then** it asks: "Para el análisis de medias, ¿la hipótesis alternativa es de desigualdad (μA ≠ μB), o quieres probar una dirección específica?" with options: ≠ (default), >, <
+**And** the agent waits for the user's response before invoking the tool
+
+**Given** the user has provided both configuration choices
+**When** the agent invokes the analyze tool
+**Then** it passes the correct `confidence_level` and `alternative_hypothesis` values
+**And** it includes the `file_id` and `analysis_type='hipotesis_2_muestras'`
+
+**Given** the analysis results indicate at least one sample has n < 30 (small_sample_warning = true)
+**When** the agent receives the results
+**Then** it presents the warning: "⚠️ [Muestra X] tiene menos de 30 observaciones (n=Y). Se recomienda tomar más muestras. ¿Es posible obtener más datos?"
+**And** it waits for the user's yes/no response
+
+**Given** the user responds "sí" to the n < 30 question
+**When** the agent processes the response
+**Then** it advises: "Regresa cuando tengas al menos 30 observaciones por muestra"
+**And** it does NOT display the analysis results
+
+**Given** the user responds "no" to the n < 30 question
+**When** the agent processes the response
+**Then** it presents the full results with a caveat about critical condition
+**And** the caveat appears in both technical and terrenal sections
+
+**Given** both samples have n ≥ 30 (no small sample warning)
+**When** the agent receives the results
+**Then** it presents the full results directly without the n < 30 question
+
+**Given** the analysis results have been presented
+**When** the user asks a follow-up question (e.g., "¿Qué significa el p-value del test de Levene?")
+**Then** the agent answers using the conversation context and stored results
+**And** it does NOT re-invoke the analysis tool
+
+**Given** the system prompt for the principal agent
+**When** it is updated for the new analysis type
+**Then** it includes instructions for recognizing hypothesis testing intent
+**And** it includes the conversational configuration flow (confidence + hypothesis direction)
+**And** it includes the n < 30 conditional presentation logic
+
+---
+
+## Epic List — Tamaño de Muestra (PRD-v5)
+
+### Epic 12: Sample Size Calculator for 2-Sample Comparison
+Users can calculate the minimum sample size needed before running a 2-sample hypothesis test through a guided conversational flow — no file upload required. The agent coaches them through parameter definition, Python computes the result with sensitivity analysis, and the agent presents structured evaluation and strategic recommendations.
+**FRs covered:** FR-TM1, FR-TM2, FR-TM3, FR-TM4, FR-TM5, FR-TM6, FR-TM7, FR-TM8, FR-TM9, FR-TM10, FR-TM11, FR-TM12, FR-TM13, FR-TM14, FR-TM15, FR-TM16, FR-TM17
+**NFRs:** NFR-TM1, NFR-TM2, NFR-TM3, NFR-TM4, NFR-TM5
+**Architecture:** AD-1, AD-2, AD-3
+
+### FR Coverage Map — PRD-v5
+
+FR-TM1: Epic 12 (Story 12.4) — Agent explains 4 variables in business language
+FR-TM2: Epic 12 (Story 12.4) — Questions one by one, wait for response
+FR-TM3: Epic 12 (Story 12.4) — 7-question sequence with coaching
+FR-TM4: Epic 12 (Story 12.4) — No value assumption without asking
+FR-TM5: Epic 12 (Story 12.4) — Delta auto-calculation from means
+FR-TM6: Epic 12 (Story 12.4) — Sigma estimation help
+FR-TM7: Epic 12 (Story 12.4) — Alpha/power defaults with explanation
+FR-TM8: Epic 12 (Story 12.2) — Bilateral + unilateral formula
+FR-TM9: Epic 12 (Story 12.2) — Ceiling rounding
+FR-TM10: Epic 12 (Story 12.4) — Per-group indication in presentation
+FR-TM11: Epic 12 (Story 12.2) — Classification (≥30, 15-29, <15)
+FR-TM12: Epic 12 (Story 12.2) — Sensitivity analysis (3+ scenarios)
+FR-TM13: Epic 12 (Story 12.2) — Quantitative sensitivity from Python
+FR-TM14: Epic 12 (Story 12.2 + 12.4) — Strategic recommendations (data + presentation)
+FR-TM15: Epic 12 (Story 12.2 + 12.4) — 5-part structured output
+FR-TM16: Epic 12 (Story 12.3 + 12.4) — Follow-up re-calculation
+FR-TM17: Epic 12 (Story 12.4) — Never execute hypothesis test
+
+### Requirements Inventory — PRD-v5
+
+#### Functional Requirements
+
+- FR-TM1: Agent explains 4 key variables (Delta, Alpha, Power, Sigma) in simple business language
+- FR-TM2: Agent asks questions one by one, waiting for each response
+- FR-TM3: 7-question sequence: media actual, media esperada, delta, sigma, alfa, poder, bilateral/unilateral — with coaching
+- FR-TM4: Agent never assumes values without asking — each parameter confirmed by user
+- FR-TM5: Delta auto-calculated from means with user confirmation prompt
+- FR-TM6: Sigma estimation help if user doesn't know (historical data, range/4 heuristic)
+- FR-TM7: Alpha and power defaults (0.05, 80%) suggested with business-language explanation
+- FR-TM8: Sample size formula: bilateral uses Z_{α/2}, unilateral uses Z_α
+- FR-TM9: Result rounded up (ceiling) to next integer
+- FR-TM10: Result explicitly stated as PER GROUP
+- FR-TM11: Classification: ≥30 (adequate/TCL), 15-29 (verify normality), <15 (weak/unstable)
+- FR-TM12: Sensitivity analysis with 3+ alternative scenarios (delta/2, power 90%, sigma×2)
+- FR-TM13: Sensitivity computed in Python with real numbers, not qualitative estimates
+- FR-TM14: Strategic recommendations based on results and sensitivity
+- FR-TM15: Structured markdown output: 5 parts (parameters, result, evaluation, sensitivity table, recommendations)
+- FR-TM16: Follow-up "what if" questions trigger re-calculation without repeating full flow
+- FR-TM17: Analysis NEVER executes the hypothesis test — redirects to Hipótesis 2 Muestras
+
+#### Non-Functional Requirements
+
+- NFR-TM1: Z-scores use project's pure Python norm_ppf (Abramowitz & Stegun) — no scipy
+- NFR-TM2: Results match Minitab/G*Power for same inputs
+- NFR-TM3: Calculation completes in < 5 seconds
+- NFR-TM4: All error messages and results in Spanish
+- NFR-TM5: No user data sent to OpenAI — only calculated results
+
+#### Additional Requirements (Architecture Addendum)
+
+- AD-1: Make file_id optional — DB migration (DROP NOT NULL), Python routing (conditional file_id check), TS tool definition (file_id no longer globally required)
+- AD-2: Extract _norm_ppf to shared module stats_common.py — reuse across calculators
+- AD-3: chartData returns empty array [] (not null) — keeps response contract consistent
+
+---
+
+## Epic 12: Sample Size Calculator for 2-Sample Comparison
+
+Users can calculate the minimum sample size needed before running a 2-sample hypothesis test through a guided conversational flow — no file upload required. The agent coaches them through parameter definition, Python computes the result with sensitivity analysis, and the agent presents structured evaluation and strategic recommendations.
+
+### Story 12.1: Architecture Foundation — file_id Optional & Shared Stats Module
+
+As a developer,
+I want the analysis pipeline updated to support file-less analyses and shared statistical utilities,
+So that the `tamano_muestra` analysis can run without a file upload and reuse existing pure Python math.
+
+**FRs:** Architectural enabler for all FR-TM requirements
+**Architecture:** AD-1, AD-2, AD-3
+
+**Acceptance Criteria:**
+
+**Given** the `analysis_results` database table
+**When** a migration is applied
+**Then** `file_id` column allows NULL values (`DROP NOT NULL`)
+**And** all existing rows (which have file_id populated) are unaffected
+**And** a new row can be inserted with `file_id = NULL`
+
+**Given** `analysis_type='tamano_muestra'` is sent to `POST /api/analyze` without a `file_id`
+**When** the endpoint receives the request
+**Then** it does NOT return a `MISSING_FIELD` error for `file_id`
+**And** it routes to the tamano_muestra handler without attempting to fetch, load, or validate a file
+
+**Given** `analysis_type='msa'` is sent to `POST /api/analyze` without a `file_id`
+**When** the endpoint receives the request
+**Then** it returns a `MISSING_FIELD` error for `file_id` (existing behavior preserved)
+
+**Given** `analysis_type='tamano_muestra'` is sent with required parameters (`delta`, `sigma`, `alpha`, `power`, `alternative_hypothesis`)
+**When** the endpoint validates the parameters
+**Then** it validates: delta > 0, sigma > 0, 0 < alpha < 1, 0 < power < 1, alternative_hypothesis in {'two-sided', 'greater', 'less'}
+**And** returns Spanish error messages for invalid values
+
+**Given** `analysis_type='tamano_muestra'` is sent missing any required parameter (e.g., no `delta`)
+**When** the endpoint validates
+**Then** it returns a `MISSING_FIELD` error listing the missing parameter(s)
+
+**Given** the existing `_norm_ppf` function in `capacidad_proceso_calculator.py`
+**When** it is extracted to a shared module `api/utils/stats_common.py`
+**Then** `capacidad_proceso_calculator.py` imports `norm_ppf` from `stats_common` instead of defining it internally
+**And** all existing capacidad_proceso tests still pass
+**And** the new module exports `norm_ppf` for use by `tamano_muestra_calculator.py`
+
+**Given** the `tamano_muestra` analysis completes successfully
+**When** results are saved to `analysis_results`
+**Then** `file_id` is NULL
+**And** `chart_data` is stored as `'[]'::jsonb` (empty array, not null)
+**And** `analysis_type` is `'tamano_muestra'`
+
+### Story 12.2: Sample Size Calculator & Sensitivity Engine
+
+As a user,
+I want the system to calculate my minimum sample size accurately with sensitivity analysis,
+So that I know exactly how many measurements to collect and how the result changes under different assumptions.
+
+**FRs:** FR-TM8, FR-TM9, FR-TM10, FR-TM11, FR-TM12, FR-TM13, FR-TM14, FR-TM15
+**NFRs:** NFR-TM1, NFR-TM2, NFR-TM3, NFR-TM4, NFR-TM5
+
+**Acceptance Criteria:**
+
+**Given** delta=0.4, sigma=0.6, alpha=0.05, power=0.80, alternative_hypothesis='two-sided'
+**When** the sample size calculator runs
+**Then** n_per_group = 36 (using bilateral formula: n = ceil(((Z_{α/2} + Z_β)² × 2σ²) / Δ²))
+**And** z_alpha = 1.96 (Z_{0.025})
+**And** z_beta = 0.842 (Z_{0.20})
+**And** the result matches Minitab/G*Power for the same inputs
+
+**Given** delta=0.4, sigma=0.6, alpha=0.05, power=0.80, alternative_hypothesis='greater'
+**When** the sample size calculator runs
+**Then** it uses the unilateral formula (Z_α instead of Z_{α/2})
+**And** n_per_group is smaller than the bilateral case
+**And** the result matches Minitab/G*Power for the same inputs
+
+**Given** any valid set of parameters
+**When** the calculator computes n
+**Then** the result is always rounded UP (ceiling) to the next integer
+**And** the result is explicitly labeled as "per group" in the instructions
+
+**Given** n_per_group = 36 (≥ 30)
+**When** the classification runs
+**Then** category = "adequate"
+**And** message indicates TCL applies and t-test is robust against mild normality deviations
+
+**Given** n_per_group = 22 (15 ≤ n < 30)
+**When** the classification runs
+**Then** category = "verify_normality"
+**And** message indicates normality verification will be needed when running the hypothesis test
+
+**Given** n_per_group = 8 (< 15)
+**When** the classification runs
+**Then** category = "weak"
+**And** message warns the sample may be insufficient and real power could be unstable
+
+**Given** base parameters delta=0.4, sigma=0.6, power=0.80
+**When** sensitivity analysis runs
+**Then** it computes at least 3 alternative scenarios:
+  - delta_half: delta=0.2 → n increases significantly
+  - power_90: power=0.90 → n increases moderately
+  - sigma_double: sigma=1.2 → n increases significantly
+**And** each scenario includes: scenario name, label, changed parameters, computed n_per_group
+**And** all values are real calculations (not estimates)
+
+**Given** any valid parameters
+**When** the calculator produces output
+**Then** the response structure is: `{ results: { input_parameters, sample_size, classification, sensitivity }, chartData: [], instructions: "..." }`
+**And** `instructions` is a markdown string with 5 parts: parameters table, result, evaluation, sensitivity table, recommendations
+**And** all text in `instructions` is in Spanish
+
+**Given** any valid parameters
+**When** the full calculation (base + 3 sensitivity scenarios) executes
+**Then** it completes in under 5 seconds
+
+**Given** delta=0 is provided
+**When** the calculator validates inputs
+**Then** it returns an error: "La diferencia (delta) no puede ser cero"
+
+**Given** sigma=0 or sigma < 0 is provided
+**When** the calculator validates inputs
+**Then** it returns an error: "La variabilidad (sigma) debe ser mayor que cero"
+
+**Given** parameters that produce n=1 or n=2
+**When** the calculator returns results
+**Then** the classification is "weak" with additional warning about insufficient sample size
+
+**Given** a very small delta with large sigma (e.g., delta=0.01, sigma=10)
+**When** the calculator returns results
+**Then** the instructions include a warning that the required n may not be practical
+
+### Story 12.3: TypeScript Integration & Tool Definition
+
+As a developer,
+I want the TypeScript types, tool definition, and API client updated for the sample size analysis,
+So that the agent can invoke the calculation and the frontend can process the results.
+
+**FRs:** FR-TM16 (re-invocation support)
+**Architecture:** AD-1 (TS side), AD-3 (TS interface)
+
+**Acceptance Criteria:**
+
+**Given** the `types/analysis.ts` file
+**When** the new analysis type is added
+**Then** `'tamano_muestra'` is added to the `AnalysisType` union type
+**And** a `TamanoMuestraResult` interface is defined matching the Python output structure (input_parameters, sample_size, classification, sensitivity)
+
+**Given** the `constants/analysis.ts` file
+**When** the new analysis type is added
+**Then** `ANALYSIS_TYPES.TAMANO_MUESTRA = 'tamano_muestra'` is added
+
+**Given** the `lib/openai/tools.ts` tool definition
+**When** the analyze tool is updated
+**Then** `'tamano_muestra'` is added to the `analysis_type` enum
+**And** `file_id` is removed from the global `required` array
+**And** the `file_id` description clarifies it is required for msa, capacidad_proceso, hipotesis_2_muestras but NOT for tamano_muestra
+**And** new parameters are added: `delta` (number), `sigma` (number), `alpha` (number), `power` (number), `alternative_hypothesis` (string enum), `current_mean` (number, optional), `expected_mean` (number, optional)
+
+**Given** the `lib/api/analyze.ts` client function
+**When** `invokeAnalysisTool` is updated
+**Then** `fileId` parameter becomes optional (string | undefined)
+**And** a new `SampleSizeParams` interface is added (delta, sigma, alpha, power, alternative_hypothesis, current_mean?, expected_mean?)
+**And** a new optional `sampleSizeParams` parameter is accepted
+**And** when `sampleSizeParams` is provided, those fields are added to the request body
+**And** when `fileId` is undefined, `file_id` is not sent in the request body
+
+**Given** an existing call to `invokeAnalysisTool('msa', fileId, messageId)`
+**When** the function is called with the old signature
+**Then** it works exactly as before (backwards compatible)
+
+**Given** a call to `invokeAnalysisTool('tamano_muestra', undefined, messageId, undefined, sampleSizeParams)`
+**When** the request is sent
+**Then** the body contains `analysis_type`, `delta`, `sigma`, `alpha`, `power`, `alternative_hypothesis`
+**And** the body does NOT contain `file_id`
+**And** `current_mean` and `expected_mean` are included only if provided
+
+### Story 12.4: Agent Conversational Flow & System Prompt
+
+As a user,
+I want the AI agent to guide me step by step through defining my sample size parameters,
+So that I get a clear recommendation without needing to know the statistical formula.
+
+**FRs:** FR-TM1, FR-TM2, FR-TM3, FR-TM4, FR-TM5, FR-TM6, FR-TM7, FR-TM10, FR-TM14, FR-TM15, FR-TM16, FR-TM17
+
+**Acceptance Criteria:**
+
+**Given** a user writes something indicating sample size intent (e.g., "cuántas muestras necesito" or "tamaño de muestra")
+**When** the agent detects the intent
+**Then** the agent explains the 4 key variables (Delta, Alpha, Power, Sigma) in simple business language
+**And** the explanations are practical and applied, not academic jargon
+
+**Given** the agent has explained the variables
+**When** the conversational flow begins
+**Then** the agent asks questions ONE BY ONE in this order:
+  a) Media actual estimada
+  b) Media esperada después de mejora
+  c) Diferencia mínima relevante (Delta)
+  d) Desvío estándar histórico (Sigma)
+  e) Nivel de alfa
+  f) Poder estadístico
+  g) Bilateral o unilateral
+**And** the agent waits for the user's response before asking the next question
+
+**Given** the user provided media actual = 15.2 and media esperada = 14.8
+**When** the agent asks about Delta
+**Then** the agent calculates |14.8 - 15.2| = 0.4 and asks: "Entonces la diferencia mínima relevante sería 0.4. ¿Es esa diferencia económicamente significativa, o necesitas detectar una diferencia más pequeña?"
+**And** the agent waits for confirmation or adjustment
+
+**Given** the user doesn't know their sigma
+**When** the agent asks about sigma
+**Then** the agent offers help: suggests using historical data or range/4 as a rough estimate
+**And** the agent does NOT proceed until the user provides a value
+
+**Given** the user doesn't know what alpha to choose
+**When** the agent asks about alpha
+**Then** the agent suggests 0.05 and explains: "esto significa que aceptas un 5% de probabilidad de detectar una diferencia cuando no la hay (falso positivo)"
+**And** the agent waits for the user to accept or choose a different value
+
+**Given** the user doesn't know what power to choose
+**When** the agent asks about power
+**Then** the agent suggests 80% and explains: "esto significa que si la diferencia real existe, tienes 80% de probabilidad de detectarla"
+**And** the agent waits for the user to accept or choose a different value
+
+**Given** all 7 parameters have been collected
+**When** the agent invokes the analyze tool
+**Then** it passes `analysis_type='tamano_muestra'` with all parameters (delta, sigma, alpha, power, alternative_hypothesis, current_mean, expected_mean)
+**And** it does NOT send a `file_id`
+
+**Given** the analysis results are returned
+**When** the agent presents the results
+**Then** it follows the 5-part structure from the instructions markdown:
+  1. Parameters table
+  2. n per group result (clearly stated as PER GROUP)
+  3. Evaluation/classification
+  4. Sensitivity table
+  5. Strategic recommendations
+**And** all presentation is in Spanish
+
+**Given** the user asks a follow-up like "¿y si mi sigma es realmente 0.8?"
+**When** the agent processes the follow-up
+**Then** it re-invokes the tool with the modified parameter (sigma=0.8) and all other original parameters
+**And** it presents the new results without repeating the full 7-question flow
+
+**Given** the user asks to run the actual hypothesis test
+**When** the agent processes the request
+**Then** it does NOT execute a hypothesis test
+**And** it responds: the user should first collect their data and then use the "Test de Hipótesis: 2 Muestras" analysis
+**And** it suggests downloading the hipótesis template
+
+**Given** the system prompt for the principal agent
+**When** it is updated for the new analysis type
+**Then** it includes instructions for recognizing sample size calculation intent
+**And** it includes the 7-question coaching flow with coaching guidance for each question
+**And** it includes the guard against executing the hypothesis test
+**And** it includes the follow-up re-calculation behavior

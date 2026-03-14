@@ -294,4 +294,8 @@ export type {
   HistogramChartData,
   FittedDistributionCurve,
   CapacidadProcesoChartDataItem,
+  Hipotesis2MChartDataItem,
+  Hipotesis2MHistogramData,
+  Hipotesis2MBoxplotVarianceData,
+  Hipotesis2MBoxplotMeansData,
 } from './analysis'

@@ -326,6 +326,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                   file_id: string
                   specification?: number
                   spec_limits?: { lei: number; les: number }
+                  confidence_level?: number
+                  alternative_hypothesis?: string
                 }
 
                 // Ensure assistant message exists before tool call so we can save metadata
@@ -348,13 +350,17 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
                 console.log('[CHAT-DEBUG] File ID:', args.file_id)
                 console.log('[CHAT-DEBUG] Spec Limits:', args.spec_limits ? `LEI=${args.spec_limits.lei}, LES=${args.spec_limits.les}` : '(none)')
+                console.log('[CHAT-DEBUG] Confidence Level:', args.confidence_level || '(default)')
+                console.log('[CHAT-DEBUG] Alternative Hypothesis:', args.alternative_hypothesis || '(default)')
                 console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
 
                 const analysisResult = await invokeAnalysisTool(
                   args.analysis_type,
                   args.file_id,
                   assistantMessageId || undefined,
-                  args.spec_limits
+                  args.spec_limits,
+                  args.confidence_level,
+                  args.alternative_hypothesis
                 )
 
                 console.log('[CHAT-DEBUG] Analysis result:', analysisResult.error ? 'ERROR' : 'SUCCESS')
