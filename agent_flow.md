@@ -154,7 +154,7 @@ const assistantMessageResult = await createMessage(
 
 **Current rejection message** (from `/lib/openai/rejection-messages.ts`):
 
-> "Lo siento, no puedo ayudarte con esa consulta. Soy un asistente especializado en análisis estadístico para Lean Six Sigma, como MSA, Gauge R&R, gráficos de control y pruebas de hipótesis. ¿Hay algo relacionado con calidad o estadística en lo que pueda asistirte?"
+> "Lo siento, no puedo ayudarte con esa consulta. Soy un asistente especializado en análisis estadístico para Lean Six Sigma, como MSA, Gauge R&R, gráficos de control y tests de hipótesis. ¿Hay algo relacionado con calidad o estadística en lo que pueda asistirte?"
 
 ---
 

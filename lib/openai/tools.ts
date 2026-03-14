@@ -22,7 +22,7 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
   function: {
     name: 'analyze',
     description:
-      'Realiza análisis estadístico en archivos Excel subidos. Soporta MSA (Gauge R&R), Análisis de Capacidad de Proceso (Cp, Cpk, Pp, Ppk), y Prueba de Hipótesis de 2 Muestras. Para MSA, incluir specification (target). Para Capacidad de Proceso, incluir spec_limits (LEI/LES). Para Hipótesis 2 Muestras, opcionalmente incluir confidence_level y alternative_hypothesis.',
+      'Realiza análisis estadístico en archivos Excel subidos. Soporta MSA (Gauge R&R), Análisis de Capacidad de Proceso (Cp, Cpk, Pp, Ppk), y Test de Hipótesis de 2 Muestras. Para MSA, incluir specification (target). Para Capacidad de Proceso, incluir spec_limits (LEI/LES). Para Hipótesis 2 Muestras, opcionalmente incluir confidence_level y alternative_hypothesis.',
     parameters: {
       type: 'object',
       properties: {
@@ -51,7 +51,7 @@ export const ANALYZE_TOOL: ChatCompletionTool = {
         confidence_level: {
           type: 'number',
           enum: [0.90, 0.95, 0.99],
-          description: 'Nivel de confianza para prueba de hipótesis (solo hipotesis_2_muestras). Default: 0.95',
+          description: 'Nivel de confianza para test de hipótesis (solo hipotesis_2_muestras). Default: 0.95',
         },
         alternative_hypothesis: {
           type: 'string',
