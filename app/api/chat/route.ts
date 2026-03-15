@@ -7,7 +7,7 @@ import { createMessage, fetchMessages, updateMessageMetadata, updateMessageConte
 import { updateConversationTimestamp } from '@/lib/supabase/conversations'
 import { encodeSSEMessage, createSSEResponse } from '@/lib/openai/streaming'
 import { REJECTION_MESSAGE } from '@/lib/openai/rejection-messages'
-import { invokeAnalysisTool } from '@/lib/api/analyze'
+import { invokeAnalysisTool, type SampleSizeParams } from '@/lib/api/analyze'
 import { API_ERRORS, STREAMING_MESSAGES } from '@/constants/messages'
 import { classifyOpenAIError } from '@/lib/utils/error-utils'
 import type { ApiResponse, SSEToolCallEvent, SSEToolResultEvent } from '@/types/api'
@@ -323,11 +323,17 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 // Extract arguments
                 const args = event.arguments as {
                   analysis_type: string
-                  file_id: string
+                  file_id?: string
                   specification?: number
                   spec_limits?: { lei: number; les: number }
                   confidence_level?: number
                   alternative_hypothesis?: string
+                  delta?: number
+                  sigma?: number
+                  alpha?: number
+                  power?: number
+                  current_mean?: number
+                  expected_mean?: number
                 }
 
                 // Ensure assistant message exists before tool call so we can save metadata
@@ -348,19 +354,35 @@ export async function POST(req: NextRequest): Promise<NextResponse<ChatApiRespon
                 // Call Python analysis endpoint
                 console.log('\n[CHAT-DEBUG] ========== INVOKING ANALYSIS TOOL ==========')
                 console.log('[CHAT-DEBUG] Analysis type:', args.analysis_type)
-                console.log('[CHAT-DEBUG] File ID:', args.file_id)
+                console.log('[CHAT-DEBUG] File ID:', args.file_id || '(none — file-less)')
                 console.log('[CHAT-DEBUG] Spec Limits:', args.spec_limits ? `LEI=${args.spec_limits.lei}, LES=${args.spec_limits.les}` : '(none)')
                 console.log('[CHAT-DEBUG] Confidence Level:', args.confidence_level || '(default)')
                 console.log('[CHAT-DEBUG] Alternative Hypothesis:', args.alternative_hypothesis || '(default)')
+                console.log('[CHAT-DEBUG] Delta:', args.delta ?? '(n/a)')
+                console.log('[CHAT-DEBUG] Sigma:', args.sigma ?? '(n/a)')
+                console.log('[CHAT-DEBUG] Alpha:', args.alpha ?? '(n/a)')
+                console.log('[CHAT-DEBUG] Power:', args.power ?? '(n/a)')
                 console.log('[CHAT-DEBUG] Message ID:', assistantMessageId || '(none)')
+
+                // Build sample size params if analysis is tamano_muestra
+                const sampleSizeParams = (args.analysis_type === 'tamano_muestra' && args.delta !== undefined && args.sigma !== undefined && args.alpha !== undefined && args.power !== undefined) ? {
+                  delta: args.delta,
+                  sigma: args.sigma,
+                  alpha: args.alpha,
+                  power: args.power,
+                  alternative_hypothesis: (args.alternative_hypothesis ?? 'two-sided') as 'two-sided' | 'greater' | 'less',
+                  current_mean: args.current_mean,
+                  expected_mean: args.expected_mean,
+                } : undefined
 
                 const analysisResult = await invokeAnalysisTool(
                   args.analysis_type,
-                  args.file_id,
+                  args.file_id || undefined,
                   assistantMessageId || undefined,
                   args.spec_limits,
                   args.confidence_level,
-                  args.alternative_hypothesis
+                  args.alternative_hypothesis,
+                  sampleSizeParams,
                 )
 
                 console.log('[CHAT-DEBUG] Analysis result:', analysisResult.error ? 'ERROR' : 'SUCCESS')

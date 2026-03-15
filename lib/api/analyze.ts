@@ -16,6 +16,16 @@ import { API_ERRORS } from '@/constants/messages'
 import { retryWithBackoff } from '@/lib/utils/retry-utils'
 import { isNetworkError } from '@/lib/utils/error-utils'
 
+export interface SampleSizeParams {
+  delta: number
+  sigma: number
+  alpha: number
+  power: number
+  alternative_hypothesis: 'two-sided' | 'greater' | 'less'
+  current_mean?: number
+  expected_mean?: number
+}
+
 /**
  * Analysis result data structure from Python endpoint
  */
@@ -107,25 +117,31 @@ function getApiBaseUrl(): string {
 /**
  * Invoke the Python analysis endpoint
  *
- * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso', 'hipotesis_2_muestras')
- * @param fileId - UUID of the file to analyze
+ * @param analysisType - Type of analysis to perform (e.g., 'msa', 'capacidad_proceso', 'hipotesis_2_muestras', 'tamano_muestra')
+ * @param fileId - UUID of the file to analyze (optional for tamano_muestra)
  * @param messageId - Optional UUID of the assistant message for result storage
  * @param specLimits - Optional specification limits for capacidad_proceso { lei, les }
  * @param confidenceLevel - Optional confidence level for hipotesis_2_muestras (0.90, 0.95, 0.99)
- * @param alternativeHypothesis - Optional alternative hypothesis for hipotesis_2_muestras ('two-sided', 'greater', 'less')
+ * @param alternativeHypothesis - Optional alternative hypothesis for hipotesis_2_muestras and tamano_muestra
+ * @param sampleSizeParams - Optional parameters for tamano_muestra analysis
  * @returns Promise with analysis results or error
  */
 export async function invokeAnalysisTool(
   analysisType: string,
-  fileId: string,
+  fileId?: string,
   messageId?: string,
   specLimits?: SpecLimits,
   confidenceLevel?: number,
   alternativeHypothesis?: string,
+  sampleSizeParams?: SampleSizeParams,
 ): Promise<AnalysisResponse> {
   const body: Record<string, unknown> = {
     analysis_type: analysisType,
-    file_id: fileId,
+  }
+
+  // Only include file_id if provided
+  if (fileId) {
+    body.file_id = fileId
   }
 
   // Only include message_id if provided
@@ -143,8 +159,22 @@ export async function invokeAnalysisTool(
     body.confidence_level = confidenceLevel
   }
 
-  // Only include alternative_hypothesis if provided (for hipotesis_2_muestras)
-  if (alternativeHypothesis !== undefined) {
+  // Include sample size params if provided (for tamano_muestra)
+  if (sampleSizeParams) {
+    body.delta = sampleSizeParams.delta
+    body.sigma = sampleSizeParams.sigma
+    body.alpha = sampleSizeParams.alpha
+    body.power = sampleSizeParams.power
+    body.alternative_hypothesis = sampleSizeParams.alternative_hypothesis
+    if (sampleSizeParams.current_mean !== undefined) {
+      body.current_mean = sampleSizeParams.current_mean
+    }
+    if (sampleSizeParams.expected_mean !== undefined) {
+      body.expected_mean = sampleSizeParams.expected_mean
+    }
+  } else if (alternativeHypothesis !== undefined) {
+    // Only set from standalone param when sampleSizeParams is not provided
+    // (for hipotesis_2_muestras which doesn't use sampleSizeParams)
     body.alternative_hypothesis = alternativeHypothesis
   }
 

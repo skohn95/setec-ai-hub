@@ -63,6 +63,7 @@ export const ANALYSIS_TYPES = {
   MSA: 'msa',
   CAPACIDAD_PROCESO: 'capacidad_proceso',
   HIPOTESIS_2_MUESTRAS: 'hipotesis_2_muestras',
+  TAMANO_MUESTRA: 'tamano_muestra',
 } as const
 
 export type AnalysisTypeValue = typeof ANALYSIS_TYPES[keyof typeof ANALYSIS_TYPES]

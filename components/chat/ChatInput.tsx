@@ -70,12 +70,12 @@ export default function ChatInput({
     adjustHeight()
   }, [value, adjustHeight])
 
-  // Auto-focus textarea on mount
+  // Auto-focus textarea on mount and when re-enabled after agent response
   useEffect(() => {
     if (!disabled) {
       textareaRef.current?.focus()
     }
-  }, [])
+  }, [disabled])
 
   /**
    * Handle form submission

@@ -142,7 +142,7 @@ development_status:
   # ═══════════════════════════════════════════════════════════════════════════
   # EPIC 11: 2-Sample Hypothesis Visualization & Agent Integration
   # ═══════════════════════════════════════════════════════════════════════════
-  epic-11: in-progress
+  epic-11: done
   11-1-type-definitions-tool-parameters-plantillas-integration: done
   11-2-boxplot-chart-component-chart-container: done
   11-3-agent-conversational-flow-system-prompt: done
@@ -152,8 +152,8 @@ development_status:
   # EPIC 12: Sample Size Calculator for 2-Sample Comparison
   # ═══════════════════════════════════════════════════════════════════════════
   epic-12: in-progress
-  12-1-architecture-foundation-file-id-optional-shared-stats-module: ready-for-dev
-  12-2-sample-size-calculator-sensitivity-engine: backlog
-  12-3-typescript-integration-tool-definition: backlog
-  12-4-agent-conversational-flow-system-prompt: backlog
+  12-1-architecture-foundation-file-id-optional-shared-stats-module: done
+  12-2-sample-size-calculator-sensitivity-engine: done
+  12-3-typescript-integration-tool-definition: done
+  12-4-agent-conversational-flow-system-prompt: done
   epic-12-retrospective: optional

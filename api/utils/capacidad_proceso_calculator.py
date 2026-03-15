@@ -11,6 +11,7 @@ from typing import Any
 
 from .normality_tests import analyze_normality, _normal_cdf
 from .distribution_fitting import fit_all_distributions, calculate_ppm
+from .stats_common import norm_ppf
 from .capability_indices import (
     calculate_capability_indices,
     generate_capability_instructions,
@@ -418,38 +419,6 @@ def _build_fitted_distribution_curve(normality_result: dict[str, Any] | None) ->
 # Normality Plot (Q-Q Plot) Data Builder (Story 8.2)
 # =============================================================================
 
-def _norm_ppf(p: float) -> float:
-    """
-    Inverse of the standard normal CDF (percent point function).
-
-    Uses Abramowitz and Stegun rational approximation (formula 26.2.23).
-    Accurate to about 4.5e-4.
-
-    Args:
-        p: Probability value (0 < p < 1)
-
-    Returns:
-        z-score corresponding to probability p
-    """
-    if p <= 0 or p >= 1:
-        raise ValueError(f"Probability must be between 0 and 1, got {p}")
-
-    # Handle symmetric case
-    if p > 0.5:
-        return -_norm_ppf(1 - p)
-
-    # Rational approximation for p <= 0.5
-    # From Abramowitz and Stegun 26.2.23
-    t = np.sqrt(-2.0 * np.log(p))
-
-    # Coefficients
-    c0, c1, c2 = 2.515517, 0.802853, 0.010328
-    d1, d2, d3 = 1.432788, 0.189269, 0.001308
-
-    numerator = c0 + c1 * t + c2 * t * t
-    denominator = 1.0 + d1 * t + d2 * t * t + d3 * t * t * t
-
-    return -(t - numerator / denominator)
 
 
 def _linear_regression(x: list, y: np.ndarray) -> tuple[float, float]:
@@ -565,7 +534,7 @@ def _build_normality_plot_data(
     plotting_positions = [(i - 0.375) / (n + 0.25) for i in range(1, n + 1)]
 
     # Expected normal quantiles (z-scores)
-    expected_quantiles = [_norm_ppf(p) for p in plotting_positions]
+    expected_quantiles = [norm_ppf(p) for p in plotting_positions]
 
     # Fit line (linear regression)
     slope, intercept = _linear_regression(expected_quantiles, sorted_values)

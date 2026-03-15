@@ -1807,3 +1807,223 @@ class TestAnalyzeEndpointCapacidadProcesoCapability:
         assert 'Capacidad' in instructions
         assert 'Cpk' in instructions
         assert 'PPM' in instructions or 'ppm' in instructions.lower()
+
+
+# =============================================================================
+# Story 12.1: tamano_muestra Parameter Validation Tests
+# =============================================================================
+
+class TestTamanoMuestraValidation:
+    """Tests for tamano_muestra analysis type — file-less analysis routing and parameter validation."""
+
+    def _make_handler(self, body: dict):
+        """Helper to create a handler with the given body."""
+        from analyze import handler
+
+        mock = MockRequestHandler(body=body)
+        h = handler.__new__(handler)
+        h.__dict__.update(mock.__dict__)
+        h.send_response = mock.send_response
+        h.send_header = mock.send_header
+        h.end_headers = mock.end_headers
+        h.wfile = mock.wfile
+        h.rfile = mock.rfile
+        h.headers = mock.headers
+        return h, mock
+
+    def _valid_tamano_muestra_body(self, **overrides):
+        """Return a valid tamano_muestra request body, with optional overrides."""
+        body = {
+            'analysis_type': 'tamano_muestra',
+            'delta': 0.5,
+            'sigma': 1.0,
+            'alpha': 0.05,
+            'power': 0.80,
+            'alternative_hypothesis': 'two-sided',
+        }
+        body.update(overrides)
+        return body
+
+    def test_tamano_muestra_without_file_id_returns_200(self):
+        """tamano_muestra should succeed without file_id (AC 2)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body())
+        h.do_POST()
+
+        assert mock.response_code == 200
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error'] is None
+        assert response['data'] is not None
+
+    def test_tamano_muestra_returns_calculator_results(self):
+        """tamano_muestra should return real calculator results (Story 12.2)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body())
+        h.do_POST()
+
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert mock.response_code == 200
+        results = response['data']['results']
+        assert 'input_parameters' in results
+        assert 'sample_size' in results
+        assert 'classification' in results
+        assert 'sensitivity' in results
+        assert response['data']['chartData'] == []
+        assert len(response['data']['instructions']) > 0
+
+    def test_msa_without_file_id_returns_400(self):
+        """msa should still require file_id (AC 3)."""
+        h, mock = self._make_handler({'analysis_type': 'msa'})
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'MISSING_FIELD'
+
+    def test_capacidad_proceso_without_file_id_returns_400(self):
+        """capacidad_proceso should still require file_id (AC 3)."""
+        h, mock = self._make_handler({'analysis_type': 'capacidad_proceso'})
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'MISSING_FIELD'
+
+    def test_hipotesis_2_muestras_without_file_id_returns_400(self):
+        """hipotesis_2_muestras should still require file_id (AC 3)."""
+        h, mock = self._make_handler({'analysis_type': 'hipotesis_2_muestras'})
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'MISSING_FIELD'
+
+    def test_tamano_muestra_missing_delta_returns_400(self):
+        """Missing required param delta should return MISSING_FIELD (AC 5)."""
+        body = self._valid_tamano_muestra_body()
+        del body['delta']
+        h, mock = self._make_handler(body)
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'MISSING_FIELD'
+        assert 'delta' in response['error']['message']
+
+    def test_tamano_muestra_missing_multiple_params_returns_400(self):
+        """Missing multiple params should list all (AC 5)."""
+        body = {'analysis_type': 'tamano_muestra'}
+        h, mock = self._make_handler(body)
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'MISSING_FIELD'
+        # All 5 required fields should be mentioned
+        for field in ['delta', 'sigma', 'alpha', 'power', 'alternative_hypothesis']:
+            assert field in response['error']['message']
+
+    def test_tamano_muestra_delta_zero_returns_400(self):
+        """delta=0 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(delta=0))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'delta' in response['error']['message']
+
+    def test_tamano_muestra_delta_negative_returns_400(self):
+        """delta=-1 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(delta=-1))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+    def test_tamano_muestra_sigma_zero_returns_400(self):
+        """sigma=0 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(sigma=0))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'sigma' in response['error']['message']
+
+    def test_tamano_muestra_sigma_negative_returns_400(self):
+        """sigma=-1 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(sigma=-1))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+    def test_tamano_muestra_alpha_zero_returns_400(self):
+        """alpha=0 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(alpha=0))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'alpha' in response['error']['message']
+
+    def test_tamano_muestra_alpha_one_returns_400(self):
+        """alpha=1 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(alpha=1))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+    def test_tamano_muestra_power_zero_returns_400(self):
+        """power=0 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(power=0))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'power' in response['error']['message']
+
+    def test_tamano_muestra_power_one_returns_400(self):
+        """power=1 should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(power=1))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+    def test_tamano_muestra_invalid_alternative_hypothesis_returns_400(self):
+        """Invalid alternative_hypothesis should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(alternative_hypothesis='invalid'))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+        assert 'alternative_hypothesis' in response['error']['message']
+
+    def test_tamano_muestra_non_numeric_delta_returns_400(self):
+        """Non-numeric delta should return validation error (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(delta='abc'))
+        h.do_POST()
+
+        assert mock.response_code == 400
+        response = json.loads(mock.wfile.getvalue().decode())
+        assert response['error']['code'] == 'VALIDATION_ERROR'
+
+    def test_tamano_muestra_alternative_greater_accepted(self):
+        """alternative_hypothesis='greater' should be accepted (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(alternative_hypothesis='greater'))
+        h.do_POST()
+        assert mock.response_code == 200
+
+    def test_tamano_muestra_alternative_less_accepted(self):
+        """alternative_hypothesis='less' should be accepted (AC 4)."""
+        h, mock = self._make_handler(self._valid_tamano_muestra_body(alternative_hypothesis='less'))
+        h.do_POST()
+        assert mock.response_code == 200

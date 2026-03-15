@@ -1,6 +1,6 @@
-// Analysis types (MSA, Capacidad de Proceso, Hipotesis 2 Muestras)
+// Analysis types (MSA, Capacidad de Proceso, Hipotesis 2 Muestras, Tamaño de Muestra)
 
-export type AnalysisType = 'gage_rr' | 'capacidad_proceso' | 'hipotesis_2_muestras'
+export type AnalysisType = 'gage_rr' | 'capacidad_proceso' | 'hipotesis_2_muestras' | 'tamano_muestra'
 
 // FileStatus is imported from chat.ts (exported from there)
 import type { FileStatus } from './chat'
@@ -30,10 +30,10 @@ export interface FileValidationError {
 export interface AnalysisResult {
   id: string
   messageId: string
-  fileId: string
+  fileId: string | null
   analysisType: AnalysisType
-  results: GageRRResults | CapacidadProcesoResult | Hipotesis2MuestrasResult
-  chartData: ChartData
+  results: GageRRResults | CapacidadProcesoResult | Hipotesis2MuestrasResult | TamanoMuestraResult
+  chartData: ChartData[] | CapacidadProcesoChartDataItem[] | Hipotesis2MChartDataItem[]
   instructions: string
   pythonVersion: string | null
   computedAt: Date
@@ -458,6 +458,43 @@ export type Hipotesis2MChartDataItem =
   | Hipotesis2MHistogramData
   | Hipotesis2MBoxplotVarianceData
   | Hipotesis2MBoxplotMeansData
+
+// ============================================
+// Tamaño de Muestra Types
+// ============================================
+
+export interface TamanoMuestraResult {
+  input_parameters: {
+    current_mean: number | null
+    expected_mean: number | null
+    delta: number
+    sigma: number
+    alpha: number
+    power: number
+    alternative_hypothesis: 'two-sided' | 'greater' | 'less'
+  }
+  sample_size: {
+    n_per_group: number
+    z_alpha: number
+    z_beta: number
+    formula_used: 'bilateral' | 'unilateral'
+  }
+  classification: {
+    category: 'adequate' | 'verify_normality' | 'weak'
+    message: string
+  }
+  sensitivity: Array<{
+    scenario: string
+    label: string
+    parameters: {
+      delta: number
+      sigma: number
+      alpha: number
+      power: number
+    }
+    n_per_group: number
+  }>
+}
 
 export interface TokenUsage {
   id: string

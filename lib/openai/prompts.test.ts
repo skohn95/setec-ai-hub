@@ -227,6 +227,107 @@ describe('prompts', () => {
       })
     })
 
+    // Story 12.4: Tamaño de Muestra analysis flow
+    describe('tamano de muestra analysis flow', () => {
+      it('has dedicated section for tamano de muestra flow', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('flujo de análisis tamaño de muestra')
+      })
+
+      it('specifies that no file is required', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('no requiere archivo')
+        expect(prompt).toContain('puramente conversacional')
+      })
+
+      it('includes intent detection triggers', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('tamaño de muestra')
+        expect(prompt).toContain('cuántas muestras')
+        expect(prompt).toContain('diseño muestral')
+      })
+
+      it('explains 4 key variables in business language', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('delta (diferencia)')
+        expect(prompt).toContain('alfa (significancia)')
+        expect(prompt).toContain('poder')
+        expect(prompt).toContain('sigma (variabilidad)')
+      })
+
+      it('has 7-question coaching sequence', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('media actual estimada')
+        expect(prompt).toContain('media esperada')
+        expect(prompt).toContain('diferencia mínima relevante')
+        expect(prompt).toContain('desvío estándar histórico')
+        expect(prompt).toContain('nivel de alfa')
+        expect(prompt).toContain('poder estadístico')
+        expect(prompt).toContain('bilateral o unilateral')
+      })
+
+      it('includes delta auto-calculation from means', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('calcula delta = |media_esperada - media_actual|')
+      })
+
+      it('includes sigma estimation help', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('rango de datos conocidos / 4')
+      })
+
+      it('includes rule to never assume values', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('nunca asumas valores sin preguntar')
+      })
+
+      it('includes guard against executing hypothesis test', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('nunca ejecutar test de hipótesis')
+      })
+
+      it('has 5-part result presentation structure', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('presentación de resultados de tamaño de muestra')
+        expect(prompt).toContain('parámetros utilizados')
+        expect(prompt).toContain('por grupo')
+        expect(prompt).toContain('análisis de sensibilidad')
+      })
+
+      it('specifies no charts for this analysis', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('no hay gráficos para este análisis')
+      })
+
+      it('has follow-up re-calculation support', () => {
+        const prompt = MAIN_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('re-invocar la herramienta con el parámetro modificado')
+      })
+    })
+
+    // Story 12.4: Filter prompt tamaño de muestra support
+    describe('filter prompt tamano de muestra support', () => {
+      it('allows tamano de muestra questions', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('tamaño de muestra')
+      })
+
+      it('includes tamano de muestra in available analyses list', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('tamaño de muestra')
+      })
+
+      it('has seguimiento section for tamano de muestra', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('seguimiento de análisis de tamaño de muestra')
+      })
+
+      it('allows parameter collection responses', () => {
+        const prompt = FILTER_SYSTEM_PROMPT.toLowerCase()
+        expect(prompt).toContain('respuestas numéricas a preguntas del agente durante la recolección de parámetros')
+      })
+    })
+
     // Story 8.4: Capacidad de Proceso analysis flow
     describe('capacidad de proceso analysis flow', () => {
       it('has dedicated section for capacidad de proceso flow', () => {

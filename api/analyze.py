@@ -1,16 +1,22 @@
 """
 Statistical Analysis Endpoint
 
-This Python serverless function handles Excel file analysis for
-Measurement System Analysis (MSA), Process Capability, and 2-Sample Hypothesis Testing.
+This Python serverless function handles statistical analysis for
+Measurement System Analysis (MSA), Process Capability, 2-Sample Hypothesis Testing,
+and Sample Size Calculation (Tamaño de Muestra).
 
 Endpoint: POST /api/analyze
 Request Body:
     {
-        "analysis_type": string,  // Required. Analysis type: "msa" | "capacidad_proceso" | "hipotesis_2_muestras"
-        "file_id": string,        // Required. UUID of file in files table
+        "analysis_type": string,  // Required. "msa" | "capacidad_proceso" | "hipotesis_2_muestras" | "tamano_muestra"
+        "file_id": string,        // Required for msa, capacidad_proceso, hipotesis_2_muestras. NOT required for tamano_muestra.
         "message_id": string,     // Optional. UUID of associated message
-        "spec_limits": object     // Optional. {lei, les} for capacidad_proceso analysis
+        "spec_limits": object,    // Optional. {lei, les} for capacidad_proceso analysis
+        "delta": number,          // Required for tamano_muestra. Minimum practical difference (> 0)
+        "sigma": number,          // Required for tamano_muestra. Estimated std deviation (> 0)
+        "alpha": number,          // Required for tamano_muestra. Significance level (0 < alpha < 1)
+        "power": number,          // Required for tamano_muestra. Statistical power (0 < power < 1)
+        "alternative_hypothesis": string  // Required for tamano_muestra. "two-sided" | "greater" | "less"
     }
 
 Success Response (200):
@@ -71,6 +77,7 @@ from api.utils.capacidad_proceso_calculator import (
     build_capacidad_proceso_output,
 )
 from api.utils.sigma_estimation import estimate_sigma
+from api.utils.tamano_muestra_calculator import calculate_tamano_muestra
 
 
 def is_valid_uuid(value: str) -> bool:
@@ -83,7 +90,7 @@ def is_valid_uuid(value: str) -> bool:
 
 
 # Supported analysis types
-SUPPORTED_ANALYSIS_TYPES = {'msa', 'capacidad_proceso', 'hipotesis_2_muestras'}
+SUPPORTED_ANALYSIS_TYPES = {'msa', 'capacidad_proceso', 'hipotesis_2_muestras', 'tamano_muestra'}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -136,7 +143,10 @@ class handler(BaseHTTPRequestHandler):
             missing_fields = []
             if 'analysis_type' not in body:
                 missing_fields.append('analysis_type')
-            if 'file_id' not in body:
+
+            # file_id required for all analyses EXCEPT tamano_muestra
+            analysis_type_raw = body.get('analysis_type')
+            if analysis_type_raw != 'tamano_muestra' and 'file_id' not in body:
                 missing_fields.append('file_id')
 
             if missing_fields:
@@ -148,12 +158,12 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             analysis_type = body['analysis_type']
-            file_id = body['file_id']
+            file_id = body.get('file_id')  # May be None for tamano_muestra
             message_id = body.get('message_id')  # Optional
             spec_limits = body.get('spec_limits')  # Optional - {lei, les} for PPM (capacidad_proceso)
 
-            # Validate file_id is a valid UUID format
-            if not is_valid_uuid(file_id):
+            # Validate file_id is a valid UUID format (skip for tamano_muestra)
+            if file_id is not None and not is_valid_uuid(file_id):
                 response = error_response(
                     'VALIDATION_ERROR',
                     ERROR_MESSAGES['VALIDATION_ERROR'].format(details='file_id debe ser un UUID válido')
@@ -218,6 +228,120 @@ class handler(BaseHTTPRequestHandler):
                     )
                     self.send_json_response(400, response)
                     return
+
+            # ---- tamano_muestra: file-less analysis ----
+            if analysis_type == 'tamano_muestra':
+                tm_required = ['delta', 'sigma', 'alpha', 'power', 'alternative_hypothesis']
+                tm_missing = [f for f in tm_required if f not in body]
+                if tm_missing:
+                    response = error_response(
+                        'MISSING_FIELD',
+                        ERROR_MESSAGES['MISSING_FIELD'].format(fields=', '.join(tm_missing))
+                    )
+                    self.send_json_response(400, response)
+                    return
+
+                # Validate numeric params
+                try:
+                    delta = float(body['delta'])
+                    sigma = float(body['sigma'])
+                    alpha = float(body['alpha'])
+                    power = float(body['power'])
+                except (ValueError, TypeError):
+                    response = error_response(
+                        'VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='Los parámetros delta, sigma, alpha y power deben ser numéricos'
+                        )
+                    )
+                    self.send_json_response(400, response)
+                    return
+
+                # Range validations
+                if delta <= 0:
+                    response = error_response('VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='La diferencia (delta) debe ser mayor que cero'))
+                    self.send_json_response(400, response)
+                    return
+
+                if sigma <= 0:
+                    response = error_response('VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='La variabilidad (sigma) debe ser mayor que cero'))
+                    self.send_json_response(400, response)
+                    return
+
+                if alpha <= 0 or alpha >= 1:
+                    response = error_response('VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='El nivel de significancia (alpha) debe estar entre 0 y 1'))
+                    self.send_json_response(400, response)
+                    return
+
+                if power <= 0 or power >= 1:
+                    response = error_response('VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='El poder estadístico (power) debe estar entre 0 y 1'))
+                    self.send_json_response(400, response)
+                    return
+
+                alt_hyp = body['alternative_hypothesis']
+                if alt_hyp not in {'two-sided', 'greater', 'less'}:
+                    response = error_response('VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details=f'alternative_hypothesis debe ser two-sided, greater o less (recibido: {alt_hyp})'))
+                    self.send_json_response(400, response)
+                    return
+
+                current_mean = body.get('current_mean')
+                expected_mean = body.get('expected_mean')
+                try:
+                    if current_mean is not None:
+                        current_mean = float(current_mean)
+                    if expected_mean is not None:
+                        expected_mean = float(expected_mean)
+                except (ValueError, TypeError):
+                    response = error_response(
+                        'VALIDATION_ERROR',
+                        ERROR_MESSAGES['VALIDATION_ERROR'].format(
+                            details='current_mean y expected_mean deben ser numéricos'
+                        )
+                    )
+                    self.send_json_response(400, response)
+                    return
+
+                analysis_output = calculate_tamano_muestra(
+                    delta=delta,
+                    sigma=sigma,
+                    alpha=alpha,
+                    power=power,
+                    alternative_hypothesis=alt_hyp,
+                    current_mean=current_mean,
+                    expected_mean=expected_mean,
+                )
+
+                # Save results with file_id=None
+                if message_id:
+                    save_analysis_results(
+                        message_id=message_id,
+                        file_id=None,
+                        analysis_type=analysis_type,
+                        results=analysis_output['results'],
+                        chart_data=analysis_output['chartData'],
+                        instructions=analysis_output['instructions'],
+                    )
+
+                # Return success (skip file status update — no file)
+                response = success_response(
+                    results=analysis_output['results'],
+                    chart_data=analysis_output['chartData'],
+                    instructions=analysis_output['instructions'],
+                )
+                self.send_json_response(200, response)
+                return
+
+            # ---- File-based analyses continue below ----
 
             # Fetch file from Supabase Storage
             file_bytes, fetch_error = fetch_file_from_storage(file_id)

@@ -157,7 +157,7 @@ def update_file_validation(
 
 def save_analysis_results(
     message_id: str | None,
-    file_id: str,
+    file_id: str | None,
     analysis_type: str,
     results: dict[str, Any],
     chart_data: list[dict[str, Any]],
@@ -168,7 +168,7 @@ def save_analysis_results(
 
     Args:
         message_id: UUID of the associated message (can be None for standalone analysis)
-        file_id: UUID of the analyzed file
+        file_id: UUID of the analyzed file (can be None for file-less analyses like tamano_muestra)
         analysis_type: Type of analysis performed (e.g., 'msa')
         results: Dictionary of numerical analysis results
         chart_data: List of chart data objects for visualization
@@ -181,13 +181,16 @@ def save_analysis_results(
         supabase = get_supabase_client()
 
         insert_data = {
-            'file_id': file_id,
             'analysis_type': analysis_type,
             'results': results,
             'chart_data': chart_data,
             'instructions': instructions,
             'python_version': '1.0.0',
         }
+
+        # Only include file_id if provided
+        if file_id is not None:
+            insert_data['file_id'] = file_id
 
         # Only include message_id if provided
         if message_id is not None:
